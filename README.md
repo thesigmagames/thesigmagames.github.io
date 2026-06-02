@@ -17,4 +17,4 @@ Türküz ve bizim vizyonumuz, saf Sigma kalitesinde oyunlar ve modlar geliştirm
 - [English (EN)](https://thesigmagames.github.io/en/)
 
 ---
-*Kod yazmada profesyonel ol.*
+*Sitemiz şu anda beta aşamasında olduğu için sorunlar olabilir.*
