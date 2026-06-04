@@ -1,6 +1,6 @@
 # thesigmagames.github.io
 THE SIGMA GAMES official hub. The grind never stops.
-# THE SIGMA GAMES
+# THE SIGMA GAMES 🗿
 
 THE SIGMA GAMES, dijital oyun dünyasında yeni nesil deneyimler sunan bir stüdyodur. The grind never stops.
 
@@ -20,12 +20,13 @@ Türküz ve bizim vizyonumuz, saf Sigma kalitesinde oyunlar ve modlar geliştirm
 ---
 *Sitemiz şu anda beta aşamasında olduğu için sorunlar olabilir.Çünkü hazırlamaya yeni başlandı*
 **YAKINDA**
--- SİGMA ARENA PC
--- SİGMA ARENA TEL
--- SİGMA CHESS
--- SİGMA X-O-X(TİC-TAC TOE)
--- SİGMA MONKEY
+-- sɪ̇ɢᴍᴀ ᴀʀᴇɴᴀ ᴘᴄ 💻🖱
+-- sɪ̇ɢᴍᴀ ᴀʀᴇɴᴀ ᴛᴇʟ 📱
+-- sɪ̇ɢᴍᴀ ᴄʜᴇss♟
+-- sɪ̇ɢᴍᴀ x-ᴏ-x(ᴛɪ̇ᴄ-ᴛᴀᴄ ᴛᴏᴇ)❌⭕❌
+-- sɪ̇ɢᴍᴀ ᴍᴏɴᴋᴇʏ 🐒
+
 ****VE DAHASI****
 _______________________________________________________________________________________________________________________
-*NOT:PROJELERİMİN SİTEYE AKTARILMASI ZOR OLDUĞU İÇİN ÇOK UZUN SÜRE BİLİR.KİM BİLİR,BELKİ[SCRATCH](https://www.scratch.mit.edu/users/parlakkerem98) PLATFORMUNDAKİ PROJELERİMİ YÜKLERİM...
-# SON
+*NOT:PROJELERİMİN SİTEYE AKTARILMASI ZOR OLDUĞU İÇİN SİTENİN YAPIM SÜRECİ ÇOK UZUN SÜREBİLİR.KİM BİLİR,BELKİ [SCRATCH](https://www.scratch.mit.edu/) PLATFORMUNDAKİ PROJELERİMİ YÜKLERİM...*
+# ~ SON ~
