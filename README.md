@@ -15,10 +15,11 @@ Türküz ve bizim vizyonumuz, saf Sigma kalitesinde oyunlar ve modlar geliştirm
 ## Dil Seçenekleri
 - [Türkçe (TR)](https://thesigmagames.github.io/tr/)
 - [English (EN)YAKINDA](https://thesigmagames.github.io/en/)
-# ---- MÜCADELE ASLA DURMAZ ---
+# ---- MÜCADELE ASLA DURMAZ ----
 
 ---
 *Sitemiz şu anda beta aşamasında olduğu için sorunlar olabilir.Çünkü hazırlamaya yeni başlandı*
+---_
 
 **YAKINDA**
 
@@ -31,6 +32,8 @@ Türküz ve bizim vizyonumuz, saf Sigma kalitesinde oyunlar ve modlar geliştirm
 -- sɪ̇ɢᴍᴀ x-ᴏ-x(ᴛɪ̇ᴄ-ᴛᴀᴄ ᴛᴏᴇ)❌⭕❌
 
 -- sɪ̇ɢᴍᴀ ᴍᴏɴᴋᴇʏ 🐒
+
+-- sɪ̇ɢᴍᴀ-ᴄʀᴀꜰᴛ
 
 
 ****VE DAHASI****
