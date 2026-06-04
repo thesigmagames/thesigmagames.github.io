@@ -21,10 +21,15 @@ Türküz ve bizim vizyonumuz, saf Sigma kalitesinde oyunlar ve modlar geliştirm
 *Sitemiz şu anda beta aşamasında olduğu için sorunlar olabilir.Çünkü hazırlamaya yeni başlandı*
 **YAKINDA**
 -- sɪ̇ɢᴍᴀ ᴀʀᴇɴᴀ ᴘᴄ 💻🖱
+
 -- sɪ̇ɢᴍᴀ ᴀʀᴇɴᴀ ᴛᴇʟ 📱
+
 -- sɪ̇ɢᴍᴀ ᴄʜᴇss♟
+
 -- sɪ̇ɢᴍᴀ x-ᴏ-x(ᴛɪ̇ᴄ-ᴛᴀᴄ ᴛᴏᴇ)❌⭕❌
+
 -- sɪ̇ɢᴍᴀ ᴍᴏɴᴋᴇʏ 🐒
+
 
 ****VE DAHASI****
 _______________________________________________________________________________________________________________________
