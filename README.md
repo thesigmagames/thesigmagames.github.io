@@ -14,7 +14,7 @@ Türküz ve bizim vizyonumuz, saf Sigma kalitesinde oyunlar ve modlar geliştirm
 
 ## Dil Seçenekleri
 - [Türkçe (TR)](https://thesigmagames.github.io/tr/)
-- [English (EN)](https://thesigmagames.github.io/en/)
-
+- [English (EN)YAKINDA](https://thesigmagames.github.io/en/)
+###MÜCADELE ASLA DURMAZ
 ---
 *Sitemiz şu anda beta aşamasında olduğu için sorunlar olabilir.*
