@@ -1,1 +1,275 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sigma Arena</title>
+    <style>
+        /* SİGMA PROFESYONEL CSS SIFIRLAMA VE TEMEL AYARLAR */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
 
+        body, html {
+            width: 100%;
+            height: 100%;
+            background-color: #000000; /* İstediğin Simsiyah Arka Plan */
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        /* ANA OYUN KONTEYNERİ */
+        #sigma-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* SCRATCH IFRAME (OYUNUN KENDİSİ) */
+        #sigma-game-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            outline: none;
+            opacity: 0; /* Başlangıçta görünmez, yüklenince açılacak */
+            transition: opacity 1s ease-in-out;
+        }
+
+        /* SİGMA YÜKLEME EKRANI (O BOKLU YAZIYI GİZLEYEN KATMAN) */
+        #sigma-loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #050505;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            transition: opacity 0.8s ease-in-out, visibility 0.8s;
+        }
+
+        /* SENİN VERDİĞİN ARENA FOTOĞRAFI */
+        #sigma-loading-screen img {
+            max-width: 60%;
+            max-height: 50vh;
+            object-fit: contain;
+            margin-bottom: 30px;
+            filter: drop-shadow(0 0 20px rgba(255, 50, 50, 0.5));
+            animation: float 3s ease-in-out infinite;
+        }
+
+        /* YUKARI AŞAĞI HAFİF DALGALANMA ANİMASYONU */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+
+        /* YÜKLENİYOR YAZISI EFEKTİ */
+        .sigma-loading-text {
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 4px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            animation: pulseText 1.5s infinite;
+        }
+
+        @keyframes pulseText {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; text-shadow: 0 0 20px #ff3b3b, 0 0 30px #ff3b3b; }
+            100% { opacity: 0.6; }
+        }
+
+        /* ŞIK VE NEON YÜKLEME BARI (LOADING BAR) */
+        .sigma-progress-container {
+            width: 40%;
+            height: 8px;
+            background-color: #222;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: inset 0 0 5px #000;
+            position: relative;
+        }
+
+        .sigma-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ff0000, #ff5e00, #ff0000);
+            background-size: 200% 100%;
+            border-radius: 10px;
+            box-shadow: 0 0 15px #ff3b3b;
+            animation: gradientMove 2s linear infinite;
+        }
+
+        @keyframes gradientMove {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
+        }
+
+        /* TAM EKRAN (FULLSCREEN) BUTONU */
+        #sigma-fullscreen-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border: 2px solid #555;
+            border-radius: 8px;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+            opacity: 0; /* Oyun yüklenene kadar gizli */
+            pointer-events: none;
+        }
+
+        #sigma-fullscreen-btn:hover {
+            background-color: rgba(255, 50, 50, 0.8);
+            border-color: #ff3b3b;
+            box-shadow: 0 0 15px #ff3b3b;
+            transform: scale(1.1);
+        }
+
+        /* TAM EKRAN İKONU (SVG) */
+        #sigma-fullscreen-btn svg {
+            fill: #fff;
+            width: 24px;
+            height: 24px;
+            transition: fill 0.3s;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sigma-wrapper">
+        
+        <div id="sigma-loading-screen">
+            <img src="ARENA FOTO.png" alt="Sigma Arena Cover">
+            
+            <div class="sigma-loading-text">SİGMA ARENA BAŞLATILIYOR...</div>
+            
+            <div class="sigma-progress-container">
+                <div class="sigma-progress-bar" id="sigma-bar"></div>
+            </div>
+        </div>
+
+        <iframe 
+            id="sigma-game-frame" 
+            src="<iframe src="https://scratch.mit.edu/projects/139025103/embed" allowtransparency="true" width="485" height="402" frameborder="0" scrolling="no" allowfullscreen></iframe>" 
+            allowtransparency="true" 
+            frameborder="0" 
+            scrolling="no" 
+            allowfullscreen>
+        </iframe>
+
+        <button id="sigma-fullscreen-btn" onclick="toggleSigmaFullscreen()" title="Tam Ekran (Büyült/Küçült)">
+            <svg id="fs-icon" viewBox="0 0 24 24">
+                <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+            </svg>
+        </button>
+
+    </div>
+
+    <script>
+        // SİGMA PROFESYONEL YÜKLEME VE TAM EKRAN MOTORU
+        
+        document.addEventListener("DOMContentLoaded", () => {
+            const loadingScreen = document.getElementById('sigma-loading-screen');
+            const gameFrame = document.getElementById('sigma-game-frame');
+            const progressBar = document.getElementById('sigma-bar');
+            const fullscreenBtn = document.getElementById('sigma-fullscreen-btn');
+            
+            let loadProgress = 0;
+            
+            // Scratch'in yüklenme süresini simüle eden ve o boklu yazıyı tamamen gizleyen Sigma Algoritması
+            const loadingInterval = setInterval(() => {
+                // Barı rastgele hızlarda doldur (daha gerçekçi görünmesi için)
+                loadProgress += Math.random() * 15; 
+                
+                if (loadProgress >= 100) {
+                    loadProgress = 100;
+                    clearInterval(loadingInterval);
+                    
+                    // Bar dolduğunda %100 yap
+                    progressBar.style.width = '100%';
+                    
+                    // Yarım saniye bekle ve mükemmel bir geçişle oyunu aç
+                    setTimeout(() => {
+                        loadingScreen.style.opacity = '0';
+                        loadingScreen.style.visibility = 'hidden';
+                        
+                        gameFrame.style.opacity = '1';
+                        
+                        // Tam ekran butonunu görünür yap
+                        fullscreenBtn.style.opacity = '1';
+                        fullscreenBtn.style.pointerEvents = 'auto';
+                    }, 500);
+                } else {
+                    progressBar.style.width = loadProgress + '%';
+                }
+            }, 300); // Ortalama 2-3 saniyelik şık bir bekleme süresi
+        });
+
+        // KUSURSUZ TAM EKRAN (FULLSCREEN) KONTROLÜ (Hem Tıklama Hem ESC Destekli)
+        function toggleSigmaFullscreen() {
+            const elem = document.documentElement; // Tüm sayfayı tam ekran yap
+            
+            if (!document.fullscreenElement && !document.mozFullScreenElement &&
+                !document.webkitFullscreenElement && !document.msFullscreenElement) {
+                // Tam ekrana geçiş
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen();
+                } else if (elem.msRequestFullscreen) {
+                    elem.msRequestFullscreen();
+                } else if (elem.mozRequestFullScreen) {
+                    elem.mozRequestFullScreen();
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+                }
+            } else {
+                // Tam ekrandan çıkış (Küçültme)
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        }
+
+        // ESC Tuşu veya tarayıcıdan tam ekrandan çıkıldığında buton ikonunu güncelleme (Ekstra Detay)
+        document.addEventListener('fullscreenchange', updateFsIcon);
+        document.addEventListener('webkitfullscreenchange', updateFsIcon);
+        document.addEventListener('mozfullscreenchange', updateFsIcon);
+        document.addEventListener('MSFullscreenChange', updateFsIcon);
+
+        function updateFsIcon() {
+            const iconPath = document.querySelector('#fs-icon path');
+            if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+                // Küçültme İkonu
+                iconPath.setAttribute('d', 'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z');
+            } else {
+                // Büyütme İkonu
+                iconPath.setAttribute('d', 'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z');
+            }
+        }
+    </script>
+</body>
+</html>
