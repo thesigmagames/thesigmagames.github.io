@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+  </head>
+  <body>
+    <script type="pyodide">
+      # Buraya senin Python kodunu yapıştırıyorsun
+      # Hiçbir sunucuya gerek yok, kod doğrudan tarayıcıda çalışır
+      # -*- coding: utf-8 -*-
+import io
+import pygame 
+import sys 
+import random 
+import math
+import os
+import asyncio  # PRO SiSTEM: WebAssembly tarayici motoru icin kritik kutuphane
+
+# Python'un terminali UTF-8 moduna zorla
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
+
+os.environ['SDL_VIDEO_WINDOW_POS'] = "center"
+
+if 'APPDATA' in os.environ:
+    gizli_yol = os.path.join(os.environ['APPDATA'], 'SigmaArenaTR_Rekor.kerem')
+else:
+    gizli_yol = 'SigmaArenaTR_Rekor.kerem'
+
+def rekoru_oku():
+    if os.path.exists(gizli_yol):
+        try:
+            with open(gizli_yol, 'r') as f: 
+                return int(f.read())
+        except: 
+            return 0
+    return 0
+
+def rekoru_kaydet(skor):
+    try:
+        with open(gizli_yol, 'w') as f: 
+            f.write(str(skor))
+    except:
+        pass
+
+yuksek_skor = rekoru_oku()
+
+# --- BASLANGIC AYARLARI ---
+pygame.init() 
+GENISLIK, YUKSEKLIK = 900, 700 
+ekran = pygame.display.set_mode((GENISLIK, YUKSEKLIK), pygame.RESIZABLE) 
+pygame.display.set_caption("SiGMA ARENA") 
+
+oyun_yuzeyi = pygame.Surface((GENISLIK, YUKSEKLIK))
+
+# Fontlar
+font_large = pygame.font.SysFont("Serif", 70) 
+font_skor = pygame.font.SysFont("Consolas", 24, bold=True) 
+font_big = pygame.font.SysFont("Consolas", 40, bold=True) 
+font_small = pygame.font.SysFont("Consolas", 18, bold=True)
+
+parlama_sayaci = 0
+puan_sayaci = 0
+restart_bekle = True
+
+# --- ANA RENK PALETI ---
+SIYAH   = (0, 0, 0)
+BEYAZ   = (255, 255, 255)
+GRI     = (50, 50, 50)
+SARI    = (255, 255, 0)
+TURUNCU = (255, 165, 0)
+LIME    = (0, 255, 0)   
+YESIL   = (0, 200, 0)
+KIRMIZI = (255, 0, 0)
+MOR     = (128, 0, 128)
+MAGENTA = (255, 0, 255)  
+CYAN    = (0, 255, 255)
+
+def gercek_fare_pozisyonu():
+    w, h = ekran.get_size()
+    off_x = (w - GENISLIK) // 2
+    off_y = (h - YUKSEKLIK) // 2
+    mx, my = pygame.mouse.get_pos()
+    return (mx - off_x, my - off_y)
+
+def yuzeyi_ekrana_bas():
+    ekran.fill((10, 10, 15)) 
+    w, h = ekran.get_size()
+    ekran.blit(oyun_yuzeyi, ((w - GENISLIK) // 2, (h - YUKSEKLIK) // 2))
+    pygame.display.flip()
+
+def akan_neon_cizgi(yuzey, x, y, genislik, zaman):
+    for i in range(genislik):
+        phase = (i / 60.0) - (zaman * 0.15)
+        r = int(127 * math.sin(phase) + 128)
+        g = int(127 * math.sin(phase + 2 * math.pi / 3) + 128)
+        b = int(127 * math.sin(phase + 4 * math.pi / 3) + 128)
+        pygame.draw.line(yuzey, (r, g, b), (x + i, y - 3), (x + i, y + 3), 1)
+        pygame.draw.line(yuzey, (r, g, b), (x + i, y - 2), (x + i, y + 2), 1)
+
+async def sigma_yukleme_ekrani():
+    saat = pygame.time.Clock()
+    yuzde = 0
+    
+    while yuzde < 100:
+        oyun_yuzeyi.fill(SIYAH)
+        
+        yazi = font_big.render(f"YUKLENiYOR... {yuzde}%", True, BEYAZ)
+        oyun_yuzeyi.blit(yazi, (GENISLIK // 2 - yazi.get_width() // 2, YUKSEKLIK // 2 - 50))
+        
+        bar_genislik = yuzde * 5
+        pygame.draw.rect(oyun_yuzeyi, GRI, (GENISLIK // 2 - 250, YUKSEKLIK // 2 + 20, 500, 30), 2)
+        pygame.draw.rect(oyun_yuzeyi, LIME, (GENISLIK // 2 - 250, YUKSEKLIK // 2 + 20, bar_genislik, 30))
+        
+        yuzde += random.randint(1, 3) 
+        if yuzde > 100: yuzde = 100
+        
+        yuzeyi_ekrana_bas()
+        saat.tick(60)
+        await asyncio.sleep(0)  # Tarayıcının arayuzu yenilemesine izin veriyoruz
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); sys.exit()
+
+async def ana_menu():
+    saat = pygame.time.Clock()
+    global parlama_sayaci, puan_sayaci
+    durum = "MAIN" 
+
+    while True:
+        oyun_yuzeyi.fill(SIYAH)
+        fare_konum = gercek_fare_pozisyonu() 
+        
+        parlama_sayaci += 0.050
+        isik = 150 + abs(int(105 * math.sin(parlama_sayaci))) 
+        p_beyaz = (isik, isik, isik)
+
+        for i in range(0, GENISLIK, 60):
+            pygame.draw.line(oyun_yuzeyi, (20, 20, 30), (i, 0), (i, YUKSEKLIK), 1)
+        for i in range((puan_sayaci % 60), YUKSEKLIK, 60):
+            pygame.draw.line(oyun_yuzeyi, (20, 20, 30), (0, i), (GENISLIK, i), 1)
+
+        if durum == "MAIN":
+            oyun_yuzeyi.blit(font_large.render("SiGMA", True, p_beyaz), (GENISLIK // 2 - 220, 150)) 
+            oyun_yuzeyi.blit(font_large.render("SiGMA", True, KIRMIZI), (GENISLIK // 2 - 225, 150))
+            oyun_yuzeyi.blit(font_large.render("ARENA", True, p_beyaz), (GENISLIK // 2 + 20, 230))
+            oyun_yuzeyi.blit(font_large.render("ARENA", True, TURUNCU), (GENISLIK // 2 + 25, 230))
+            
+            btn_basla = pygame.Rect(GENISLIK//2 - 100, 450, 200, 50)
+            btn_nasil = pygame.Rect(GENISLIK//2 - 100, 550, 200, 50)
+
+            renk_basla = YESIL if btn_basla.collidepoint(fare_konum) else GRI
+            renk_nasil = MAGENTA if btn_nasil.collidepoint(fare_konum) else GRI
+
+            pygame.draw.rect(oyun_yuzeyi, renk_basla, btn_basla, border_radius=10)
+            pygame.draw.rect(oyun_yuzeyi, renk_nasil, btn_nasil, border_radius=10)
+
+            oyun_yuzeyi.blit(font_skor.render("OYUNU BASLAT", True, BEYAZ), (btn_basla.x + 35, btn_basla.y + 12))
+            oyun_yuzeyi.blit(font_skor.render("NASIL OYNANIR?", True, BEYAZ), (btn_nasil.x + 17, btn_nasil.y + 12))
+            
+        elif durum == "MODE_SELECT":
+            oyun_yuzeyi.blit(font_big.render("MOD SEC", True, p_beyaz), (GENISLIK // 2 - 120, 200))
+            btn_1p = pygame.Rect(GENISLIK//2 - 125, 350, 250, 60)
+            btn_2p = pygame.Rect(GENISLIK//2 - 125, 450, 250, 60)
+            renk_1p = YESIL if btn_1p.collidepoint(fare_konum) else GRI
+            renk_2p = MAGENTA if btn_2p.collidepoint(fare_konum) else GRI
+            
+            pygame.draw.rect(oyun_yuzeyi, renk_1p, btn_1p, border_radius=10)
+            pygame.draw.rect(oyun_yuzeyi, renk_2p, btn_2p, border_radius=10)
+            oyun_yuzeyi.blit(font_skor.render("1 OYUNCU", True, BEYAZ), (btn_1p.x + 70, btn_1p.y + 18))
+            oyun_yuzeyi.blit(font_skor.render("2 OYUNCU", True, BEYAZ), (btn_2p.x + 65, btn_2p.y + 18))
+
+        puan_sayaci += 1  
+        
+        ust_x, ust_y = (GENISLIK // 2 - 240, 140)
+        akan_neon_cizgi(oyun_yuzeyi, ust_x, ust_y, 500, puan_sayaci) 
+        pygame.draw.line(oyun_yuzeyi, BEYAZ, (ust_x, ust_y), (ust_x + 500, 140), 2)
+
+        alt_x, alt_y = (GENISLIK // 2 - 240, 310)
+        akan_neon_cizgi(oyun_yuzeyi, alt_x, alt_y, 500, puan_sayaci)
+        pygame.draw.line(oyun_yuzeyi, BEYAZ, (alt_x, alt_y), (alt_x + 500, 310), 2)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: 
+                pygame.quit(); sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if durum == "MAIN":
+                    if btn_basla.collidepoint(fare_konum): durum = "MODE_SELECT"
+                    elif btn_nasil.collidepoint(fare_konum): await nasil_oynanir_tablosu()
+                elif durum == "MODE_SELECT":
+                    if btn_1p.collidepoint(fare_konum): return "1P"
+                    if btn_2p.collidepoint(fare_konum): return "2P"
+                    pygame.event.clear()
+        
+        saat.tick(60)
+        yuzeyi_ekrana_bas()
+        await asyncio.sleep(0)
+
+async def nasil_oynanir_tablosu():
+    saat = pygame.time.Clock()
+    global puan_sayaci 
+    bekle = True
+    
+    scroll_y = 0  
+    scroll_hiz = 25  
+    
+    sol_tik_basili = False
+    baslangic_mouse_y = 0
+    baslangic_scroll_y = 0
+    
+    metinler = [
+        "SiGMA ARENA ---> NASIL OYNANIR?", 
+        " ",
+        "--- YAZILARI KAYDIRMAK iCiN ---",
+        "- Fare Tekerlegini Dondur",
+        "- Klavye: W / S Tusu veya YUKARI / ASAGI Ok TuslarI",
+        "- Ekran Uzerinde SOL TIKLA VE YUKARI/ASAGI SURUKLE!",
+        " ",
+        "--- 1 OYUNCU MODU ---", 
+        "HAREKET: OK TUSLARI veya W-A-S-D", 
+        "ATES: BOSLUK TUSU veya SAG SHIFT", 
+        "SiGMA OVERDRIVE/ULTi: Q TUSU veya SAG CTRL", 
+        "(Enerji dolunca tum mermileri siler ve hasar verir!)", 
+        " ",
+        "--- 2 OYUNCU MODU ---", 
+        "1.OYUNCU(LIME): HAREKET = W-A-S-D | ATES = BOSLUK | ULTi = Q", 
+        "2.OYUNCU(MAGENTA): HAREKET = OK TUSLARI ",
+        "       ATES = SAG SHIFT | ULTi = SAG CTRL",
+        " ",
+        "--- OYUN MEKANiKLERi ---", 
+        "- BOSS HER 160 PUAN VE KATLARINDA GELiR!", 
+        "- BOSS'U YENMEK +240 PUAN VE +1 CAN KAZANDIRIR!", 
+        "- P TUSUNA BASARAK OYUNU DURDURABiLiRSiN", 
+        " ",
+        "- CIKMAK iCiN 'ESC' veya FARENiN SAG TUSUNA BAS -"
+    ]
+    
+    satir_yuksekligi = 40
+    toplam_yazi_yuksekligi = len(metinler) * satir_yuksekligi
+    tablo_ust = 60
+    tablo_alt = 640
+    tablo_ic_yukseklik = tablo_alt - tablo_ust
+    
+    max_scroll = max(0, toplam_yazi_yuksekligi - tablo_ic_yukseklik + 40)
+
+    while bekle:
+        oyun_yuzeyi.fill((10, 10, 10)) 
+        puan_sayaci += 1 
+        
+        sin_val = math.sin(puan_sayaci * 0.05)
+        neon_renk = (
+            int(127 + 127 * sin_val),
+            int(127 + 127 * math.sin(puan_sayaci * 0.05 + 2)),
+            int(127 + 127 * math.sin(puan_sayaci * 0.05 + 4))
+        )
+        
+        if sol_tik_basili:
+            su_an_mouse_x, su_an_mouse_y = gercek_fare_pozisyonu()
+            fark_y = su_an_mouse_y - baslangic_mouse_y
+            scroll_y = baslangic_scroll_y - fark_y
+            scroll_y = max(0, min(max_scroll, scroll_y))
+
+        oyun_yuzeyi.set_clip(pygame.Rect(30, tablo_ust, 840, tablo_ic_yukseklik))
+        y_konum = tablo_ust + 20 - scroll_y 
+        
+        for i, metin in enumerate(metinler):
+            renk = neon_renk if i == 0 or i == len(metinler) - 1 else BEYAZ
+            if "SiGMA OVERDRIVE" in metin or "ULTi" in metin: 
+                renk = CYAN
+            elif "1.OYUNCU" in metin:
+                renk = LIME
+            elif "2.OYUNCU" in metin:
+                renk = MAGENTA
+                
+            yazi_yuzeyi = font_skor.render(metin, True, renk)
+            oyun_yuzeyi.blit(yazi_yuzeyi, (GENISLIK // 2 - yazi_yuzeyi.get_width() // 2, y_konum))
+            y_konum += satir_yuksekligi
+            
+        oyun_yuzeyi.set_clip(None)
+        pygame.draw.rect(oyun_yuzeyi, neon_renk, (20, 30, 860, 640), 4, border_radius=20)
+
+        saat.tick(60)
+        yuzeyi_ekrana_bas()
+        await asyncio.sleep(0)
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: 
+                pygame.quit(); sys.exit()
+                
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 4:  
+                    scroll_y = max(0, scroll_y - scroll_hiz)
+                elif event.button == 5:  
+                    scroll_y = min(max_scroll, scroll_y + scroll_hiz)
+                elif event.button == 1:
+                    sol_tik_basili = True
+                    mx, my = gercek_fare_pozisyonu()
+                    baslangic_mouse_y = my
+                    baslangic_scroll_y = scroll_y
+                elif event.button == 3:
+                    bekle = False
+                    
+            if event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1:
+                    sol_tik_basili = False
+                    
+            if event.type == pygame.KEYDOWN: 
+                if event.key == pygame.K_ESCAPE:
+                    bekle = False
+                elif event.key == pygame.K_UP or event.key == pygame.K_w:
+                    scroll_y = max(0, scroll_y - scroll_hiz)
+                elif event.key == pygame.K_DOWN or event.key == pygame.K_s:
+                    scroll_y = min(max_scroll, scroll_y + scroll_hiz)
+
+async def oyunu_baslat(mod):
+    saat = pygame.time.Clock()
+    
+    oyuncu_boyut = 40; x, y = 200, 350 
+    hiz = 7; yon = "UP"; puan = 0; can = 5
+    x2, y2 = 600, 350; can2 = 5; yon2 = "UP"
+    
+    sigma_enerjisi = 0
+    sigma_enerjisi2 = 0
+    sok_dalgalari = [] 
+
+    sarsinti_miktari = 0 
+    oyun_duraklatildi = False  
+    zorla_menu = False 
+    pause_buton_rect = pygame.Rect(GENISLIK // 2 - 20, 15, 40, 40) 
+    
+    puan_yazilari = []; patlamalar = []
+    son_kirpma_zamani = pygame.time.get_ticks(); kirpma_suresi = 7000 
+    goz_kapali_mi = False; kapali_kalma_suresi = 200 
+
+    boss_aktif = False; boss_can = 25; boss_hiz_x = 5; boss_son_ates = 0
+    boss_rect = pygame.Rect(GENISLIK // 2 - 50, -150, 100, 100)
+
+    mermiler = []; dusman_mermileri = []
+    hedefler = [pygame.Rect(random.randint(50, 750), random.randint(100, 500), 30, 30) for _ in range(5)]
+    
+    yildizlar = [[random.randint(0, GENISLIK), random.randint(0, YUKSEKLIK), random.randint(1, 3), random.uniform(1, 4)] for _ in range(75)] 
+    
+    p1_izler = []
+    p2_izler = []
+
+    running = True 
+
+    while running:
+        su_an = pygame.time.get_ticks()        
+        gercek_fare = gercek_fare_pozisyonu()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: 
+                pygame.quit(); sys.exit()
+            
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if pause_buton_rect.collidepoint(gercek_fare):
+                    oyun_duraklatildi = not oyun_duraklatildi
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p: 
+                    oyun_duraklatildi = not oyun_duraklatildi
+                
+                if oyun_duraklatildi:
+                    if event.key == pygame.K_ESCAPE:
+                        pygame.quit(); sys.exit()
+                    if event.key == pygame.K_r:
+                        zorla_menu = True
+                        running = False 
+                else:
+                    if can > 0:
+                        if (event.key == pygame.K_SPACE) or (mod == "1P" and event.key == pygame.K_RSHIFT):
+                            m_hiz = 12
+                            mx, my = (0,-m_hiz) if yon=="UP" else (0,m_hiz) if yon=="DOWN" else (-m_hiz,0) if yon=="LEFT" else (m_hiz,0)
+                            mermiler.append({"rect": pygame.Rect(x+15, y+15, 10, 10), "vx": mx, "vy": my, "izler": [], "aktif": True, "p_id": 1})
+                        
+                        if (event.key == pygame.K_q or (mod == "1P" and event.key == pygame.K_RCTRL)) and sigma_enerjisi >= 100:
+                            sigma_enerjisi = 0
+                            sok_dalgalari.append({"x": x+20, "y": y+20, "yaricap": 10, "renk": CYAN})
+                            sarsinti_miktari = 25
+                            puan_yazilari.append({"x": x, "y": y-40, "metin": "SiGMA OVERDRIVE!", "sure": 255, "boyut": "big"})
+                         
+                        if event.key == pygame.K_q and sigma_enerjisi >= 100:
+                            sigma_enerjisi = 0
+                            sok_dalgalari.append({"x": x+20, "y": y+20, "yaricap": 10, "renk": CYAN})
+                            sarsinti_miktari = 25
+                            puan_yazilari.append({"x": x, "y": y-40, "metin": "SiGMA OVERDRIVE!", "sure": 255, "boyut": "big"})
+
+                    if mod == "2P" and can2 > 0:
+                        if event.key == pygame.K_RSHIFT:
+                            m_hiz = 12
+                            mx, my = (0,-m_hiz) if yon2=="UP" else (0,m_hiz) if yon2=="DOWN" else (-m_hiz,0) if yon2=="LEFT" else (m_hiz,0)
+                            mermiler.append({"rect": pygame.Rect(x2+15, y2+15, 10, 10), "vx": mx, "vy": my, "izler": [], "aktif": True, "renk": MAGENTA, "p_id": 2})
+
+                        if event.key == pygame.K_RCTRL and sigma_enerjisi2 >= 100:
+                            sigma_enerjisi2 = 0
+                            sok_dalgalari.append({"x": x2+20, "y": y2+20, "yaricap": 10, "renk": TURUNCU})
+                            sarsinti_miktari = 25
+                            puan_yazilari.append({"x": x2-20, "y": y2-40, "metin": "SiGMA OVERDRIVE!", "sure": 255, "boyut": "big"})
+
+        if not oyun_duraklatildi:
+            off_x = random.randint(-sarsinti_miktari, sarsinti_miktari) if sarsinti_miktari > 0 else 0
+            off_y = random.randint(-sarsinti_miktari, sarsinti_miktari) if sarsinti_miktari > 0 else 0
+            if sarsinti_miktari > 0: sarsinti_miktari -= 1 
+            
+            yildiz_hiz_carpani = 3 if len(sok_dalgalari) > 0 else 1
+            for yildiz in yildizlar:
+                yildiz[1] += yildiz[3] * yildiz_hiz_carpani 
+                if yildiz[1] > YUKSEKLIK: 
+                    yildiz[1] = 0; yildiz[0] = random.randint(0, GENISLIK)
+
+            tuslar = pygame.key.get_pressed() 
+            eski_x, eski_y = x, y
+            eski_x2, eski_y2 = x2, y2
+
+            if mod == "1P" and can > 0:
+                if (tuslar[pygame.K_LEFT] or tuslar[pygame.K_a]) and x > 0: x -= hiz; yon = "LEFT"
+                if (tuslar[pygame.K_RIGHT] or tuslar[pygame.K_d]) and x < GENISLIK-oyuncu_boyut: x += hiz; yon = "RIGHT"
+                if (tuslar[pygame.K_UP] or tuslar[pygame.K_w]) and y > 60: y -= hiz; yon = "UP"
+                if (tuslar[pygame.K_DOWN] or tuslar[pygame.K_s]) and y < YUKSEKLIK-oyuncu_boyut: y += hiz; yon = "DOWN"
+            elif mod == "2P":
+                if can > 0:
+                    if tuslar[pygame.K_a] and x > 0: x -= hiz; yon = "LEFT"
+                    if tuslar[pygame.K_d] and x < GENISLIK-oyuncu_boyut: x += hiz; yon = "RIGHT"
+                    if tuslar[pygame.K_w] and y > 60: y -= hiz; yon = "UP"
+                    if tuslar[pygame.K_s] and y < YUKSEKLIK-oyuncu_boyut: y += hiz; yon = "DOWN"
+                if can2 > 0:
+                    if tuslar[pygame.K_LEFT] and x2 > 0: x2 -= hiz; yon2 = "LEFT"
+                    if tuslar[pygame.K_RIGHT] and x2 < GENISLIK-oyuncu_boyut: x2 += hiz; yon2 = "RIGHT"
+                    if tuslar[pygame.K_UP] and y2 > 60: y2 -= hiz; yon2 = "UP"
+                    if tuslar[pygame.K_DOWN] and y2 < YUKSEKLIK-oyuncu_boyut: y2 += hiz; yon2 = "DOWN"
+
+            if can > 0 and (x != eski_x or y != eski_y):
+                p1_izler.append((x, y))
+                if len(p1_izler) > 8: p1_izler.pop(0)
+            elif len(p1_izler) > 0: p1_izler.pop(0)
+
+            if mod == "2P" and can2 > 0 and (x2 != eski_x2 or y2 != eski_y2):
+                p2_izler.append((x2, y2))
+                if len(p2_izler) > 8: p2_izler.pop(0)
+            elif len(p2_izler) > 0: p2_izler.pop(0)
+
+            if su_an - son_kirpma_zamani > kirpma_suresi:
+                goz_kapali_mi = True
+                if su_an - son_kirpma_zamani > kirpma_suresi + kapali_kalma_suresi:
+                    goz_kapali_mi = False; son_kirpma_zamani = su_an
+                    
+            if boss_aktif:
+                if can > 0 and boss_rect.colliderect(pygame.Rect(x, y, oyuncu_boyut, oyuncu_boyut)):
+                    can -= 1; sarsinti_miktari = 10 
+                    x += 60 if yon == "LEFT" else -60 if yon == "RIGHT" else 0
+                    y += 70 if yon == "DOWN" else -60 if yon == "UP" else 0
+                    x = max(0, min(x, GENISLIK - oyuncu_boyut))
+                    y = max(60, min(y, YUKSEKLIK - oyuncu_boyut))
+                
+                if mod == "2P" and can2 > 0 and boss_rect.colliderect(pygame.Rect(x2, y2, oyuncu_boyut, oyuncu_boyut)):
+                    can2 -= 1; sarsinti_miktari = 10 
+                    x2 += 60 if yon2 == "LEFT" else -60 if yon2 == "RIGHT" else 0
+                    y2 += 70 if yon2 == "DOWN" else -60 if yon2 == "UP" else 0
+                    x2 = max(0, min(x2, GENISLIK - oyuncu_boyut))
+                    y2 = max(60, min(y2, YUKSEKLIK - oyuncu_boyut))
+
+            if mod == "1P" and can <= 0: running = False
+            elif mod == "2P" and can <= 0 and can2 <= 0: running = False
+
+            for sd in sok_dalgalari[:]:
+                sd["yaricap"] += 18
+                for dm in dusman_mermileri[:]:
+                    mesafe = math.hypot(dm["rect"].centerx - sd["x"], dm["rect"].centery - sd["y"])
+                    if mesafe < sd["yaricap"]:
+                        dusman_mermileri.remove(dm)
+                        patlamalar.append([dm["rect"].x, dm["rect"].y, random.uniform(-3,3), random.uniform(-3,3), 15])
+                
+                if boss_aktif:
+                    mesafe_boss = math.hypot(boss_rect.centerx - sd["x"], boss_rect.centery - sd["y"])
+                    if mesafe_boss < sd["yaricap"] and sd["yaricap"] < sd.get("son_vurus", 0) + 50:
+                        boss_can -= 8
+                        sd["son_vurus"] = sd["yaricap"] + 200 
+                        for _ in range(20): patlamalar.append([boss_rect.centerx, boss_rect.bottom, random.uniform(-8,8), random.uniform(-8,8), 30])
+                
+                if sd["yaricap"] > max(GENISLIK, YUKSEKLIK) + 200:
+                    sok_dalgalari.remove(sd)
+
+            for m in mermiler[:]:
+                if m.get("aktif", True):
+                    m["rect"].x += m["vx"]; m["rect"].y += m["vy"]
+                    m["izler"].append([m["rect"].x, m["rect"].y, 255])
+                    if len(m["izler"]) > 9: m["izler"].pop(0) 
+                for iz in m["izler"]: iz[2] -= 20 
+                m["izler"] = [iz for iz in m["izler"] if iz[2] > 0] 
+
+                if not pygame.Rect(0,0,GENISLIK,YUKSEKLIK).colliderect(m["rect"]) and len(m["izler"]) == 0:
+                    mermiler.remove(m); continue
+                
+                if boss_aktif and m.get("aktif", True) and m["rect"].colliderect(boss_rect):
+                    boss_can -= 1; m["aktif"] = False; sarsinti_miktari = 5 
+                    if m.get("p_id") == 1: sigma_enerjisi = min(100, sigma_enerjisi + 2)
+                    elif m.get("p_id") == 2: sigma_enerjisi2 = min(100, sigma_enerjisi2 + 2)
+
+                    if boss_can <= 0:
+                        for _ in range(80): patlamalar.append([boss_rect.centerx, boss_rect.centery, random.uniform(-8,8), random.uniform(-8,8), 50])
+                        puan += 240
+                        puan_yazilari.append({"x": boss_rect.centerx, "y": boss_rect.centery, "metin": "+240!", "sure": 255, "boyut": "big"})
+                        boss_aktif = False; boss_rect.y = -150; sarsinti_miktari = 35 
+                        hedefler = [pygame.Rect(random.randint(50, 750), random.randint(100, 500), 30, 30) for _ in range(5)]
+                        can = min(5, can + 1); can2 = min(5, can2 + 1)
+                    continue
+
+                if m.get("aktif", True):
+                    for h in hedefler[:]:
+                        if m["rect"].colliderect(h):
+                            for _ in range(12): patlamalar.append([h.centerx, h.centery, random.uniform(-4,4), random.uniform(-4,4), 25])
+                            puan += 10
+                            
+                            if m.get("p_id") == 1: sigma_enerjisi = min(100, sigma_enerjisi + 10)
+                            elif m.get("p_id") == 2: sigma_enerjisi2 = min(100, sigma_enerjisi2 + 10)
+
+                            puan_yazilari.append({"x": h.centerx, "y": h.centery, "metin": "+10", "sure": 255, "boyut": "small"})
+                            m["aktif"] = False; hedefler.remove(h); sarsinti_miktari = 3
+                            if puan > 0 and puan % 160 == 0 and not boss_aktif:
+                                boss_aktif = True; boss_can = 23 + (puan//100); boss_rect.y = 80
+                                hedefler.clear(); dusman_mermileri.clear()
+                            else:
+                                hedefler.append(pygame.Rect(random.randint(50,750), random.randint(100,500), 30, 30))
+                            break
+
+            if boss_aktif:
+                ekstra_hiz = puan / 1000 
+                mevcut_hiz = (4 + ekstra_hiz) if boss_hiz_x > 0 else -(4 + ekstra_hiz)
+                boss_rect.x += mevcut_hiz
+                if boss_rect.right > GENISLIK or boss_rect.left < 0: boss_hiz_x *= -1
+                
+                ates_hizi = max(400, 1250 - (puan * 1.5)) 
+                if su_an - boss_son_ates > ates_hizi:  
+                    for dx in [-6, 0, 6]:
+                        dusman_mermileri.append({"rect": pygame.Rect(boss_rect.centerx, boss_rect.bottom, 15, 15), "vx": dx, "vy": 8, "izler": [], "aktif": True})
+                    boss_son_ates = su_an
+
+            for h in hedefler:
+                if random.random() < 0.008 + (puan / 15000):
+                    dmx, dmy = random.choice([(0,7),(0,-7),(7,0),(-7,0)])
+                    dusman_mermileri.append({"rect": pygame.Rect(h.x+10, h.y+10, 8, 8), "vx": dmx, "vy": dmy, "izler": [], "aktif": True})
+
+            for dm in dusman_mermileri[:]:
+                if dm.get("aktif", True):
+                    dm["rect"].x += dm["vx"]; dm["rect"].y += dm["vy"]
+                    dm["izler"].append([dm["rect"].x, dm["rect"].y, 200])
+                    if len(dm["izler"]) > 8: dm["izler"].pop(0) 
+                for iz in dm["izler"]: iz[2] -= 15 
+                dm["izler"] = [iz for iz in dm["izler"] if iz[2] > 0]
+                
+                if not pygame.Rect(0,0,GENISLIK,YUKSEKLIK).colliderect(dm["rect"]) and len(dm.get("izler", [])) == 0:
+                    dusman_mermileri.remove(dm); continue
+                    
+                if dm.get("aktif", True):
+                    if can > 0 and dm["rect"].colliderect(pygame.Rect(x,y,oyuncu_boyut,oyuncu_boyut)): 
+                        can -= 1; dm["aktif"] = False; sarsinti_miktari = 15
+                        sigma_enerjisi = max(0, sigma_enerjisi - 15) 
+                    elif mod == "2P" and can2 > 0 and dm["rect"].colliderect(pygame.Rect(x2,y2,oyuncu_boyut,oyuncu_boyut)):
+                        can2 -= 1; dm["aktif"] = False; sarsinti_miktari = 15
+                        sigma_enerjisi2 = max(0, sigma_enerjisi2 - 15) 
+
+            for p in patlamalar[:]:
+                p[0]+=p[2]; p[1]+=p[3]; p[4]-=1
+                if p[4]<=0: patlamalar.remove(p)
+            for py in puan_yazilari[:]:
+                py["y"] -= 1.5; py["sure"] -= 8
+                if py["sure"] <= 0: puan_yazilari.remove(py)
+        else:
+            off_x = 0; off_y = 0
+
+        # --- CiZiM EKRANI ---
+        oyun_yuzeyi.fill(SIYAH) 
+        
+        titreme = 5 if len(sok_dalgalari) > 0 else 0
+        for i in range((su_an // 40) % 50, YUKSEKLIK, 50):
+            t_y = random.randint(-titreme, titreme)
+            pygame.draw.line(oyun_yuzeyi, (15, 15, 25), (0, i + off_y + t_y), (GENISLIK, i + off_y + t_y), 1)
+        for i in range(0, GENISLIK, 50):
+            t_x = random.randint(-titreme, titreme)
+            pygame.draw.line(oyun_yuzeyi, (15, 15, 25), (i + off_x + t_x, 0), (i + off_x + t_x, YUKSEKLIK), 1)
+
+        for yildiz in yildizlar:
+            pygame.draw.rect(oyun_yuzeyi, BEYAZ, (yildiz[0] + off_x, yildiz[1] + off_y, yildiz[2], yildiz[2]))
+
+        for p in patlamalar:
+            pygame.draw.rect(oyun_yuzeyi, CYAN, (p[0] + off_x, p[1] + off_y, 4, 4))
+
+        for sd in sok_dalgalari:
+            kalinlik = max(1, 20 - int(sd["yaricap"] / 40))
+            pygame.draw.circle(oyun_yuzeyi, sd["renk"], (sd["x"] + off_x, sd["y"] + off_y), int(sd["yaricap"]), kalinlik)
+            pygame.draw.circle(oyun_yuzeyi, BEYAZ, (sd["x"] + off_x, sd["y"] + off_y), int(sd["yaricap"]-5), max(1, kalinlik-2))
+
+        for m in mermiler:
+            renk = m.get("renk", SARI)
+            for iz in m["izler"]:
+                p_iz = max(0, iz[2])
+                if renk == MAGENTA: pygame.draw.circle(oyun_yuzeyi, (p_iz//2, 0, p_iz//2), (iz[0] + 5 + off_x, iz[1] + 5 + off_y), p_iz // 60)
+                else: pygame.draw.circle(oyun_yuzeyi, (p_iz // 2, p_iz // 4, 0), (iz[0] + 5 + off_x, iz[1] + 5 + off_y), p_iz // 60)
+            if m.get("aktif", True): pygame.draw.rect(oyun_yuzeyi, renk, (m["rect"].x + off_x, m["rect"].y + off_y, 10, 10))
+        
+        for dm in dusman_mermileri:
+            for iz in dm.get("izler", []):
+                p_iz = max(0, iz[2])
+                pygame.draw.circle(oyun_yuzeyi, (p_iz // 3, 0, p_iz // 2), (iz[0] + 4 + off_x, iz[1] + 4 + off_y), p_iz // 50)
+            if dm.get("aktif", True): pygame.draw.rect(oyun_yuzeyi, MOR, (dm["rect"].x + off_x, dm["rect"].y + off_y, 8, 8))
+        
+        for py in puan_yazilari:
+            renk = (py["sure"], py["sure"], 0) if py["boyut"] == "small" else (0, py["sure"], py["sure"])
+            font_tipi = font_big if py["boyut"] == "big" else font_skor
+            yazi_objesi = font_tipi.render(py["metin"], True, renk)
+            oyun_yuzeyi.blit(yazi_objesi, (py["x"] + off_x, py["y"] + off_y))
+                    
+        if boss_aktif: 
+            r_ofke = max(128, min(255, 129 + puan//15))
+            pygame.draw.rect(oyun_yuzeyi, (r_ofke, 0, 129), (boss_rect.x + off_x, boss_rect.y + off_y, 100, 100), border_radius=15)
+            pygame.draw.rect(oyun_yuzeyi, KIRMIZI, (boss_rect.x + off_x, boss_rect.y-20 + off_y, boss_can*4, 10), border_radius=5)
+            
+            sol_m = (boss_rect.x + 30 + off_x, boss_rect.y + 35 + off_y)
+            pygame.draw.circle(oyun_yuzeyi, BEYAZ, sol_m, 12)
+            pygame.draw.circle(oyun_yuzeyi, SIYAH, sol_m, 5)
+            pygame.draw.line(oyun_yuzeyi, SIYAH, (sol_m[0]-18, sol_m[1]-23), (sol_m[0]+15, sol_m[1]-7), 8)
+            
+            sag_m = (boss_rect.x + 70 + off_x, boss_rect.y + 35 + off_y)
+            pygame.draw.circle(oyun_yuzeyi, BEYAZ, sag_m, 12)
+            pygame.draw.circle(oyun_yuzeyi, SIYAH, sag_m, 5)
+            pygame.draw.line(oyun_yuzeyi, SIYAH, (sag_m[0]+18, sag_m[1]-23), (sag_m[0]-15, sag_m[1]-7), 8)
+        
+        for h in hedefler:
+            pygame.draw.rect(oyun_yuzeyi, KIRMIZI, (h.x + off_x, h.y + off_y, 30, 30), border_radius=5)
+            for i in [8, 22]:
+                pygame.draw.circle(oyun_yuzeyi, BEYAZ, (h.x + i + off_x, h.y + 10 + off_y), 4)
+                pygame.draw.circle(oyun_yuzeyi, SIYAH, (h.x + i + off_x, h.y + 10 + off_y), 2)
+
+        for i, iz_pos in enumerate(p1_izler):
+            saydamlik = int(255 * (i / len(p1_izler)))
+            iz_yuzey = pygame.Surface((oyuncu_boyut, oyuncu_boyut), pygame.SRCALPHA)
+            pygame.draw.rect(iz_yuzey, (0, 255, 0, saydamlik // 2), iz_yuzey.get_rect(), border_radius=8)
+            oyun_yuzeyi.blit(iz_yuzey, (iz_pos[0] + off_x, iz_pos[1] + off_y))
+            
+        if mod == "2P":
+            for i, iz_pos in enumerate(p2_izler):
+                saydamlik = int(255 * (i / len(p2_izler)))
+                iz_yuzey = pygame.Surface((oyuncu_boyut, oyuncu_boyut), pygame.SRCALPHA)
+                pygame.draw.rect(iz_yuzey, (255, 0, 255, saydamlik // 2), iz_yuzey.get_rect(), border_radius=8)
+                oyun_yuzeyi.blit(iz_yuzey, (iz_pos[0] + off_x, iz_pos[1] + off_y))
+
+        if can > 0:
+            pygame.draw.rect(oyun_yuzeyi, LIME, (x + off_x, y + off_y, oyuncu_boyut, oyuncu_boyut), border_radius=8)
+            gx = 10 if yon=="RIGHT" else (-10 if yon=="LEFT" else 0)
+            gy = 10 if yon=="DOWN" else (-10 if yon=="UP" else 0)
+            for i in [-8, 8]:
+                merkez = (x + 20 + gx + i + off_x, y + 20 + gy + off_y)
+                if goz_kapali_mi: pygame.draw.line(oyun_yuzeyi, BEYAZ, (merkez[0]-6, merkez[1]), (merkez[0]+6, merkez[1]), 3)
+                else:
+                    pygame.draw.circle(oyun_yuzeyi, BEYAZ, merkez, 7)
+                    pygame.draw.circle(oyun_yuzeyi, SIYAH, merkez, 3)
+
+        if mod == "2P" and can2 > 0:
+            pygame.draw.rect(oyun_yuzeyi, MAGENTA, (x2 + off_x, y2 + off_y, oyuncu_boyut, oyuncu_boyut), border_radius=8)
+            gx2 = 10 if yon2=="RIGHT" else (-10 if yon2=="LEFT" else 0)
+            gy2 = 10 if yon2=="DOWN" else (-10 if yon2=="UP" else 0)
+            for i in [-8, 8]:
+                merkez2 = (x2 + 20 + gx2 + i + off_x, y2 + 20 + gy2 + off_y)
+                if goz_kapali_mi: pygame.draw.line(oyun_yuzeyi, BEYAZ, (merkez2[0]-6, merkez2[1]), (merkez2[0]+6, merkez2[1]), 3)
+                else:
+                    pygame.draw.circle(oyun_yuzeyi, BEYAZ, merkez2, 7)
+                    pygame.draw.circle(oyun_yuzeyi, SIYAH, merkez2, 3)
+
+        oyun_yuzeyi.blit(font_skor.render(f"FPS: {int(saat.get_fps())}", True, YESIL), (20, 20))
+        oyun_yuzeyi.blit(font_skor.render(f"PUAN: {puan}", True, SARI), (GENISLIK-160, 20))
+        
+        oyun_yuzeyi.blit(font_skor.render("P1 CAN:", True, LIME), (GENISLIK // 2 - 250, 20))         
+        for i in range(max(0, can)): pygame.draw.rect(oyun_yuzeyi, LIME, (GENISLIK // 2 - 170 + (i * 20), 25, 15, 15))
+        
+        p1_text = "P1 OVERDRIVE(Q/SAG-CTRL)" if mod == "1P" else "P1 OVERDRIVE(Q)"
+        pygame.draw.rect(oyun_yuzeyi, GRI, (20, YUKSEKLIK - 30, 150, 15), border_radius=5)
+        if sigma_enerjisi > 0:
+            renk_enerji = CYAN if sigma_enerjisi >= 100 else LIME
+            pygame.draw.rect(oyun_yuzeyi, renk_enerji, (20, YUKSEKLIK - 30, int(1.5 * sigma_enerjisi), 15), border_radius=5)
+        oyun_yuzeyi.blit(font_small.render(p1_text if sigma_enerjisi >= 100 else "P1 ENERJİ", True, BEYAZ), (25, YUKSEKLIK - 55))
+
+        pygame.draw.rect(oyun_yuzeyi, (50, 50, 50), pause_buton_rect, border_radius=8) 
+        pygame.draw.rect(oyun_yuzeyi, BEYAZ, (pause_buton_rect.x + 12, pause_buton_rect.y + 10, 5, 20)) 
+        pygame.draw.rect(oyun_yuzeyi, BEYAZ, (pause_buton_rect.x + 23, pause_buton_rect.y + 10, 5, 20)) 
+
+        if mod == "2P":
+            oyun_yuzeyi.blit(font_skor.render("P2 CAN:", True, MAGENTA), (GENISLIK // 2 + 50, 20))         
+            for i in range(max(0, can2)): pygame.draw.rect(oyun_yuzeyi, MAGENTA, (GENISLIK // 2 + 130 + (i * 20), 25, 15, 15))
+            
+            pygame.draw.rect(oyun_yuzeyi, GRI, (GENISLIK - 170, YUKSEKLIK - 30, 150, 15), border_radius=5)
+            if sigma_enerjisi2 > 0:
+                renk_enerji2 = TURUNCU if sigma_enerjisi2 >= 100 else MAGENTA
+                pygame.draw.rect(oyun_yuzeyi, renk_enerji2, (GENISLIK - 170, YUKSEKLIK - 30, int(1.5 * sigma_enerjisi2), 15), border_radius=5)
+            oyun_yuzeyi.blit(font_small.render("P2 OVERDRIVE(SAG-CTRL)" if sigma_enerjisi2 >= 100 else "P2 ENERJİ", True, BEYAZ), (GENISLIK - 231, YUKSEKLIK - 55))
+
+        if oyun_duraklatildi:
+            s_yuzey = pygame.Surface((GENISLIK, YUKSEKLIK), pygame.SRCALPHA)
+            pygame.draw.rect(s_yuzey, (0, 0, 0, 160), [0, 0, GENISLIK, YUKSEKLIK])
+            oyun_yuzeyi.blit(s_yuzey, (0, 0))
+            
+            if (su_an // 400) % 2 == 0:  
+                p_yazi = font_big.render("OYUN DURAKLATILDI!", True, SARI) 
+                r_yazi = font_skor.render("Devam etmek icin -P- tusuna bas", True, SARI)
+                esc_yazi = font_skor.render("Oyundan cIkmak icin -Esc- tusuna bas", True, KIRMIZI)
+                menu_yazi = font_skor.render("Menuye donmek icin -R- tusuna bas", True, YESIL)
+                oyun_yuzeyi.blit(p_yazi, (GENISLIK // 2 - 190, YUKSEKLIK // 2 - 30))
+                oyun_yuzeyi.blit(r_yazi, (GENISLIK // 2 - 190, YUKSEKLIK // 2 + 20))
+                oyun_yuzeyi.blit(esc_yazi, (GENISLIK // 2 - 190, YUKSEKLIK // 2 + 50))
+                oyun_yuzeyi.blit(menu_yazi, (GENISLIK // 2 - 190, YUKSEKLIK // 2 + 80))
+
+        yuzeyi_ekrana_bas() 
+        saat.tick(60)
+        await asyncio.sleep(0)        
+    return puan, zorla_menu
+
+# --- ANA MOTOR (MAIN RUNNER) ---
+async def main():
+    global yuksek_skor, restart_bekle
+    saat_over = pygame.time.Clock()
+    
+    while True:
+        await sigma_yukleme_ekrani()
+        secilen_mod = await ana_menu() 
+        await sigma_yukleme_ekrani()
+        
+        final_puan, direkt_menu = await oyunu_baslat(secilen_mod) 
+        
+        if direkt_menu:
+            continue 
+
+        rekor_kirildi_mi = False
+        if final_puan > yuksek_skor:
+            yuksek_skor = final_puan
+            rekor_kirildi_mi = True
+            rekoru_kaydet(yuksek_skor) 
+
+        restart_bekle = True
+        while restart_bekle:
+            oyun_yuzeyi.fill(SIYAH)
+            
+            mesaj1 = font_big.render("!OLDUN! OYUN BiTTi!", True, KIRMIZI)
+            mesaj2 = font_skor.render(f"SKOR: {final_puan} | YUKSEK SKOR: {yuksek_skor}", True, SARI)
+            mesaj3 = font_skor.render("MENU: 'R' | CIKIS: 'ESC'", True, TURUNCU)
+            
+            if rekor_kirildi_mi:
+                yeni_rekor_msg = font_big.render("!!!YENi REKOR SiGMA!!!", True, MAGENTA)
+                oyun_yuzeyi.blit(yeni_rekor_msg, (GENISLIK // 2 - 220, YUKSEKLIK // 2 - 160))
+
+            oyun_yuzeyi.blit(mesaj1, (GENISLIK // 2 - 210, YUKSEKLIK // 2 - 80))
+            oyun_yuzeyi.blit(mesaj2, (GENISLIK // 2 - 200, YUKSEKLIK // 2 - 20))
+            oyun_yuzeyi.blit(mesaj3, (GENISLIK // 2 - 200, YUKSEKLIK // 2 + 40))
+            
+            yuzeyi_ekrana_bas()
+            saat_over.tick(60)
+            await asyncio.sleep(0)
+            
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit(); sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        pygame.quit(); sys.exit()
+                    if event.key == pygame.K_r: 
+                        restart_bekle = False
+
+# WebAssembly CalıstIrma NoktasI
+if __name__ == "__main__":
+    asyncio.run(main())
+
+    </script>
+  </body>
+</html>
