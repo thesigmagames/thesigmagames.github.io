@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>SİGMA ARENA</title>
+    <style>
+        body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { outline: none; box-shadow: 0 0 10px #ff0000; }
+        #fs-btn { position: absolute; bottom: 15px; right: 15px; background: #000; color: #ff0055; border: 2px solid #ff0055; padding: 10px; cursor: pointer; font-family: monospace; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <button id="fs-btn" onclick="document.documentElement.requestFullscreen()">TAM EKRAN SİGMA</button>
+
+    <script type="application/javascript">
+        window.config = { "x_python_exec": "main.py" };
+    </script>
+    <script src="https://pygame-web.github.io/archives/0.8/pygbag.js"></script>
+</body>
+</html>
