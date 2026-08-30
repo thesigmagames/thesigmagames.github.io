@@ -52,6 +52,11 @@ window.addEventListener('keydown', (e) => {
         gameRunning = !gameRunning;
         startBtn.textContent = gameRunning ? 'DURAKLAT' : 'OYUNU BAŞLAT';
     }
+    
+    // Arrow keys için preventDefault
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+    }
 });
 
 window.addEventListener('keyup', (e) => {
