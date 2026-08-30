@@ -1,0 +1,143 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #0a0a0a;
+    color: #00FF9D;
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    text-align: center;
+    background: #1a1a1a;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 255, 157, 0.3);
+}
+
+h1 {
+    font-size: 3em;
+    margin-bottom: 10px;
+    text-shadow: 0 0 10px #00FF9D;
+    letter-spacing: 2px;
+}
+
+.subtitle {
+    font-size: 1.2em;
+    margin-bottom: 30px;
+    color: #FF6B6B;
+    font-weight: bold;
+}
+
+.game-info {
+    margin-bottom: 30px;
+    font-size: 1.1em;
+    background: #0a0a0a;
+    padding: 20px;
+    border-radius: 5px;
+    border: 2px solid #00FF9D;
+}
+
+.game-info p {
+    margin: 10px 0;
+}
+
+#pongCanvas {
+    border: 3px solid #00FF9D;
+    background: #000;
+    display: block;
+    margin: 30px auto;
+    box-shadow: 0 0 20px rgba(0, 255, 157, 0.5);
+    max-width: 100%;
+    height: auto;
+}
+
+.score-board {
+    display: flex;
+    justify-content: space-around;
+    font-size: 1.5em;
+    margin: 20px 0;
+    padding: 20px;
+    background: #0a0a0a;
+    border-radius: 5px;
+    border: 2px solid #00FF9D;
+}
+
+.score {
+    font-weight: bold;
+}
+
+.score span {
+    color: #FF6B6B;
+    font-size: 1.3em;
+}
+
+.btn {
+    background: #00FF9D;
+    color: #0a0a0a;
+    border: none;
+    padding: 15px 40px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 10px;
+    border-radius: 5px;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn:hover {
+    background: #00FF9D;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(0, 255, 157, 0.8);
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.back-link {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 10px 20px;
+    color: #00FF9D;
+    text-decoration: none;
+    border: 2px solid #00FF9D;
+    border-radius: 5px;
+    transition: 0.3s;
+    font-weight: bold;
+}
+
+.back-link:hover {
+    background: #00FF9D;
+    color: #0a0a0a;
+}
+
+@media (max-width: 600px) {
+    h1 {
+        font-size: 2em;
+    }
+    
+    #pongCanvas {
+        width: 100%;
+        height: auto;
+    }
+    
+    .score-board {
+        flex-direction: column;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        font-size: 0.9em;
+    }
+}
