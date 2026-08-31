@@ -18,7 +18,7 @@ Türküz ve bizim vizyonumuz, saf Sigma kalitesinde oyunlar ve modlar geliştirm
 # ---- MÜCADELE ASLA DURMAZ ----
 
 ---
-*Sitemiz şu anda beta aşamasında olduğu için sorunlar olabilir.Çünkü hazırlamaya yeni başlandı*
+*Sitemiz şu anda beta aşamasında olduğu için sorunlar olabilir.Çünkü hazırlamaya yeni başlandı.*
 ---_
 
 **YAKINDA**
