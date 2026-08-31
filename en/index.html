@@ -2,43 +2,34 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>THE SIGMA GAMES | GAMES</title>
-    <style>
-        body { background: #0a0a0a; color: #00FF9D; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .oyun-butonu { 
-            display: inline-block; 
-            padding: 20px 40px; 
-            border: 2px solid #00FF9D; 
-            color: #00FF9D; 
-            text-decoration: none; 
-            font-size: 1.5em; 
-            margin: 20px; 
-            transition: 0.3s;
-        }
-        .oyun-butonu:hover { background: #00FF9D; color: #0a0a0a; }
-        .ping_pong-butonu:hover { background: #00FF9D; color: #0a0a0a; }
-        body { background: #0a0a0a; color: #00FF9D; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .ping_pong-butonu { 
-            display: inline-block; 
-            padding: 20px 40px; 
-            border: 2px solid #00FF9D; 
-            color: #00FF9D; 
-            text-decoration: none; 
-            font-size: 1.5em; 
-            margin: 20px; 
-            transition: 0.3s;
-        }
-        .ping_pong-butonu:hover { background: #00FF9D; color: #0a0a0a; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMA PONG</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>THE SIGMA GAMES</h1>
+    <div class="container">
+        <h1>⚡ SIGMA PONG ⚡</h1>
+        
+        <div class="game-info">
+            <p>⬆️ W / ⬇️ S - Oyuncu 1</p>
+            <p>⬆️ ↑ / ⬇️ ↓ - Oyuncu 2</p>
+            <p>SPACE - Başla / Duraklat</p>
+        </div>
+        
+        <canvas id="pongCanvas" width="800" height="400"></canvas>
+        
+        <div class="score-board">
+            <div class="score">Oyuncu 1: <span id="score1">0</span></div>
+            <div class="score">Oyuncu 2: <span id="score2">0</span></div>
+        </div>
+        
+        <button id="startBtn" class="btn">OYUNU BAŞLAT</button>
+        <button id="resetBtn" class="btn">SIFIRLA</button>
+        
+        <br><br>
+        <a href="../../" class="back-link">← Geri Dön</a>
+    </div>
     
-    <!-- Sigma Arena Butonu -->
-    <a href="sigma-arena/" class="oyun-butonu">SIGMA ARENA</a>
-    <a href="pong-game/" class="ping_pong-butonu">PING PONG GAME</a>
-    
-    <br><br>
-    <a href="../" style="font-size: 1em;">Return Home</a>
+    <script src="game.js"></script>
 </body>
 </html>
