@@ -492,10 +492,15 @@ const topMsg = document.getElementById("topMsg");
 document.getElementById("resetBtn").onclick = () => topMsg.classList.add("show");
 document.getElementById("resetNo").onclick = () => topMsg.classList.remove("show");
 document.getElementById("resetYes").onclick = () => {
+  window.__resetting = true;
   localStorage.removeItem(SAVE);
   localStorage.removeItem(OLD);
+  localStorage.removeItem("sitwmi-clicker-ultra");
+  localStorage.removeItem("sitwmi-clicker");
   location.reload();
 };
+
+
     document.querySelectorAll(".tab").forEach(btn => {
       btn.addEventListener("click", () => {
         tab = btn.dataset.tab;
