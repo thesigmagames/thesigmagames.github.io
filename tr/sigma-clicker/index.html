@@ -183,26 +183,28 @@
   </div>
 
 
-  <script>
+<script>
     const SAVE = "sitwmi-clicker-ultra";
     const OLD = "sitwmi-clicker";
+    window.__resetting = false;
+
     const newsLines = [
       "DNS hayaleti hâlâ NXDOMAIN diye bağırıyor.",
       "main default oldu. Evren biraz rahatladı.",
       "None silinmedi. None terfi etti.",
-      "Dostum,bu oyunu yapmak 2 haftamı aldı",
+      "Branch yoktu. Şimdi branch fabrikası var.",
       "GitHub Pages: 'tamam tamam açıyorum'.",
       "Kaos çayı fazla demlendi. CPS arttı.",
-      "Bu yazıyı okuyacağına tıklamaya devam et!."
+      "README zorunlu. Aksi takdirde evren çöker."
     ];
 
     const upgrades = [
       { id: "finger", name: "Ekstra Parmak", desc: "+1 tık gücü. Evet, bir tane daha.", base: 15, power: 1, type: "click" },
       { id: "bot", name: "Oto Bot", desc: "+1 / sn. Bazen çalışıyor.", base: 60, power: 1, type: "auto" },
       { id: "cafe", name: "Kaos Kafe", desc: "+6 / sn. Çay bedava değil.", base: 280, power: 6, type: "auto" },
-      { id: "factory", name: "Sigma Fabrikası", desc: "+25 / sn. İş güvenliği yok.", base: 1400, power: 25, type: "auto" },
-      { id: "ghost", name: "Hayalet", desc: "+80 / sn. NXDOMAIN yer.", base: 7500, power: 80, type: "auto" },
-      { id: "branch", name: "Ultra Sigma Fabrikası", desc: "+220 / sn. main üretir.", base: 28000, power: 220, type: "auto" },
+      { id: "factory", name: "Sitwmi Fabrikası", desc: "+25 / sn. İş güvenliği yok.", base: 1400, power: 25, type: "auto" },
+      { id: "ghost", name: "DNS Hayaleti", desc: "+80 / sn. NXDOMAIN yer.", base: 7500, power: 80, type: "auto" },
+      { id: "branch", name: "Branch Fabrikası", desc: "+220 / sn. main üretir.", base: 28000, power: 220, type: "auto" },
       { id: "pages", name: "Pages Işını", desc: "+700 / sn. 3 dakikada yayına alır.", base: 120000, power: 700, type: "auto" },
       { id: "none", name: "None Silici 9000", desc: "+2500 / sn. Source'u bulur.", base: 650000, power: 2500, type: "auto" },
       { id: "rocket", name: "Kaos Roketi", desc: "+9000 / sn. WiFi'siz uçar.", base: 3200000, power: 9000, type: "auto" }
@@ -227,13 +229,13 @@
       { id: "s1k", icon: "💰", name: "Binlik", desc: "1.000 puan", check: s => s.best >= 1000 },
       { id: "s10k", icon: "🏦", name: "Zengin", desc: "10.000 puan", check: s => s.best >= 10000 },
       { id: "s100k", icon: "💎", name: "Efsane", desc: "100.000 puan", check: s => s.best >= 100000 },
-      { id: "s1m", icon: "👑", name: "Sigma Kralı", desc: "1.000.000 puan", check: s => s.best >= 1e6 },
+      { id: "s1m", icon: "👑", name: "Sitwmi Kralı", desc: "1.000.000 puan", check: s => s.best >= 1e6 },
       { id: "s10m", icon: "🌌", name: "Kaos İmparatoru", desc: "10.000.000 puan", check: s => s.best >= 1e7 },
       { id: "buy1", icon: "🛒", name: "İlk Alışveriş", desc: "1 yükseltme al", check: s => totalOwned(s) >= 1 },
       { id: "buy10", icon: "📦", name: "Koleksiyoncu", desc: "10 yükseltme", check: s => totalOwned(s) >= 10 },
       { id: "buy50", icon: "🏭", name: "Sanayi Devrimi", desc: "50 yükseltme", check: s => totalOwned(s) >= 50 },
       { id: "bot", icon: "🤖", name: "Otomasyon", desc: "Oto Bot al", check: s => (s.owned.bot || 0) >= 1 },
-      { id: "ghost", icon: "👻", name: "Hayalet Avcısı", desc: "DNS Hayaleti al", check: s => (s.owned.ghost || 0) >= 1 },
+      { id: "ghost", icon: "👻", name: "NXDOMAIN Avcısı", desc: "DNS Hayaleti al", check: s => (s.owned.ghost || 0) >= 1 },
       { id: "none", icon: "🧹", name: "None'yi Sildim", desc: "None Silici al", check: s => (s.owned.none || 0) >= 1 },
       { id: "rocket", icon: "🚀", name: "Uzaya Çık", desc: "Kaos Roketi al", check: s => (s.owned.rocket || 0) >= 1 },
       { id: "lv5", icon: "⭐", name: "Seviye 5", desc: "5. seviyeye çık", check: s => s.level >= 5 },
@@ -282,7 +284,7 @@
     function xpNeed(lv) { return Math.floor(50 * Math.pow(lv, 1.35)); }
     function has(id) { return state.bought.includes(id); }
     function prestigeMult(s = state) { return 1 + s.crystals * 0.08; }
-    function marketMult(s = state) { return has.call({bought:s.bought}, "prod") || s.bought.includes("prod") ? 1.2 : 1; }
+    function marketMult(s = state) { return (s.bought || []).includes("prod") ? 1.2 : 1; }
     function frenzyOn() { return Date.now() < frenzyUntil; }
     function clickMult() {
       let m = prestigeMult() * marketMult() * (1 + (state.level - 1) * 0.02);
@@ -303,7 +305,10 @@
       if (n >= 1e4) return (n/1e3).toFixed(1) + " K";
       return n.toLocaleString("tr-TR");
     }
-    function save() { localStorage.setItem(SAVE, JSON.stringify(state)); }
+    function save() {
+      if (window.__resetting) return;
+      localStorage.setItem(SAVE, JSON.stringify(state));
+    }
 
     function ensureAudio() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -361,7 +366,6 @@
       });
     }
     function crystalsFrom(score) { return Math.floor(Math.sqrt(score / 50000)); }
-    function canPrestige() { return crystalsFrom(state.score) >= 1; }
 
     function doClick(x, y) {
       let power = state.clickPower * clickMult();
@@ -469,7 +473,6 @@
       scoreEl.textContent = fmt(state.score);
       cpsEl.textContent = fmt(cpsOf()) + " / sn";
       levelEl.textContent = "Seviye " + state.level;
-      prestEl.textContent = "Kaos x" + clickMult() / (frenzyOn() ? 7 : 1);
       prestEl.textContent = "Kaos x" + (prestigeMult() * marketMult() * (1 + (state.level-1)*0.02)).toFixed(2);
       const need = xpNeed(state.level);
       xpBar.style.width = Math.min(100, (state.xp / need) * 100) + "%";
@@ -481,6 +484,7 @@
     }
 
     function tick() {
+      if (window.__resetting) return;
       checkAch();
       render();
       save();
@@ -488,18 +492,19 @@
 
     clickBtn.addEventListener("click", e => doClick(e.clientX, e.clientY));
     muteBtn.addEventListener("click", () => { state.muted = !state.muted; ensureAudio(); tick(); });
-const topMsg = document.getElementById("topMsg");
-document.getElementById("resetBtn").onclick = () => topMsg.classList.add("show");
-document.getElementById("resetNo").onclick = () => topMsg.classList.remove("show");
-document.getElementById("resetYes").onclick = () => {
-  window.__resetting = true;
-  localStorage.removeItem(SAVE);
-  localStorage.removeItem(OLD);
-  localStorage.removeItem("sitwmi-clicker-ultra");
-  localStorage.removeItem("sitwmi-clicker");
-  location.reload();
-};
 
+    document.getElementById("resetBtn").onclick = () => {
+      document.getElementById("topMsg").classList.add("show");
+    };
+    document.getElementById("resetNo").onclick = () => {
+      document.getElementById("topMsg").classList.remove("show");
+    };
+    document.getElementById("resetYes").onclick = () => {
+      window.__resetting = true;
+      localStorage.removeItem(SAVE);
+      localStorage.removeItem(OLD);
+      location.reload();
+    };
 
     document.querySelectorAll(".tab").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -517,6 +522,7 @@ document.getElementById("resetYes").onclick = () => {
     });
 
     setInterval(() => {
+      if (window.__resetting) return;
       const gain = cpsOf() / 10;
       if (gain > 0) {
         state.score += gain;
@@ -542,6 +548,7 @@ document.getElementById("resetYes").onclick = () => {
 
     newsEl.textContent = newsLines[0];
     tick();
-  </script>
+</script>
+
 </body>
 </html>
