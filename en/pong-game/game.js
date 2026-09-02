@@ -55,7 +55,7 @@ window.addEventListener('keydown', (e) => {
     
     if (e.key === ' ') {
         gameRunning = !gameRunning;
-        startBtn.textContent = gameRunning ? 'DURAKLAT' : 'OYUNU BAŞLAT';
+        startBtn.textContent = gameRunning ? 'PAUSE' : 'START GAME';
     }
 });
 
@@ -72,7 +72,7 @@ window.addEventListener('wheel', (e) => {
 
 startBtn.addEventListener('click', () => {
     gameRunning = !gameRunning;
-    startBtn.textContent = gameRunning ? 'DURAKLAT' : 'OYUNU BAŞLAT';
+    startBtn.textContent = gameRunning ? 'PAUSE' : 'START GAME';
 });
 
 resetBtn.addEventListener('click', () => {
@@ -82,7 +82,7 @@ resetBtn.addEventListener('click', () => {
     score2Display.textContent = '0';
     resetBall();
     gameRunning = false;
-    startBtn.textContent = 'OYUNU BAŞLAT';
+    startBtn.textContent = 'START GAME';
 });
 
 function resetBall() {
@@ -149,14 +149,14 @@ function updateBall() {
         score2Display.textContent = score2;
         resetBall();
         gameRunning = false;
-        startBtn.textContent = 'OYUNU BAŞLAT';
+        startBtn.textContent = 'START GAME';
     }
     if (ball.x > canvas.width) {
         score1++;
         score1Display.textContent = score1;
         resetBall();
         gameRunning = false;
-        startBtn.textContent = 'OYUNU BAŞLAT';
+        startBtn.textContent = 'START GAME';
     }
 }
 
