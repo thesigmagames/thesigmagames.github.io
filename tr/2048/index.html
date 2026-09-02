@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMA 2048</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ SIGMA 2048 ⚡</h1>
+        
+        <div class="game-info">
+            <p>← → ↑ ↓ veya WASD - Hareket</p>
+            <p>Karoları birleştirerek 2048'e ulaş!</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <div class="label">PUAN</div>
+                <div class="value" id="score">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="label">EN İYİ</div>
+                <div class="value" id="best">0</div>
+            </div>
+        </div>
+        
+        <div id="gameBoard" class="game-board"></div>
+        
+        <button id="startBtn" class="btn">YENİ OYUN</button>
+        <button id="undoBtn" class="btn">GERİ AL</button>
+        
+        <br><br>
+        <a href="../../" class="back-link">← Geri Dön</a>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html>

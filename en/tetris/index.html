@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMA TETRIS</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ SIGMA TETRIS ⚡</h1>
+        
+        <div class="game-info">
+            <p>← → - Move</p>
+            <p>↑ - Rotate</p>
+            <p>↓ - Fast Drop</p>
+            <p>SPACE - Pause</p>
+        </div>
+        
+        <div class="game-wrapper">
+            <div class="main-game">
+                <canvas id="tetrisCanvas" width="200" height="400"></canvas>
+            </div>
+            <div class="game-stats">
+                <div class="stat">
+                    <div class="stat-label">SCORE</div>
+                    <div class="stat-value" id="score">0</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">LEVEL</div>
+                    <div class="stat-value" id="level">1</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">LINES</div>
+                    <div class="stat-value" id="lines">0</div>
+                </div>
+            </div>
+        </div>
+        
+        <button id="startBtn" class="btn">START GAME</button>
+        <button id="resetBtn" class="btn">RESET</button>
+        
+        <br><br>
+        <a href="../" class="back-link">← Back</a>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html>
