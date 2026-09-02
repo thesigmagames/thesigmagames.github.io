@@ -189,25 +189,25 @@
     window.__resetting = false;
 
     const newsLines = [
-      "DNS hayaleti hâlâ NXDOMAIN diye bağırıyor.",
+      "Hayalet hâlâ ,BOOOO diye bağırıyor.",
       "main default oldu. Evren biraz rahatladı.",
       "None silinmedi. None terfi etti.",
-      "Branch yoktu. Şimdi branch fabrikası var.",
+      f"0 puandın artık {score} puansın",
       "GitHub Pages: 'tamam tamam açıyorum'.",
-      "Kaos çayı fazla demlendi. CPS arttı.",
-      "README zorunlu. Aksi takdirde evren çöker."
+      "İyi ilerliyorsun. CPS arttı.",
+      "Dostum, bu yazıları okuyacağına tıklamaya devam et!"
     ];
 
     const upgrades = [
       { id: "finger", name: "Ekstra Parmak", desc: "+1 tık gücü. Evet, bir tane daha.", base: 15, power: 1, type: "click" },
       { id: "bot", name: "Oto Bot", desc: "+1 / sn. Bazen çalışıyor.", base: 60, power: 1, type: "auto" },
       { id: "cafe", name: "Kaos Kafe", desc: "+6 / sn. Çay bedava değil.", base: 280, power: 6, type: "auto" },
-      { id: "factory", name: "Sitwmi Fabrikası", desc: "+25 / sn. İş güvenliği yok.", base: 1400, power: 25, type: "auto" },
-      { id: "ghost", name: "DNS Hayaleti", desc: "+80 / sn. NXDOMAIN yer.", base: 7500, power: 80, type: "auto" },
-      { id: "branch", name: "Branch Fabrikası", desc: "+220 / sn. main üretir.", base: 28000, power: 220, type: "auto" },
+      { id: "factory", name: "Sigma Fabrikası", desc: "+25 / sn. İş güvenliği yok.", base: 1400, power: 25, type: "auto" },
+      { id: "ghost", name: "Hayalet", desc: "+80 / sn. PUANLARI yer.", base: 7500, power: 80, type: "auto" },
+      { id: "branch", name: "Ultra Sigma Fabrikası", desc: "+220 / sn. İşçi üretir.", base: 28000, power: 220, type: "auto" },
       { id: "pages", name: "Pages Işını", desc: "+700 / sn. 3 dakikada yayına alır.", base: 120000, power: 700, type: "auto" },
-      { id: "none", name: "None Silici 9000", desc: "+2500 / sn. Source'u bulur.", base: 650000, power: 2500, type: "auto" },
-      { id: "rocket", name: "Kaos Roketi", desc: "+9000 / sn. WiFi'siz uçar.", base: 3200000, power: 9000, type: "auto" }
+      { id: "none", name: "Uydu Silici 9000", desc: "+2500 / sn. Uydudan çekiyor.", base: 650000, power: 2500, type: "auto" },
+      { id: "rocket", name: "Kaos Roketi", desc: "+9000 / sn. Ateş'siz uçar.", base: 3200000, power: 9000, type: "auto" }
     ];
 
     const market = [
@@ -216,7 +216,7 @@
       { id: "luck", name: "Şanslı Tık", desc: "%8 şansla 12x tık.", cost: 15000, type: "perm" },
       { id: "crit", name: "Kritik Vuruş", desc: "%12 şansla 4x tık.", cost: 22000, type: "perm" },
       { id: "prod", name: "Kaos Çarpanı", desc: "Tüm üretime +20%.", cost: 50000, type: "perm" },
-      { id: "xpBoost", name: "README XP", desc: "Seviye XP'si +30%.", cost: 18000, type: "perm" },
+      { id: "xpBoost", name: "ULTRA XP", desc: "Seviye XP'si +30%.", cost: 18000, type: "perm" },
       { id: "frenzy", name: "10sn Deli Tık", desc: "10 saniye 7x tık gücü.", cost: 4000, type: "consumable" }
     ];
 
@@ -225,18 +225,18 @@
       { id: "c50", icon: "🖐️", name: "Isınıyor", desc: "50 tık", check: s => s.clicks >= 50 },
       { id: "c500", icon: "💥", name: "Tık Canavarı", desc: "500 tık", check: s => s.clicks >= 500 },
       { id: "c5k", icon: "🌋", name: "Parmak Eridi", desc: "5.000 tık", check: s => s.clicks >= 5000 },
-      { id: "s100", icon: "🪙", name: "Cebinde 100", desc: "100 puan", check: s => s.best >= 100 },
+      { id: "s100", icon: "💯", name: "Cebinde 100", desc: "100 puan", check: s => s.best >= 100 },
       { id: "s1k", icon: "💰", name: "Binlik", desc: "1.000 puan", check: s => s.best >= 1000 },
       { id: "s10k", icon: "🏦", name: "Zengin", desc: "10.000 puan", check: s => s.best >= 10000 },
       { id: "s100k", icon: "💎", name: "Efsane", desc: "100.000 puan", check: s => s.best >= 100000 },
-      { id: "s1m", icon: "👑", name: "Sitwmi Kralı", desc: "1.000.000 puan", check: s => s.best >= 1e6 },
+      { id: "s1m", icon: "👑", name: "Sigma Kralı", desc: "1.000.000 puan", check: s => s.best >= 1e6 },
       { id: "s10m", icon: "🌌", name: "Kaos İmparatoru", desc: "10.000.000 puan", check: s => s.best >= 1e7 },
       { id: "buy1", icon: "🛒", name: "İlk Alışveriş", desc: "1 yükseltme al", check: s => totalOwned(s) >= 1 },
       { id: "buy10", icon: "📦", name: "Koleksiyoncu", desc: "10 yükseltme", check: s => totalOwned(s) >= 10 },
       { id: "buy50", icon: "🏭", name: "Sanayi Devrimi", desc: "50 yükseltme", check: s => totalOwned(s) >= 50 },
       { id: "bot", icon: "🤖", name: "Otomasyon", desc: "Oto Bot al", check: s => (s.owned.bot || 0) >= 1 },
-      { id: "ghost", icon: "👻", name: "NXDOMAIN Avcısı", desc: "DNS Hayaleti al", check: s => (s.owned.ghost || 0) >= 1 },
-      { id: "none", icon: "🧹", name: "None'yi Sildim", desc: "None Silici al", check: s => (s.owned.none || 0) >= 1 },
+      { id: "ghost", icon: "👻", name: "Hayalet Avcısı", desc: "Hayalet al", check: s => (s.owned.ghost || 0) >= 1 },
+      { id: "none", icon: "🧹", name: "Uydu'yu Sildim", desc: "Uydu Silici al", check: s => (s.owned.none || 0) >= 1 },
       { id: "rocket", icon: "🚀", name: "Uzaya Çık", desc: "Kaos Roketi al", check: s => (s.owned.rocket || 0) >= 1 },
       { id: "lv5", icon: "⭐", name: "Seviye 5", desc: "5. seviyeye çık", check: s => s.level >= 5 },
       { id: "lv10", icon: "🌟", name: "Seviye 10", desc: "10. seviyeye çık", check: s => s.level >= 10 },
