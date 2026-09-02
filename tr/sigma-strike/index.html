@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>SIGMA STRIKE · The Sigma Games</title>
+  <style>
+    :root {
+      --bg: #070712;
+      --card: #14122a;
+      --accent: #8b6cff;
+      --pink: #ff4fd8;
+      --gold: #ffd76a;
+      --text: #f4f1ff;
+      --muted: #9b93c2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      font-family: system-ui, Segoe UI, sans-serif;
+      background:
+        radial-gradient(circle at 50% 0%, #3a1d6e 0%, transparent 42%),
+        var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100%;
+      padding: 12px;
+    }
+    header { width: min(480px, 100%); display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    h1 { font-size: 1.05rem; letter-spacing: .08em; }
+    h1 span { color: var(--pink); }
+    .muted { color: var(--muted); font-size: .78rem; }
+    .row { display: flex; gap: 8px; }
+    button {
+      border: 0; border-radius: 10px; padding: 8px 10px;
+      background: #221c40; color: var(--text); font-weight: 800; cursor: pointer;
+    }
+    a { color: var(--gold); font-weight: 800; text-decoration: none; font-size: .85rem; }
+    .stage {
+      position: relative;
+      width: min(480px, 100%);
+      aspect-ratio: 360 / 640;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid #3b3166;
+      box-shadow: 0 16px 50px rgba(0,0,0,.45);
+      background: #050510;
+    }
+    canvas { width: 100%; height: 100%; display: block; }
+    .hud {
+      position: absolute; inset: 0; pointer-events: none;
+      display: flex; flex-direction: column; justify-content: space-between;
+      padding: 10px 12px;
+    }
+    .hud top, .top { display: flex; justify-content: space-between; font-weight: 800; }
+    .hearts { color: #ff6b8a; letter-spacing: 2px; }
+    .overlay {
+      position: absolute; inset: 0;
+      background: rgba(5,5,16,.72);
+      display: grid; place-items: center; text-align: center; padding: 24px;
+    }
+    .overlay.hide { display: none; }
+    .overlay h2 { font-size: 1.8rem; margin-bottom: 8px; }
+    .overlay p { color: var(--muted); margin-bottom: 16px; line-height: 1.45; }
+    .play {
+      pointer-events: auto;
+      background: linear-gradient(135deg, var(--accent), var(--pink));
+      padding: 12px 22px; border-radius: 999px; font-size: 1rem;
+    }
+    .hint { margin-top: 10px; color: var(--muted); font-size: .8rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>SIGMA <span>STRIKE</span></h1>
+      <div class="muted">The Sigma Games</div>
+    </div>
+    <div class="row">
+      <a href="./">Clicker</a>
+      <button id="muteBtn">🔊</button>
+    </div>
+  </header>
+
+  <div class="stage">
+    <canvas id="c" width="360" height="640"></canvas>
+    <div class="hud">
+      <div class="top">
+        <div>
+          <div id="score">0</div>
+          <div class="muted" id="wave">Dalga 1</div>
+        </div>
+        <div>
+          <div class="hearts" id="hp">♥♥♥</div>
+          <div class="muted" id="best">En iyi 0</div>
+        </div>
+      </div>
+      <div class="muted" id="combo"></div>
+    </div>
+    <div class="overlay" id="overlay">
+      <div>
+        <h2 id="title">SIGMA STRIKE</h2>
+        <p id="msg">Sola-sağa kaydır veya ok tuşları.<br>Otomatik ateş. Hayatta kal. Efsane ol.</p>
+        <button class="play" id="playBtn">BAŞLA</button>
+        <div class="hint">SPACE / tık / dokun</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const W = 360, H = 640;
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    const overlay = document.getElementById("overlay");
+    const titleEl = document.getElementById("title");
+    const msgEl = document.getElementById("msg");
+    const scoreEl = document.getElementById("score");
+    const waveEl = document.getElementById("wave");
+    const hpEl = document.getElementById("hp");
+    const bestEl = document.getElementById("best");
+    const comboEl = document.getElementById("combo");
+    const muteBtn = document.getElementById("muteBtn");
+
+    const SAVE = "sigma-strike-hs";
+    let best = Number(localStorage.getItem(SAVE) || 0);
+    let muted = false, audioCtx = null;
+
+    const keys = {};
+    let pointerX = W / 2, pointing = false;
+    let running = false, time = 0, last = 0;
+
+    const state = resetState();
+
+    function resetState() {
+      return {
+        player: { x: W/2, y: H-78, w: 26, h: 28, hp: 3, cd: 0, inv: 0, multi: 0, rapid: 0, shield: 0 },
+        bullets: [], enemies: [], bits: [], pops: [],
+        score: 0, wave: 1, combo: 0, comboT: 0, spawn: 0, killed: 0
+      };
+    }
+
+    function ensureAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+    }
+    function beep(f, d, type="square", v=0.05) {
+      if (muted) return;
+      ensureAudio();
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = type; o.frequency.value = f; g.gain.value = v;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + d);
+      o.stop(audioCtx.currentTime + d);
+    }
+    function sfx(k) {
+      if (k==="shot") beep(680, .04, "square", .03);
+      if (k==="hit") { beep(180,.08,"sawtooth",.06); }
+      if (k==="boom") { beep(140,.12,"sawtooth",.07); setTimeout(()=>beep(90,.16,"triangle",.05),40); }
+      if (k==="power") { beep(520,.08,"sine",.06); setTimeout(()=>beep(780,.12,"sine",.06),70); }
+      if (k==="dead") { beep(200,.2,"sawtooth",.08); setTimeout(()=>beep(110,.3,"triangle",.08),160); }
+    }
+
+    function rand(a,b){ return a + Math.random()*(b-a); }
+    function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
+    function hit(a,b){
+      return Math.abs(a.x-b.x) < (a.w+b.w)/2 && Math.abs(a.y-b.y) < (a.h+b.h)/2;
+    }
+
+    function burst(x,y,color,n=10){
+      for(let i=0;i<n;i++){
+        state.bits.push({
+          x,y, vx:rand(-2.4,2.4), vy:rand(-3,2),
+          life: rand(18,34), color, s: rand(1.5,3.2)
+        });
+      }
+    }
+
+    function spawnEnemy(){
+      const tRoll = Math.random();
+      let type = "grunt";
+      if (state.wave >= 3 && tRoll < .22) type = "sine";
+      if (state.wave >= 5 && tRoll < .12) type = "tank";
+      if (state.wave >= 7 && tRoll > .88) type = "fast";
+      if (state.killed > 0 && state.killed % 28 === 0) type = "boss";
+
+      const stats = {
+        grunt: { hp: 1, w: 22, h: 22, vy: 1.4 + state.wave*0.08, score: 10, color: "#8b6cff" },
+        sine:  { hp: 2, w: 24, h: 20, vy: 1.2 + state.wave*0.06, score: 20, color: "#4fd2ff" },
+        tank:  { hp: 5, w: 36, h: 28, vy: 0.7 + state.wave*0.04, score: 40, color: "#ff7a4f" },
+        fast:  { hp: 1, w: 16, h: 16, vy: 2.6 + state.wave*0.1, score: 25, color: "#6dffb0" },
+        boss:  { hp: 18 + state.wave*2, w: 64, h: 40, vy: 0.45, score: 250, color: "#ff4fd8" }
+      }[type];
+
+      state.enemies.push({
+        type, x: rand(30, W-30), y: -30,
+        w: stats.w, h: stats.h, hp: stats.hp, max: stats.hp,
+        vy: stats.vy, vx: type==="sine" ? 1.6 : type==="boss" ? 1.1 : rand(-0.4,0.4),
+        score: stats.score, color: stats.color, t: 0
+      });
+    }
+
+    function maybePower(x,y){
+      if (Math.random() > 0.16) return;
+      const kinds = ["multi","rapid","shield","heal"];
+      state.pops.push({ x, y, kind: kinds[Math.floor(Math.random()*kinds.length)], w: 16, h: 16, vy: 1.2 });
+    }
+
+    function shoot(){
+      const p = state.player;
+      const gap = p.rapid > 0 ? 7 : 14;
+      if (p.cd > 0) return;
+      p.cd = gap;
+      const shots = p.multi > 0 ? [-8,0,8] : [0];
+      shots.forEach(dx => state.bullets.push({ x: p.x+dx, y: p.y-16, vy: -8.5, w: 4, h: 10 }));
+      sfx("shot");
+    }
+
+    function damage(){
+      const p = state.player;
+      if (p.inv > 0) return;
+      if (p.shield > 0) { p.shield = 0; p.inv = 40; burst(p.x,p.y,"#4fd2ff",16); sfx("hit"); return; }
+      p.hp--; p.inv = 55; state.combo = 0;
+      burst(p.x,p.y,"#ff4fd8",18);
+      sfx("hit");
+      if (p.hp <= 0) gameOver();
+    }
+
+    function gameOver(){
+      running = false;
+      sfx("dead");
+      if (state.score > best) {
+        best = state.score;
+        localStorage.setItem(SAVE, String(best));
+      }
+      titleEl.textContent = "DÜŞTÜN";
+      msgEl.innerHTML = `Skor: <b>${state.score}</b><br>En iyi: <b>${best}</b><br>Dalga ${state.wave}`;
+      document.getElementById("playBtn").textContent = "TEKRAR";
+      overlay.classList.remove("hide");
+    }
+
+    function start(){
+      Object.assign(state, resetState());
+      overlay.classList.add("hide");
+      running = true;
+      last = performance.now();
+      ensureAudio();
+      loop(last);
+    }
+
+    function loop(now){
+      if (!running) return;
+      const dt = Math.min(32, now - last) / 16.67;
+      last = now;
+      time++;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function update(dt){
+      const p = state.player;
+      let ax = 0;
+      if (keys["ArrowLeft"] || keys["a"]) ax -= 1;
+      if (keys["ArrowRight"] || keys["d"]) ax += 1;
+      if (pointing) p.x += (pointerX - p.x) * 0.22 * dt;
+      p.x = clamp(p.x + ax * 6.2 * dt, 20, W-20);
+      p.cd = Math.max(0, p.cd - dt);
+      p.inv = Math.max(0, p.inv - dt);
+      p.multi = Math.max(0, p.multi - dt);
+      p.rapid = Math.max(0, p.rapid - dt);
+      if (p.shield > 0) p.shield = Math.max(0, p.shield - dt);
+      shoot();
+
+      state.comboT = Math.max(0, state.comboT - dt);
+      if (state.comboT <= 0) state.combo = 0;
+
+      state.spawn -= dt;
+      const rate = Math.max(14, 48 - state.wave * 2.2);
+      if (state.spawn <= 0) { spawnEnemy(); state.spawn = rate; }
+
+      state.wave = 1 + Math.floor(state.killed / 12);
+
+      for (let i = state.bullets.length-1; i>=0; i--) {
+        const b = state.bullets[i];
+        b.y += b.vy * dt;
+        if (b.y < -20) state.bullets.splice(i,1);
+      }
+
+      for (let i = state.enemies.length-1; i>=0; i--) {
+        const e = state.enemies[i];
+        e.t += dt;
+        if (e.type === "sine" || e.type === "boss") e.x += Math.sin(e.t/8) * e.vx * dt * 2.2;
+        e.y += e.vy * dt;
+        e.x = clamp(e.x, e.w/2, W-e.w/2);
+        if (e.y > H+40) { state.enemies.splice(i,1); continue; }
+        if (hit(p,e) && p.inv<=0) { damage(); e.hp -= 2; }
+
+        for (let j = state.bullets.length-1; j>=0; j--) {
+          const b = state.bullets[j];
+          if (hit(b,e)) {
+            state.bullets.splice(j,1);
+            e.hp--;
+            burst(b.x,b.y,e.color,5);
+            if (e.hp <= 0) {
+              const bonus = 1 + Math.min(8, state.combo) * 0.15;
+              state.score += Math.floor(e.score * bonus);
+              state.killed++;
+              state.combo++;
+              state.comboT = 90;
+              burst(e.x,e.y,e.color, e.type==="boss"?28:12);
+              maybePower(e.x,e.y);
+              sfx("boom");
+              state.enemies.splice(i,1);
+              break;
+            }
+          }
+        }
+      }
+
+      for (let i = state.pops.length-1; i>=0; i--) {
+        const u = state.pops[i];
+        u.y += u.vy * dt;
+        if (u.y > H+20) { state.pops.splice(i,1); continue; }
+        if (hit(p,u)) {
+          if (u.kind==="multi") p.multi = 420;
+          if (u.kind==="rapid") p.rapid = 360;
+          if (u.kind==="shield") p.shield = 480;
+          if (u.kind==="heal") p.hp = Math.min(5, p.hp+1);
+          sfx("power");
+          burst(u.x,u.y,"#ffd76a",12);
+          state.pops.splice(i,1);
+        }
+      }
+
+      for (let i = state.bits.length-1; i>=0; i--) {
+        const q = state.bits[i];
+        q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 0.08*dt; q.life -= dt;
+        if (q.life <= 0) state.bits.splice(i,1);
+      }
+
+      scoreEl.textContent = state.score.toLocaleString("tr-TR");
+      waveEl.textContent = "Dalga " + state.wave;
+      hpEl.textContent = "♥".repeat(state.player.hp) || "✗";
+      bestEl.textContent = "En iyi " + best.toLocaleString("tr-TR");
+      comboEl.textContent = state.combo >= 3 ? ("COMBO x" + state.combo) : "";
+    }
+
+    function drawShip(x,y,inv){
+      ctx.save();
+      ctx.translate(x,y);
+      if (inv>0 && Math.floor(inv/4)%2===0) ctx.globalAlpha = 0.35;
+      ctx.fillStyle = "#f4f1ff";
+      ctx.beginPath();
+      ctx.moveTo(0,-16); ctx.lineTo(13,14); ctx.lineTo(0,8); ctx.lineTo(-13,14);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#8b6cff";
+      ctx.fillRect(-3,-2,6,8);
+      if (state.player.shield>0) {
+        ctx.strokeStyle = "rgba(79,210,255,.85)";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0,0,22,0,Math.PI*2); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function draw(){
+      const g = ctx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,"#140c28"); g.addColorStop(1,"#070712");
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+
+      ctx.fillStyle = "rgba(255,255,255,.55)";
+      for (let i=0;i<40;i++){
+        const sy = (i*73 + time*1.6) % H;
+        const sx = (i*47) % W;
+        ctx.fillRect(sx, sy, i%5===0?2:1, i%5===0?2:1);
+      }
+
+      state.bits.forEach(q=>{
+        ctx.globalAlpha = Math.max(0,q.life/30);
+        ctx.fillStyle = q.color;
+        ctx.fillRect(q.x, q.y, q.s, q.s);
+      });
+      ctx.globalAlpha = 1;
+
+      ctx.fillStyle = "#ffd76a";
+      state.bullets.forEach(b => ctx.fillRect(b.x-2, b.y, 4, 10));
+
+      state.enemies.forEach(e=>{
+        ctx.fillStyle = e.color;
+        ctx.fillRect(e.x-e.w/2, e.y-e.h/2, e.w, e.h);
+        if (e.hp < e.max) {
+          ctx.fillStyle = "#2a2448";
+          ctx.fillRect(e.x-e.w/2, e.y-e.h/2-6, e.w, 3);
+          ctx.fillStyle = "#6dffb0";
+          ctx.fillRect(e.x-e.w/2, e.y-e.h/2-6, e.w*(e.hp/e.max), 3);
+        }
+      });
+
+      state.pops.forEach(u=>{
+        ctx.fillStyle = u.kind==="heal" ? "#6dffb0" : u.kind==="shield" ? "#4fd2ff" : "#ffd76a";
+        ctx.beginPath(); ctx.arc(u.x,u.y,8,0,Math.PI*2); ctx.fill();
+      });
+
+      drawShip(state.player.x, state.player.y, state.player.inv);
+    }
+
+    function setPointer(x){
+      const r = canvas.getBoundingClientRect();
+      pointerX = ((x - r.left) / r.width) * W;
+    }
+
+    window.addEventListener("keydown", e => {
+      keys[e.key] = true;
+      if (e.key === " " || e.key === "Enter") {
+        e.preventDefault();
+        if (!running) start();
+      }
+    });
+    window.addEventListener("keyup", e => keys[e.key] = false);
+    canvas.addEventListener("pointerdown", e => { pointing = true; setPointer(e.clientX); if(!running) start(); });
+    canvas.addEventListener("pointermove", e => { if (pointing || e.pointerType==="mouse") setPointer(e.clientX); });
+    window.addEventListener("pointerup", () => pointing = false);
+
+    document.getElementById("playBtn").onclick = start;
+    muteBtn.onclick = () => { muted = !muted; muteBtn.textContent = muted ? "🔇" : "🔊"; };
+    bestEl.textContent = "En iyi " + best.toLocaleString("tr-TR");
+  </script>
+</body>
+</html>
