@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sigma Clicker</title>
+  <style>
+    :root {
+      --bg: #090814;
+      --card: #17142c;
+      --card2: #211b3f;
+      --accent: #8b6cff;
+      --accent2: #ff4fd8;
+      --text: #f6f3ff;
+      --muted: #a79bc9;
+      --gold: #ffd76a;
+      --good: #6dffb0;
+      --bad: #ff6b8a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, Segoe UI, sans-serif;
+      background:
+        radial-gradient(circle at 20% -10%, #5b2b7a 0%, transparent 40%),
+        radial-gradient(circle at 90% 10%, #2b1d80 0%, transparent 35%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 18px;
+    }
+    .wrap { width: min(860px, 100%); margin: 0 auto; }
+    .top {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; margin-bottom: 10px;
+    }
+    h1 {
+      font-size: clamp(1.3rem, 4vw, 2rem);
+      line-height: 1.1;
+    }
+    .sub { color: var(--muted); margin-bottom: 14px; }
+    .icon-btn {
+      border: 0; border-radius: 12px; padding: 10px 12px;
+      background: var(--card); color: var(--text); cursor: pointer; font-weight: 800;
+    }
+    .score-box, .panel {
+      background: linear-gradient(180deg, var(--card), var(--card2));
+      border: 1px solid #3b3166;
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.35);
+    }
+    .score { font-size: clamp(2rem, 7vw, 3rem); font-weight: 900; }
+    .meta { color: var(--muted); margin-top: 6px; display: flex; flex-wrap: wrap; gap: 10px; }
+    .xp {
+      height: 10px; background: #2a2448; border-radius: 99px; overflow: hidden; margin-top: 12px;
+    }
+    .xp span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+    .click-wrap { position: relative; display: grid; place-items: center; margin: 8px 0 18px; }
+    .click-btn {
+      width: 180px; height: 180px; border: 0; border-radius: 50%;
+      background: linear-gradient(145deg, var(--accent), var(--accent2));
+      color: white; font-size: 1.35rem; font-weight: 900; cursor: pointer;
+      box-shadow: 0 14px 36px rgba(139,108,255,.45);
+      position: relative; z-index: 2;
+    }
+    .click-btn.gold { background: linear-gradient(145deg, #ffd76a, #ff8a00); color: #3b2400; }
+    .click-btn.rainbow {
+      background: conic-gradient(#ff4fd8, #8b6cff, #6dffb0, #ffd76a, #ff4fd8);
+    }
+    .click-btn:active { transform: scale(.92); }
+    .pop {
+      position: absolute; pointer-events: none; font-weight: 900; animation: fly .7s ease forwards;
+    }
+    @keyframes fly {
+      to { transform: translateY(-80px) scale(1.3); opacity: 0; }
+    }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .tab {
+      border: 0; border-radius: 999px; padding: 9px 14px; cursor: pointer;
+      background: #241d42; color: var(--text); font-weight: 800;
+    }
+    .tab.on { background: var(--accent); }
+    .list { display: grid; gap: 10px; }
+    .item, .ach {
+      background: #1b1733;
+      border: 1px solid #3b3166;
+      border-radius: 14px;
+      padding: 12px 14px;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .item h3, .ach h3 { font-size: 1rem; }
+    .item p, .ach p, .tiny { color: var(--muted); font-size: .85rem; margin-top: 3px; }
+    .buy, .danger {
+      border: 0; border-radius: 10px; padding: 10px 12px; cursor: pointer;
+      background: var(--accent); color: white; font-weight: 800; white-space: nowrap;
+    }
+    .buy:disabled { opacity: .35; cursor: not-allowed; }
+    .danger { background: #ff4f7a; }
+    .ach.locked { opacity: .45; }
+    .badge {
+      min-width: 42px; height: 42px; border-radius: 50%;
+      display: grid; place-items: center; background: #2a2448; font-size: 1.15rem;
+    }
+    .ach.unlocked .badge { background: linear-gradient(145deg, var(--gold), #ff9f43); }
+    .news {
+      margin-top: 12px; color: var(--gold); min-height: 20px; font-weight: 700; text-align: center;
+    }
+    .popup {
+      position: fixed; right: 14px; bottom: 14px; max-width: 280px;
+      background: #22183f; border: 1px solid #8b6cff; padding: 12px 14px;
+      border-radius: 14px; display: none; z-index: 20;
+    }
+    .popup.show { display: block; animation: pop .25s ease; }
+    @keyframes pop { from { transform: translateY(8px); opacity: 0; } to { opacity: 1; } }
+    .buff { color: var(--good); font-weight: 800; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <h1>Sigma Clicker<br></h1>
+      <button class="icon-btn" id="muteBtn">🔊 Ses</button>
+    </div>
+    <p class="sub">Tıkla,tıkla...İMPARATORLUĞUN KEYFİNİ YAŞA</p>
+
+    <div class="score-box">
+      <div class="score" id="score">0</div>
+      <div class="meta">
+        <span id="cps">0 / sn</span>
+        <span id="level">Seviye 1</span>
+        <span id="prest">Kaos x1.00</span>
+        <span id="buff" class="buff"></span>
+      </div>
+      <div class="xp"><span id="xpBar"></span></div>
+      <p class="tiny" id="xpText">XP 0 / 50</p>
+    </div>
+
+    <div class="click-wrap">
+      <button class="click-btn" id="clickBtn">KAOS<br>TIKLA</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab on" data-tab="up">Yükseltmeler</button>
+      <button class="tab" data-tab="market">Market</button>
+      <button class="tab" data-tab="prestige">Prestij</button>
+      <button class="tab" data-tab="ach">Başarımlar</button>
+    </div>
+
+    <div class="panel" id="panel"></div>
+    <div class="news" id="news"></div>
+  </div>
+  <div class="popup" id="popup"></div>
+
+  <script>
+    const SAVE = "sitwmi-clicker-ultra";
+    const OLD = "sitwmi-clicker";
+    const newsLines = [
+      "DNS hayaleti hâlâ NXDOMAIN diye bağırıyor.",
+      "main default oldu. Evren biraz rahatladı.",
+      "None silinmedi. None terfi etti.",
+      "Branch yoktu. Şimdi branch fabrikası var.",
+      "GitHub Pages: 'tamam tamam açıyorum'.",
+      "Kaos çayı fazla demlendi. CPS arttı.",
+      "README zorunlu. Aksi takdirde evren çöker."
+    ];
+
+    const upgrades = [
+      { id: "finger", name: "Ekstra Parmak", desc: "+1 tık gücü. Evet, bir tane daha.", base: 15, power: 1, type: "click" },
+      { id: "bot", name: "Oto Bot", desc: "+1 / sn. Bazen çalışıyor.", base: 60, power: 1, type: "auto" },
+      { id: "cafe", name: "Kaos Kafe", desc: "+6 / sn. Çay bedava değil.", base: 280, power: 6, type: "auto" },
+      { id: "factory", name: "Sigma Fabrikası", desc: "+25 / sn. İş güvenliği yok.", base: 1400, power: 25, type: "auto" },
+      { id: "ghost", name: "Hayalet", desc: "+80 / sn. NXDOMAIN yer.", base: 7500, power: 80, type: "auto" },
+      { id: "branch", name: "Ultra Sigma Fabrikası", desc: "+220 / sn. main üretir.", base: 28000, power: 220, type: "auto" },
+      { id: "pages", name: "Pages Işını", desc: "+700 / sn. 3 dakikada yayına alır.", base: 120000, power: 700, type: "auto" },
+      { id: "none", name: "None Silici 9000", desc: "+2500 / sn. Source'u bulur.", base: 650000, power: 2500, type: "auto" },
+      { id: "rocket", name: "Kaos Roketi", desc: "+9000 / sn. WiFi'siz uçar.", base: 3200000, power: 9000, type: "auto" }
+    ];
+
+    const market = [
+      { id: "goldBtn", name: "Altın Buton", desc: "Tık butonu zengin görünür.", cost: 2500, type: "cosmetic" },
+      { id: "rainbow", name: "Gökkuşağı Krizi", desc: "Buton göz yakar, güzel yakar.", cost: 8000, type: "cosmetic" },
+      { id: "luck", name: "Şanslı Tık", desc: "%8 şansla 12x tık.", cost: 15000, type: "perm" },
+      { id: "crit", name: "Kritik Vuruş", desc: "%12 şansla 4x tık.", cost: 22000, type: "perm" },
+      { id: "prod", name: "Kaos Çarpanı", desc: "Tüm üretime +20%.", cost: 50000, type: "perm" },
+      { id: "xpBoost", name: "README XP", desc: "Seviye XP'si +30%.", cost: 18000, type: "perm" },
+      { id: "frenzy", name: "10sn Deli Tık", desc: "10 saniye 7x tık gücü.", cost: 4000, type: "consumable" }
+    ];
+
+    const achievements = [
+      { id: "first", icon: "👆", name: "İlk Tık", desc: "İlk kez tıkla", check: s => s.clicks >= 1 },
+      { id: "c50", icon: "🖐️", name: "Isınıyor", desc: "50 tık", check: s => s.clicks >= 50 },
+      { id: "c500", icon: "💥", name: "Tık Canavarı", desc: "500 tık", check: s => s.clicks >= 500 },
+      { id: "c5k", icon: "🌋", name: "Parmak Eridi", desc: "5.000 tık", check: s => s.clicks >= 5000 },
+      { id: "s100", icon: "🪙", name: "Cebinde 100", desc: "100 puan", check: s => s.best >= 100 },
+      { id: "s1k", icon: "💰", name: "Binlik", desc: "1.000 puan", check: s => s.best >= 1000 },
+      { id: "s10k", icon: "🏦", name: "Zengin", desc: "10.000 puan", check: s => s.best >= 10000 },
+      { id: "s100k", icon: "💎", name: "Efsane", desc: "100.000 puan", check: s => s.best >= 100000 },
+      { id: "s1m", icon: "👑", name: "Sigma Kralı", desc: "1.000.000 puan", check: s => s.best >= 1e6 },
+      { id: "s10m", icon: "🌌", name: "Kaos İmparatoru", desc: "10.000.000 puan", check: s => s.best >= 1e7 },
+      { id: "buy1", icon: "🛒", name: "İlk Alışveriş", desc: "1 yükseltme al", check: s => totalOwned(s) >= 1 },
+      { id: "buy10", icon: "📦", name: "Koleksiyoncu", desc: "10 yükseltme", check: s => totalOwned(s) >= 10 },
+      { id: "buy50", icon: "🏭", name: "Sanayi Devrimi", desc: "50 yükseltme", check: s => totalOwned(s) >= 50 },
+      { id: "bot", icon: "🤖", name: "Otomasyon", desc: "Oto Bot al", check: s => (s.owned.bot || 0) >= 1 },
+      { id: "ghost", icon: "👻", name: "Hayalet Avcısı", desc: "DNS Hayaleti al", check: s => (s.owned.ghost || 0) >= 1 },
+      { id: "none", icon: "🧹", name: "None'yi Sildim", desc: "None Silici al", check: s => (s.owned.none || 0) >= 1 },
+      { id: "rocket", icon: "🚀", name: "Uzaya Çık", desc: "Kaos Roketi al", check: s => (s.owned.rocket || 0) >= 1 },
+      { id: "lv5", icon: "⭐", name: "Seviye 5", desc: "5. seviyeye çık", check: s => s.level >= 5 },
+      { id: "lv10", icon: "🌟", name: "Seviye 10", desc: "10. seviyeye çık", check: s => s.level >= 10 },
+      { id: "lv25", icon: "💫", name: "Seviye 25", desc: "25. seviyeye çık", check: s => s.level >= 25 },
+      { id: "cps50", icon: "⏱️", name: "Hızlı Para", desc: "50 / sn", check: s => cpsOf(s) >= 50 },
+      { id: "cps500", icon: "🌪️", name: "Para Fırtınası", desc: "500 / sn", check: s => cpsOf(s) >= 500 },
+      { id: "cps5k", icon: "⚡", name: "Kaos Akımı", desc: "5.000 / sn", check: s => cpsOf(s) >= 5000 },
+      { id: "market1", icon: "🎪", name: "Market Müdavimi", desc: "Marketten 1 şey al", check: s => s.bought.length >= 1 },
+      { id: "market4", icon: "🛍️", name: "Dükkanı Bitir", desc: "4 market ürünü", check: s => s.bought.length >= 4 },
+      { id: "frenzy", icon: "😵", name: "Deli Tık", desc: "Frenzy kullan", check: s => s.usedFrenzy },
+      { id: "p1", icon: "♻️", name: "Sıfırdan Zengin", desc: "1 prestij yap", check: s => s.prestiges >= 1 },
+      { id: "p3", icon: "🔮", name: "Kaos Döngüsü", desc: "3 prestij", check: s => s.prestiges >= 3 },
+      { id: "p10", icon: "♾️", name: "Sonsuz Restart", desc: "10 prestij", check: s => s.prestiges >= 10 },
+      { id: "crystal5", icon: "💠", name: "Kristal Koleksiyonu", desc: "5 kaos kristali", check: s => s.crystals >= 5 }
+    ];
+
+    const defaults = {
+      score: 0, best: 0, clickPower: 1, clicks: 0, owned: {}, unlocked: [],
+      xp: 0, level: 1, crystals: 0, prestiges: 0, bought: [], muted: false,
+      usedFrenzy: false
+    };
+
+    function load() {
+      let raw = {};
+      try { raw = JSON.parse(localStorage.getItem(SAVE) || localStorage.getItem(OLD) || "{}") || {}; }
+      catch(e) { raw = {}; }
+      return Object.assign({}, defaults, raw, {
+        owned: raw.owned || {},
+        unlocked: raw.unlocked || [],
+        bought: raw.bought || []
+      });
+    }
+    let state = load();
+    let tab = "up";
+    let frenzyUntil = 0;
+    let audioCtx = null;
+
+    const $ = id => document.getElementById(id);
+    const scoreEl = $("score"), cpsEl = $("cps"), levelEl = $("level"), prestEl = $("prest");
+    const buffEl = $("buff"), xpBar = $("xpBar"), xpText = $("xpText"), panel = $("panel");
+    const popupEl = $("popup"), newsEl = $("news"), clickBtn = $("clickBtn"), muteBtn = $("muteBtn");
+
+    function totalOwned(s) { return Object.values(s.owned || {}).reduce((a,b)=>a+b,0); }
+    function costOf(u) { return Math.floor(u.base * Math.pow(1.17, state.owned[u.id] || 0)); }
+    function xpNeed(lv) { return Math.floor(50 * Math.pow(lv, 1.35)); }
+    function has(id) { return state.bought.includes(id); }
+    function prestigeMult(s = state) { return 1 + s.crystals * 0.08; }
+    function marketMult(s = state) { return has.call({bought:s.bought}, "prod") || s.bought.includes("prod") ? 1.2 : 1; }
+    function frenzyOn() { return Date.now() < frenzyUntil; }
+    function clickMult() {
+      let m = prestigeMult() * marketMult() * (1 + (state.level - 1) * 0.02);
+      if (frenzyOn()) m *= 7;
+      return m;
+    }
+    function cpsOf(s = state) {
+      const base = upgrades.filter(u => u.type === "auto")
+        .reduce((sum, u) => sum + ((s.owned[u.id] || 0) * u.power), 0);
+      const prod = (s.bought || []).includes("prod") ? 1.2 : 1;
+      return base * (1 + s.crystals * 0.08) * prod * (1 + (s.level - 1) * 0.02);
+    }
+    function fmt(n) {
+      n = Math.floor(n);
+      if (n >= 1e12) return (n/1e12).toFixed(2) + " T";
+      if (n >= 1e9) return (n/1e9).toFixed(2) + " B";
+      if (n >= 1e6) return (n/1e6).toFixed(2) + " M";
+      if (n >= 1e4) return (n/1e3).toFixed(1) + " K";
+      return n.toLocaleString("tr-TR");
+    }
+    function save() { localStorage.setItem(SAVE, JSON.stringify(state)); }
+
+    function ensureAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+    }
+    function beep(freq, dur, type="square", vol=0.06) {
+      if (state.muted) return;
+      ensureAudio();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.value = vol;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+      o.stop(audioCtx.currentTime + dur);
+    }
+    function sfx(kind) {
+      if (kind === "click") beep(420 + Math.random()*80, .05, "square", .04);
+      if (kind === "buy") { beep(520,.08,"triangle",.07); setTimeout(()=>beep(720,.1,"triangle",.07),70); }
+      if (kind === "bad") beep(120,.12,"sawtooth",.05);
+      if (kind === "ach") { beep(523,.1,"sine",.07); setTimeout(()=>beep(659,.1,"sine",.07),90); setTimeout(()=>beep(784,.18,"sine",.07),180); }
+      if (kind === "level") { beep(400,.08,"square",.06); setTimeout(()=>beep(600,.08,"square",.06),80); setTimeout(()=>beep(800,.16,"square",.06),160); }
+      if (kind === "prestige") { beep(200,.2,"sawtooth",.08); setTimeout(()=>beep(400,.2,"triangle",.08),180); setTimeout(()=>beep(800,.3,"sine",.08),360); }
+    }
+
+    function popup(html) {
+      popupEl.innerHTML = html;
+      popupEl.classList.add("show");
+      setTimeout(() => popupEl.classList.remove("show"), 2200);
+    }
+    function addXP(n) {
+      if (has("xpBoost")) n *= 1.3;
+      state.xp += n;
+      let need = xpNeed(state.level);
+      let leveled = false;
+      while (state.xp >= need) {
+        state.xp -= need;
+        state.level++;
+        need = xpNeed(state.level);
+        leveled = true;
+      }
+      if (leveled) {
+        sfx("level");
+        popup(`<b>Seviye ${state.level}!</b><br>Kaos biraz daha büyüdü.`);
+      }
+    }
+    function checkAch() {
+      achievements.forEach(a => {
+        if (!state.unlocked.includes(a.id) && a.check(state)) {
+          state.unlocked.push(a.id);
+          sfx("ach");
+          popup(`<b>Başarım!</b><br>${a.icon} ${a.name}`);
+        }
+      });
+    }
+    function crystalsFrom(score) { return Math.floor(Math.sqrt(score / 50000)); }
+    function canPrestige() { return crystalsFrom(state.score) >= 1; }
+
+    function doClick(x, y) {
+      let power = state.clickPower * clickMult();
+      let tag = "";
+      if (has("luck") && Math.random() < .08) { power *= 12; tag = " ŞANS!"; }
+      else if (has("crit") && Math.random() < .12) { power *= 4; tag = " KRİTİK!"; }
+      state.score += power;
+      state.best = Math.max(state.best, state.score);
+      state.clicks++;
+      addXP(1);
+      sfx("click");
+      floatText("+" + fmt(power) + tag, x, y);
+      tick();
+    }
+
+    function floatText(text, x, y) {
+      const el = document.createElement("div");
+      el.className = "pop";
+      el.textContent = text;
+      const r = clickBtn.getBoundingClientRect();
+      el.style.left = (x ? x - r.left : 70) + "px";
+      el.style.top = (y ? y - r.top : 70) + "px";
+      el.style.color = text.includes("ŞANS") ? "#ffd76a" : text.includes("KRİTİK") ? "#ff4fd8" : "#fff";
+      clickBtn.parentElement.appendChild(el);
+      setTimeout(() => el.remove(), 700);
+    }
+
+    function buyUpgrade(id) {
+      const u = upgrades.find(x => x.id === id);
+      const cost = costOf(u);
+      if (state.score < cost) return sfx("bad");
+      state.score -= cost;
+      state.owned[u.id] = (state.owned[u.id] || 0) + 1;
+      if (u.type === "click") state.clickPower += u.power;
+      addXP(3);
+      sfx("buy");
+      tick();
+    }
+
+    function buyMarket(id) {
+      const m = market.find(x => x.id === id);
+      if (state.score < m.cost) return sfx("bad");
+      if (m.type !== "consumable" && has(m.id)) return;
+      state.score -= m.cost;
+      if (m.type === "consumable") {
+        frenzyUntil = Date.now() + 10000;
+        state.usedFrenzy = true;
+      } else {
+        state.bought.push(m.id);
+      }
+      sfx("buy");
+      tick();
+    }
+
+    function prestige() {
+      const gain = crystalsFrom(state.score);
+      if (gain < 1) return;
+      if (!confirm(`Prestij yapılsın mı?\n+${gain} kaos kristali\nSkor ve yükseltmeler sıfırlanır.\nBaşarımlar, market ve kristaller kalır.`)) return;
+      state.crystals += gain;
+      state.prestiges++;
+      state.score = 0;
+      state.clickPower = 1;
+      state.owned = {};
+      state.xp = 0;
+      sfx("prestige");
+      popup(`<b>PRESTİJ!</b><br>+${gain} kristal. Kaos çarpanı x${prestigeMult().toFixed(2)}`);
+      tick();
+    }
+
+    function renderPanel() {
+      if (tab === "up") {
+        panel.innerHTML = `<div class="list">${upgrades.map(u => {
+          const owned = state.owned[u.id] || 0;
+          const cost = costOf(u);
+          return `<div class="item"><div><h3>${u.name} (${owned})</h3><p>${u.desc}</p></div>
+            <button class="buy" data-up="${u.id}" ${state.score>=cost?"":"disabled"}>${fmt(cost)}</button></div>`;
+        }).join("")}</div>`;
+      }
+      if (tab === "market") {
+        panel.innerHTML = `<div class="list">${market.map(m => {
+          const owned = m.type !== "consumable" && has(m.id);
+          return `<div class="item"><div><h3>${m.name}</h3><p>${m.desc}</p></div>
+            <button class="buy" data-m="${m.id}" ${owned||state.score<m.cost?"disabled":""}>${owned?"ALINDI":fmt(m.cost)}</button></div>`;
+        }).join("")}</div>`;
+      }
+      if (tab === "prestige") {
+        const gain = crystalsFrom(state.score);
+        panel.innerHTML = `
+          <p>Kaos kristalleri: <b>${state.crystals}</b> · Prestij: <b>${state.prestiges}</b></p>
+          <p class="tiny" style="margin:10px 0 14px">Her kristal kalıcı +%8 üretim. Prestij skoru ve yükseltmeleri sıfırlar. 50.000 puandan itibaren kristal basılır.</p>
+          <p>Bu prestijde kazanacağın: <b>${gain}</b> kristal</p>
+          <div style="margin-top:12px"><button class="danger" id="prestigeBtn" ${gain<1?"disabled":""}>PRESTİJ YAP</button></div>`;
+      }
+      if (tab === "ach") {
+        panel.innerHTML = `<p class="tiny" style="margin-bottom:10px">${state.unlocked.length}/${achievements.length} açık</p>
+          <div class="list">${achievements.map(a => {
+            const on = state.unlocked.includes(a.id);
+            return `<div class="ach ${on?"unlocked":"locked"}"><div><h3>${a.name}</h3><p>${on?a.desc:"???"}</p></div>
+              <div class="badge">${on?a.icon:"🔒"}</div></div>`;
+          }).join("")}</div>`;
+      }
+    }
+
+    function render() {
+      scoreEl.textContent = fmt(state.score);
+      cpsEl.textContent = fmt(cpsOf()) + " / sn";
+      levelEl.textContent = "Seviye " + state.level;
+      prestEl.textContent = "Kaos x" + clickMult() / (frenzyOn() ? 7 : 1);
+      prestEl.textContent = "Kaos x" + (prestigeMult() * marketMult() * (1 + (state.level-1)*0.02)).toFixed(2);
+      const need = xpNeed(state.level);
+      xpBar.style.width = Math.min(100, (state.xp / need) * 100) + "%";
+      xpText.textContent = `XP ${Math.floor(state.xp)} / ${need}`;
+      buffEl.textContent = frenzyOn() ? "DELİ TIK x7" : "";
+      muteBtn.textContent = state.muted ? "🔇 Ses kapalı" : "🔊 Ses";
+      clickBtn.className = "click-btn" + (has("rainbow") ? " rainbow" : has("goldBtn") ? " gold" : "");
+      renderPanel();
+    }
+
+    function tick() {
+      checkAch();
+      render();
+      save();
+    }
+
+    clickBtn.addEventListener("click", e => doClick(e.clientX, e.clientY));
+    muteBtn.addEventListener("click", () => { state.muted = !state.muted; ensureAudio(); tick(); });
+    document.querySelectorAll(".tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        tab = btn.dataset.tab;
+        document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t === btn));
+        render();
+      });
+    });
+    panel.addEventListener("click", e => {
+      const up = e.target.closest("[data-up]");
+      const m = e.target.closest("[data-m]");
+      if (up) buyUpgrade(up.dataset.up);
+      if (m) buyMarket(m.dataset.m);
+      if (e.target.id === "prestigeBtn") prestige();
+    });
+
+    setInterval(() => {
+      const gain = cpsOf() / 10;
+      if (gain > 0) {
+        state.score += gain;
+        state.best = Math.max(state.best, state.score);
+        addXP(0.05);
+      }
+      if (frenzyOn()) buffEl.textContent = "DELİ TIK x7";
+      else if (buffEl.textContent) buffEl.textContent = "";
+      checkAch();
+      if (tab !== "ach") {
+        scoreEl.textContent = fmt(state.score);
+        cpsEl.textContent = fmt(cpsOf()) + " / sn";
+        const need = xpNeed(state.level);
+        xpBar.style.width = Math.min(100, (state.xp / need) * 100) + "%";
+        xpText.textContent = `XP ${Math.floor(state.xp)} / ${need}`;
+      } else render();
+      save();
+    }, 100);
+
+    setInterval(() => {
+      newsEl.textContent = newsLines[Math.floor(Math.random() * newsLines.length)];
+    }, 5000);
+
+    newsEl.textContent = newsLines[0];
+    tick();
+  </script>
+</body>
+</html>
