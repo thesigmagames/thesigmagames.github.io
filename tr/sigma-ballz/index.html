@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Ballz</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #07060c; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  #hud { position: fixed; top: 14px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 56px; font-weight: 800; text-shadow: 0 6px 24px rgba(0,0,0,0.8); color: #00d4ff; }
+  #best { opacity: .75; font-size: 14px; margin-top: 2px; }
+  #back { position: fixed; top: 16px; left: 14px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; }
+  #back:hover { opacity: 1; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.85); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(32px, 8vw, 52px); margin: 0 0 8px; letter-spacing: 3px; background: linear-gradient(90deg, #00d4ff, #ff3cac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .sub { opacity: .8; margin: 0 0 22px; line-height: 1.5; font-size: 16px; }
+  button { border: 0; border-radius: 14px; padding: 14px 36px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.95); }
+</style>
+</head>
+<body>
+  <a id="back" href="../">← Menü</a>
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">1</div>
+    <div id="best"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA BALLZ</h1>
+    <p class="sub">Sürükle ve Bırak<br>Nişan al · Tüm neon blokları kır!</p>
+    <button id="go">BAŞLA</button>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+
+  const SAVE_KEY = "sigma-ballz-best";
+  const PALETTE = ["#00d4ff", "#ff3cac", "#ffe14d", "#5dff8a", "#ff8a3c", "#b794ff"];
+
+  // Mantıksal Oyun Sahnesi (400x640)
+  const GW = 400, GH = 640;
+  const COLS = 7;
+  const CELL = (GW - 20) / COLS; // ~54.2px
+  const TOP_Y = 80;
+  const BOTTOM_Y = 560;
+  const BALL_RADIUS = 5;
+  const BALL_SPEED = 11;
+
+  let W = 0, H = 0, scale = 1, offsetX = 0, offsetY = 0;
+  let state = "menu"; // "menu", "aiming", "shooting", "dead"
+  let score = 1, best = 0;
+
+  let balls = [];
+  let bricks = [];
+  let extraItems = [];
+  let particles = [];
+
+  let totalBalls = 1;
+  let nextTotalBalls = 1;
+  let launcherX = GW / 2;
+  let nextLauncherX = null;
+
+  let aimAngle = -Math.PI / 2;
+  let isDragging = false;
+  let dragStart = { x: 0, y: 0 };
+  let currentDrag = { x: 0, y: 0 };
+
+  let spawnQueue = 0;
+  let spawnTimer = 0;
+  let ac = null, flash = 0;
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("Rekor: " + best) : "";
+
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+
+    // Ekran ortasına ölçekleme
+    const scaleX = W / GW;
+    const scaleY = H / GH;
+    scale = Math.min(scaleX, scaleY);
+    offsetX = (W - GW * scale) / 2;
+    offsetY = (H - GH * scale) / 2;
+
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function sound(freq, type = "sine", duration = 0.05, vol = 0.04) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function initGame() {
+    state = "aiming";
+    score = 1;
+    totalBalls = 1;
+    nextTotalBalls = 1;
+    launcherX = GW / 2;
+    nextLauncherX = null;
+    flash = 0;
+    balls = [];
+    bricks = [];
+    extraItems = [];
+    particles = [];
+
+    spawnRow();
+    scoreEl.textContent = String(score);
+    overlay.classList.add("hide");
+    sound(520, "sine", 0.1, 0.06);
+  }
+
+  function spawnRow() {
+    // Tüm mevcut blokları bir alt satıra kaydır
+    for (let b of bricks) b.row++;
+    for (let e of extraItems) e.row++;
+
+    // Yeni satır oluştur
+    const count = Math.floor(Math.random() * 4) + 1; // 1-4 blok
+    const freeCols = Array.from({length: COLS}, (_, i) => i);
+    
+    // Şans eseri extra top ekle
+    if (Math.random() < 0.75) {
+      const idx = Math.floor(Math.random() * freeCols.length);
+      const col = freeCols.splice(idx, 1)[0];
+      extraItems.push({ col, row: 0 });
+    }
+
+    // Blokları yerleştir
+    for (let i = 0; i < count && freeCols.length > 0; i++) {
+      const idx = Math.floor(Math.random() * freeCols.length);
+      const col = freeCols.splice(idx, 1)[0];
+      const hp = score * (Math.random() < 0.2 ? 2 : 1); // %20 ihtimalle 2 kat hp
+      bricks.push({
+        col, row: 0,
+        hp: hp,
+        maxHp: hp,
+        color: PALETTE[Math.floor(Math.random() * PALETTE.length)]
+      });
+    }
+
+    // Oyun bitti mi kontrolü (Tabana ulaştı mı?)
+    for (let b of bricks) {
+      if (b.row >= 8) {
+        die();
+        return;
+      }
+    }
+  }
+
+  function die() {
+    state = "dead";
+    flash = 1;
+    sound(110, "sawtooth", 0.3, 0.08);
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "Rekor: " + best;
+
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Ulaşılan Seviye: ${score}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+  }
+
+  function shoot() {
+    if (state !== "aiming") return;
+    state = "shooting";
+    spawnQueue = totalBalls;
+    spawnTimer = 0;
+    nextTotalBalls = totalBalls;
+    nextLauncherX = null;
+  }
+
+  function update() {
+    // Parçacıklar
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= 0.03;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    if (flash > 0) flash -= 0.04;
+
+    if (state === "shooting") {
+      // Top fırlatma zamanlaması
+      spawnTimer++;
+      if (spawnQueue > 0 && spawnTimer >= 4) {
+        spawnTimer = 0;
+        spawnQueue--;
+        balls.push({
+          x: launcherX,
+          y: BOTTOM_Y,
+          vx: Math.cos(aimAngle) * BALL_SPEED,
+          vy: Math.sin(aimAngle) * BALL_SPEED,
+          active: true
+        });
+        sound(600, "triangle", 0.02, 0.02);
+      }
+
+      // Topları hareket ettir ve çarpışmaları kontrol et
+      balls.forEach(b => {
+        if (!b.active) return;
+
+        b.x += b.vx;
+        b.y += b.vy;
+
+        // Duvar Çarpışmaları
+        if (b.x - BALL_RADIUS <= 10) { b.x = 10 + BALL_RADIUS; b.vx *= -1; }
+        if (b.x + BALL_RADIUS >= GW - 10) { b.x = GW - 10 - BALL_RADIUS; b.vx *= -1; }
+        if (b.y - BALL_RADIUS <= TOP_Y) { b.y = TOP_Y + BALL_RADIUS; b.vy *= -1; }
+
+        // Taban (Topun Yere İnmesi)
+        if (b.y >= BOTTOM_Y) {
+          b.y = BOTTOM_Y;
+          b.active = false;
+          if (nextLauncherX === null) {
+            nextLauncherX = Math.max(20, Math.min(GW - 20, b.x));
+          }
+        }
+
+        // Ekstra Top Alma
+        extraItems.forEach((item, idx) => {
+          const ix = 10 + item.col * CELL + CELL / 2;
+          const iy = TOP_Y + item.row * CELL + CELL / 2;
+          const dist = Math.hypot(b.x - ix, b.y - iy);
+          if (dist < BALL_RADIUS + 12) {
+            nextTotalBalls++;
+            sound(880, "sine", 0.08, 0.05);
+            for (let i = 0; i < 6; i++) {
+              particles.push({
+                x: ix, y: iy,
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4,
+                life: 1, color: "#fff"
+              });
+            }
+            extraItems.splice(idx, 1);
+          }
+        });
+
+        // Blok Çarpışmaları (AABB vs Circle)
+        bricks.forEach(brick => {
+          const bx = 10 + brick.col * CELL + 2;
+          const by = TOP_Y + brick.row * CELL + 2;
+          const bw = CELL - 4;
+          const bh = CELL - 4;
+
+          const closestX = Math.max(bx, Math.min(b.x, bx + bw));
+          const closestY = Math.max(by, Math.min(b.y, by + bh));
+
+          const distX = b.x - closestX;
+          const distY = b.y - closestY;
+          const distanceSq = distX * distX + distY * distY;
+
+          if (distanceSq < BALL_RADIUS * BALL_RADIUS) {
+            brick.hp--;
+            sound(300 + Math.min(600, brick.hp * 20), "sine", 0.03, 0.03);
+
+            // Çarpışma yönünü tespit et ve sektir
+            if (Math.abs(distX) > Math.abs(distY)) {
+              b.vx *= -1;
+              b.x += b.vx > 0 ? 2 : -2;
+            } else {
+              b.vy *= -1;
+              b.y += b.vy > 0 ? 2 : -2;
+            }
+
+            // Parçacık
+            for (let i = 0; i < 3; i++) {
+              particles.push({
+                x: closestX, y: closestY,
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4,
+                life: 0.8, color: brick.color
+              });
+            }
+          }
+        });
+      });
+
+      // Kırılan blokları temizle
+      bricks = bricks.filter(b => b.hp > 0);
+
+      // Tüm toplar geri döndü mü?
+      const activeCount = balls.filter(b => b.active).length;
+      if (activeCount === 0 && spawnQueue === 0) {
+        state = "aiming";
+        totalBalls = nextTotalBalls;
+        if (nextLauncherX !== null) launcherX = nextLauncherX;
+        balls = [];
+        score++;
+        scoreEl.textContent = String(score);
+        spawnRow();
+      }
+    }
+  }
+
+  function draw() {
+    // Arka Plan Gradient
+    const bg = ctx.createLinearGradient(0, 0, 0, GH);
+    bg.addColorStop(0, "#120a2a");
+    bg.addColorStop(1, "#05040a");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, GW, GH);
+
+    // Saha Çerçevesi & Izgara (Siber Çerçeve)
+    ctx.strokeStyle = "rgba(0, 212, 255, 0.15)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(10, TOP_Y, GW - 20, BOTTOM_Y - TOP_Y);
+
+    ctx.beginPath();
+    ctx.moveTo(10, BOTTOM_Y); ctx.lineTo(GW - 10, BOTTOM_Y);
+    ctx.strokeStyle = "rgba(255, 60, 172, 0.4)";
+    ctx.stroke();
+
+    // Blokları Çiz
+    bricks.forEach(b => {
+      const x = 10 + b.col * CELL + 3;
+      const y = TOP_Y + b.row * CELL + 3;
+      const size = CELL - 6;
+
+      ctx.fillStyle = b.color;
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.roundRect(x, y, size, size, 8);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // İç Sayı
+      ctx.fillStyle = "#07060c";
+      ctx.font = "800 16px system-ui";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(b.hp), x + size / 2, y + size / 2);
+    });
+
+    // Ekstra Top İtemleri Çiz
+    extraItems.forEach(item => {
+      const x = 10 + item.col * CELL + CELL / 2;
+      const y = TOP_Y + item.row * CELL + CELL / 2;
+
+      ctx.beginPath();
+      ctx.arc(x, y, 10, 0, Math.PI * 2);
+      ctx.strokeStyle = "#5dff8a";
+      ctx.lineWidth = 3;
+      ctx.shadowColor = "#5dff8a";
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+    });
+
+    // Nişan Çizgisi (Lazer Noktaları)
+    if (state === "aiming" && isDragging) {
+      ctx.beginPath();
+      let cx = launcherX;
+      let cy = BOTTOM_Y;
+      let vx = Math.cos(aimAngle) * 12;
+      let vy = Math.sin(aimAngle) * 12;
+
+      for (let i = 0; i < 28; i++) {
+        cx += vx;
+        cy += vy;
+        if (cx <= 10 || cx >= GW - 10) vx *= -1;
+        if (cy <= TOP_Y) vy *= -1;
+
+        ctx.fillStyle = i % 2 === 0 ? "#00d4ff" : "rgba(255, 60, 172, 0.6)";
+        ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+
+    // Fırlatıcı / Başlangıç Topu
+    if (state === "aiming") {
+      ctx.beginPath();
+      ctx.arc(launcherX, BOTTOM_Y, BALL_RADIUS + 2, 0, Math.PI * 2);
+      ctx.fillStyle = "#00d4ff";
+      ctx.shadowColor = "#00d4ff";
+      ctx.shadowBlur = 12;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.font = "700 13px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillText("x" + totalBalls, launcherX, BOTTOM_Y + 20);
+    }
+
+    // Hareket Eden Toplar
+    balls.forEach(b => {
+      if (!b.active) return;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, BALL_RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff";
+      ctx.shadowColor = "#00d4ff";
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.5, 3 * p.life), 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    });
+
+    // Flaş Efekti
+    if (flash > 0) {
+      ctx.fillStyle = `rgba(255, 60, 172, ${Math.min(0.8, flash)})`;
+      ctx.fillRect(0, 0, GW, GH);
+    }
+  }
+
+  // Girdi Kontrolleri (Fare ve Dokunmatik)
+  function getCanvasCoords(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left - offsetX) / scale,
+      y: (clientY - rect.top - offsetY) / scale
+    };
+  }
+
+  function onDown(e) {
+    if (state !== "aiming" || e.target.tagName === "BUTTON" || e.target.tagName === "A") return;
+    isDragging = true;
+    dragStart = getCanvasCoords(e);
+  }
+
+  function onMove(e) {
+    if (!isDragging || state !== "aiming") return;
+    currentDrag = getCanvasCoords(e);
+    const dx = currentDrag.x - dragStart.x;
+    const dy = currentDrag.y - dragStart.y;
+
+    // Sürükleme yönünün tersine nişan al
+    let angle = Math.atan2(-dy, -dx);
+    
+    // Açıyı yukarıya doğru kısıtla (Yere doğru nişan alınmasın)
+    if (angle > -0.15) angle = -0.15;
+    if (angle < -Math.PI + 0.15) angle = -Math.PI + 0.15;
+
+    aimAngle = angle;
+  }
+
+  function onUp() {
+    if (isDragging && state === "aiming") {
+      isDragging = false;
+      shoot();
+    }
+  }
+
+  window.addEventListener("mousedown", onDown);
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+
+  window.addEventListener("touchstart", onDown, { passive: true });
+  window.addEventListener("touchmove", onMove, { passive: true });
+  window.addEventListener("touchend", onUp);
+
+  goBtn.onclick = initGame;
+
+  // Oyun Döngüsü
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
