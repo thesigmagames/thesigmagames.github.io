@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Twist</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #07060c; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: pointer; }
+  #hud { position: fixed; top: 14px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 56px; font-weight: 800; text-shadow: 0 6px 24px rgba(0,0,0,0.8); color: #00d4ff; }
+  #best { opacity: .75; font-size: 14px; margin-top: 2px; }
+  #back { position: fixed; top: 16px; left: 14px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; }
+  #back:hover { opacity: 1; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.85); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(32px, 8vw, 52px); margin: 0 0 8px; letter-spacing: 3px; background: linear-gradient(90deg, #00d4ff, #ff3cac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .sub { opacity: .8; margin: 0 0 22px; line-height: 1.5; font-size: 16px; }
+  button { border: 0; border-radius: 14px; padding: 14px 36px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.95); }
+  .controls-hint { position: fixed; bottom: 20px; left: 0; right: 0; text-align: center; opacity: 0.5; font-size: 13px; pointer-events: none; }
+</style>
+</head>
+<body>
+  <a id="back" href="../">← Menü</a>
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA TWIST</h1>
+    <p class="sub">Tıkla veya Ekrana Dokun<br>Tüneli döndür · Platforma denk getir!</p>
+    <button id="go">BAŞLA</button>
+  </div>
+  <div class="controls-hint">Sol Tık / Dokunma: Sağa Döndür | Sağ Tık / Sol Ok: Sola Döndür</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+
+  const SAVE_KEY = "sigma-twist-best";
+  const TAU = Math.PI * 2;
+  const LANES = 8;
+  const LANE_ANGLE = TAU / LANES;
+  const PALETTE = ["#00d4ff", "#ff3cac", "#ffe14d", "#5dff8a", "#ff8a3c", "#b794ff"];
+
+  let W = 0, H = 0;
+  let state = "menu"; // "menu", "play", "dead"
+  let score = 0, best = 0;
+  let currentLane = 0, targetAngle = 0, currentAngle = 0;
+  let platforms = [], particles = [];
+  let speed = 4.2;
+  let bounceProgress = 0; // 0..1
+  let bounceSpeed = 0.035;
+  let ac = null, flash = 0;
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("Rekor: " + best) : "";
+
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function sound(freq, type = "sine", duration = 0.08, vol = 0.05) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function createPlatform(z, lane) {
+    return {
+      z,
+      lane,
+      color: PALETTE[Math.floor(z / 180) % PALETTE.length],
+      passed: false
+    };
+  }
+
+  function initGame() {
+    state = "play";
+    score = 0;
+    currentLane = 0;
+    targetAngle = 0;
+    currentAngle = 0;
+    bounceProgress = 0;
+    speed = 4.5;
+    bounceSpeed = 0.038;
+    flash = 0;
+    particles = [];
+    platforms = [];
+
+    // Başlangıç tünel yolları
+    let lastLane = 0;
+    for (let i = 0; i < 30; i++) {
+      const z = i * 110;
+      if (i < 3) {
+        platforms.push(createPlatform(z, 0));
+      } else {
+        // Rastgele komşu kulvara geçiş
+        const diff = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
+        lastLane = (lastLane + diff + LANES) % LANES;
+        platforms.push(createPlatform(z, lastLane));
+      }
+    }
+
+    scoreEl.textContent = "0";
+    overlay.classList.add("hide");
+    sound(520, "sine", 0.1, 0.06);
+  }
+
+  function rotateTrack(dir) {
+    if (state !== "play") return;
+    currentLane = (currentLane + dir + LANES) % LANES;
+    targetAngle = currentLane * LANE_ANGLE;
+    sound(320 + currentLane * 30, "triangle", 0.05, 0.04);
+  }
+
+  function die() {
+    if (state !== "play") return;
+    state = "dead";
+    flash = 1;
+    sound(120, "sawtooth", 0.3, 0.08);
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "Rekor: " + best;
+
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Puan: ${score}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+
+    // Patlama parçacıkları
+    for (let i = 0; i < 25; i++) {
+      particles.push({
+        x: W / 2, y: H * 0.72,
+        vx: (Math.random() - 0.5) * 12,
+        vy: (Math.random() - 0.8) * 10,
+        life: 1,
+        color: "#ff3cac"
+      });
+    }
+  }
+
+  function update() {
+    // Açı yumuşatma (Smooth rotation)
+    let diff = targetAngle - currentAngle;
+    while (diff < -Math.PI) diff += TAU;
+    while (diff > Math.PI) diff -= TAU;
+    currentAngle += diff * 0.25;
+
+    // Parçacık güncellemeleri
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.2;
+      p.life -= 0.025;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    if (flash > 0) flash -= 0.05;
+    if (state !== "play") return;
+
+    // Z hızı ve ilerleme
+    bounceProgress += bounceSpeed;
+    
+    // Platformları öne doğru kaydır
+    for (let p of platforms) {
+      p.z -= speed;
+    }
+
+    // Zıplama tamamlandı (Platforma iniş anı)
+    if (bounceProgress >= 1) {
+      bounceProgress = 0;
+      
+      // En öndeki platformu kontrol et
+      const targetPlat = platforms.find(p => !p.passed);
+      if (targetPlat) {
+        // Kulvar eşleşti mi? (Oyuncu platformun üzerinde mi?)
+        if (targetPlat.lane === currentLane) {
+          targetPlat.passed = true;
+          score++;
+          scoreEl.textContent = String(score);
+          sound(440 + (score % 8) * 50, "sine", 0.06, 0.05);
+
+          // Kıvılcım efekti
+          for (let i = 0; i < 8; i++) {
+            particles.push({
+              x: W / 2, y: H * 0.72,
+              vx: (Math.random() - 0.5) * 6,
+              vy: -Math.random() * 4 - 1,
+              life: 1,
+              color: targetPlat.color
+            });
+          }
+
+          // Zorluk artışı
+          speed = Math.min(8.5, 4.5 + score * 0.08);
+          bounceSpeed = Math.min(0.065, 0.038 + score * 0.0005);
+
+          // Yeni platform ekle
+          const lastZ = platforms[platforms.length - 1].z;
+          const lastLane = platforms[platforms.length - 1].lane;
+          const nextLane = (lastLane + (Math.floor(Math.random() * 3) - 1) + LANES) % LANES;
+          platforms.push(createPlatform(lastZ + 110, nextLane));
+
+        } else {
+          // Iskalandı -> Düşüş ve Oyun Bitti
+          die();
+        }
+      }
+    }
+
+    // Ekrandan çıkan platformları temizle
+    platforms = platforms.filter(p => p.z > -100);
+  }
+
+  function draw3DTile(angle, z, color, isCurrent) {
+    const cx = W / 2;
+    const cy = H * 0.45;
+    const fov = 300;
+    const scale = fov / (z + fov);
+
+    if (scale <= 0) return;
+
+    const baseR = Math.min(W, H) * 0.38;
+    const r = baseR * scale;
+    const a = angle - currentAngle - Math.PI / 2;
+
+    const widthAngle = LANE_ANGLE * 0.85;
+    const a1 = a - widthAngle / 2;
+    const a2 = a + widthAngle / 2;
+
+    const x1 = cx + Math.cos(a1) * r;
+    const y1 = cy + Math.sin(a1) * r * 0.45;
+    const x2 = cx + Math.cos(a2) * r;
+    const y2 = cy + Math.sin(a2) * r * 0.45;
+
+    const thickness = 14 * scale;
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.lineTo(x2, y2 + thickness);
+    ctx.lineTo(x1, y1 + thickness);
+    ctx.closePath();
+
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = isCurrent ? 15 : 0;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // İç çizgi / Parlama
+    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    ctx.lineWidth = 1.5 * scale;
+    ctx.stroke();
+  }
+
+  function draw() {
+    // Arka Plan
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, "#120a2a");
+    bg.addColorStop(1, "#05040a");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Tünel Derinlik Halkaları (Siber Izgara)
+    const cx = W / 2;
+    const cy = H * 0.45;
+    ctx.strokeStyle = "rgba(0, 212, 255, 0.08)";
+    ctx.lineWidth = 1;
+    for (let z = 50; z < 1000; z += 150) {
+      const scale = 300 / (z + 300);
+      const r = Math.min(W, H) * 0.38 * scale;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r, r * 0.45, 0, 0, TAU);
+      ctx.stroke();
+    }
+
+    // Platformları Derinliğe Göre Sırala (Uzaktan Yakına)
+    const sorted = platforms.slice().sort((a, b) => b.z - a.z);
+    sorted.forEach(p => {
+      const angle = p.lane * LANE_ANGLE;
+      draw3DTile(angle, p.z, p.color, p.lane === currentLane);
+    });
+
+    // Top Çizimi (Oyuncu)
+    if (state !== "menu") {
+      const ballR = 14;
+      const bx = cx;
+      // Parabolik Zıplama Eğrisi
+      const jumpY = Math.sin(bounceProgress * Math.PI) * 48;
+      const by = H * 0.72 - jumpY;
+
+      // Gölge
+      ctx.beginPath();
+      ctx.ellipse(bx, H * 0.73, 16 * (1 - jumpY * 0.01), 6 * (1 - jumpY * 0.01), 0, 0, TAU);
+      ctx.fillStyle = "rgba(0,0,0,0.4)";
+      ctx.fill();
+
+      // Parlayan Top
+      const grad = ctx.createRadialGradient(bx - 4, by - 4, 2, bx, by, ballR);
+      grad.addColorStop(0, "#ffffff");
+      grad.addColorStop(0.4, "#00d4ff");
+      grad.addColorStop(1, "#0055aa");
+
+      ctx.beginPath();
+      ctx.arc(bx, by, ballR, 0, TAU);
+      ctx.fillStyle = grad;
+      ctx.shadowColor = "#00d4ff";
+      ctx.shadowBlur = 18;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(1, 4 * p.life), 0, TAU);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    });
+
+    // Flaş Efekti
+    if (flash > 0) {
+      ctx.fillStyle = `rgba(255, 60, 172, ${Math.min(0.8, flash)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  // Kontrol Etkileşimleri
+  window.addEventListener("pointerdown", (e) => {
+    if (e.target.tagName === "BUTTON" || e.target.tagName === "A") return;
+    if (state === "play") {
+      // Ekranın sağ tarafına tıklandıysa sağa, sol tarafına tıklandıysa sola döndür
+      if (e.button === 2 || e.clientX < W / 2) {
+        rotateTrack(-1); // Sola
+      } else {
+        rotateTrack(1);  // Sağa
+      }
+    }
+  });
+
+  window.addEventListener("contextmenu", e => e.preventDefault());
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") rotateTrack(-1);
+    if (e.key === "ArrowRight" || e.key === "d" || e.key === "D" || e.key === " ") rotateTrack(1);
+  });
+
+  goBtn.onclick = initGame;
+
+  // Oyun Döngüsü
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
