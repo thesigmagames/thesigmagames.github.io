@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Stack</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #07060c; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: pointer; }
+  #hud { position: fixed; top: 14px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 56px; font-weight: 800; letter-spacing: 1px; text-shadow: 0 6px 24px #000; }
+  #best, #combo { opacity: .75; font-size: 14px; margin-top: 2px; }
+  #combo { color: #ffe14d; min-height: 18px; font-weight: 700; }
+  #back { position: fixed; top: 16px; left: 14px; z-index: 3; color: #fff; text-decoration: none; opacity: .75; font-weight: 700; font-size: 14px; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.78); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(32px, 8vw, 52px); margin: 0 0 8px; letter-spacing: 3px; }
+  .sub { opacity: .75; margin: 0 0 22px; line-height: 1.5; }
+  button { border: 0; border-radius: 14px; padding: 14px 32px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; }
+  button:active { transform: scale(.97); }
+</style>
+</head>
+<body>
+  <a id="back" href="tr/">← Menü</a>
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best"></div>
+    <div id="combo"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA STACK</h1>
+    <p class="sub">Tıkla / dokun / boşluk<br>Hizala · kesilme · kuleyi yükselt</p>
+    <button id="go">BAŞLA</button>
+  </div>
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+  const comboEl = document.getElementById("combo");
+  const SAVE = "sigma-stack-best";
+  const SIZE = 100, BH = 18, IX = 0.86, IY = 0.48;
+
+  let W = 0, H = 0, state = "menu", stack = [], moving = null, chops = [];
+  let particles = [], score = 0, best = 0, combo = 0, hue = 190, cam = 0, flash = 0;
+  let ac = null;
+
+  try { best = parseInt(localStorage.getItem(SAVE) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("Rekor " + best) : "";
+
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function beep(f, d, v) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "sine"; o.frequency.value = f; g.gain.value = v || 0.05;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + d);
+      o.stop(ac.currentTime + d);
+    } catch (e) {}
+  }
+  function hsl(h, l) { return "hsl(" + (h % 360) + ",82%," + l + "%)"; }
+  function iso(x, z, y) {
+    return {
+      x: W / 2 + (x - z) * IX,
+      y: H * 0.78 - cam + (x + z) * IY - y
+    };
+  }
+
+  function startGame() {
+    state = "play";
+    score = 0; combo = 0; hue = 190; cam = 0; flash = 0;
+    stack = [{ x: -SIZE / 2, z: -SIZE / 2, w: SIZE, d: SIZE, y: 0, hue }];
+    chops = []; particles = [];
+    spawnMoving();
+    overlay.classList.add("hide");
+    scoreEl.textContent = "0";
+    comboEl.textContent = "";
+    beep(520, 0.08, 0.04);
+  }
+
+  function spawnMoving() {
+    const top = stack[stack.length - 1];
+    const axis = stack.length % 2 === 1 ? "x" : "z";
+    const speed = Math.min(5.4, 2.15 + score * 0.055);
+    moving = {
+      x: top.x, z: top.z, w: top.w, d: top.d,
+      y: stack.length * BH, hue: hue + 12,
+      axis, dir: 1, speed, pos: axis === "x" ? -170 : -170
+    };
+    if (axis === "x") moving.x = moving.pos;
+    else moving.z = moving.pos;
+  }
+
+  function die() {
+    if (state !== "play") return;
+    state = "dead";
+    flash = 1;
+    beep(110, 0.28, 0.08);
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "Rekor " + best;
+    overlay.innerHTML = "<h1>OYUN BİTTİ</h1><p class='sub'>Kat " + score + (score >= best && score > 0 ? "<br>Yeni rekor!" : "") + "</p><button id='go2'>TEKRAR</button>";
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = startGame;
+  }
+
+  function place() {
+    if (state !== "play" || !moving) return;
+    const top = stack[stack.length - 1];
+    const m = moving;
+    let overlap, perfect = false;
+
+    if (m.axis === "x") {
+      const a = Math.max(top.x, m.x);
+      const b = Math.min(top.x + top.w, m.x + m.w);
+      overlap = b - a;
+      if (overlap <= 1.2) return die();
+      perfect = Math.abs(m.x - top.x) < 3;
+      if (perfect) {
+        m.x = top.x; m.w = top.w;
+      } else {
+        if (m.x < top.x) {
+          chops.push({ x: m.x, z: m.z, w: top.x - m.x, d: m.d, y: m.y, hue: m.hue, vx: -2.4, vy: 0, life: 1 });
+          m.x = top.x;
+        } else {
+          chops.push({ x: top.x + top.w, z: m.z, w: (m.x + m.w) - (top.x + top.w), d: m.d, y: m.y, hue: m.hue, vx: 2.4, vy: 0, life: 1 });
+        }
+        m.w = overlap;
+      }
+    } else {
+      const a = Math.max(top.z, m.z);
+      const b = Math.min(top.z + top.d, m.z + m.d);
+      overlap = b - a;
+      if (overlap <= 1.2) return die();
+      perfect = Math.abs(m.z - top.z) < 3;
+      if (perfect) {
+        m.z = top.z; m.d = top.d;
+      } else {
+        if (m.z < top.z) {
+          chops.push({ x: m.x, z: m.z, w: m.w, d: top.z - m.z, y: m.y, hue: m.hue, vx: 0, vy: 0, vz: -2.4, life: 1 });
+          m.z = top.z;
+        } else {
+          chops.push({ x: m.x, z: top.z + top.d, w: m.w, d: (m.z + m.d) - (top.z + top.d), y: m.y, hue: m.hue, vx: 0, vy: 0, vz: 2.4, life: 1 });
+        }
+        m.d = overlap;
+      }
+    }
+
+    if (perfect) {
+      combo++;
+      if (combo >= 8) {
+        const grow = 8;
+        if (m.w < SIZE) { m.x -= grow / 2; m.w = Math.min(SIZE, m.w + grow); }
+        if (m.d < SIZE) { m.z -= grow / 2; m.d = Math.min(SIZE, m.d + grow); }
+      }
+      comboEl.textContent = combo >= 2 ? ("MÜKEMMEL x" + combo) : "MÜKEMMEL";
+      beep(660 + combo * 40, 0.09, 0.05);
+      const p = iso(m.x + m.w / 2, m.z + m.d / 2, m.y + BH);
+      for (let i = 0; i < 12; i++) {
+        particles.push({ x: p.x, y: p.y, vx: (Math.random() - 0.5) * 6, vy: -Math.random() * 4 - 1, life: 1, color: hsl(m.hue, 65) });
+      }
+    } else {
+      combo = 0;
+      comboEl.textContent = "";
+      beep(320, 0.07, 0.04);
+    }
+
+    hue = m.hue;
+    stack.push({ x: m.x, z: m.z, w: m.w, d: m.d, y: m.y, hue: m.hue });
+    score = stack.length - 1;
+    scoreEl.textContent = String(score);
+    spawnMoving();
+  }
+
+  function drawBox(x, z, y, w, d, h, hue, alpha) {
+    const p = (xx, zz, yy) => iso(xx, zz, yy);
+    const t0 = p(x, z, y + h), t1 = p(x + w, z, y + h), t2 = p(x + w, z + d, y + h), t3 = p(x, z + d, y + h);
+    const b0 = p(x, z, y), b1 = p(x + w, z, y), b2 = p(x + w, z + d, y), b3 = p(x, z + d, y);
+    ctx.globalAlpha = alpha == null ? 1 : alpha;
+
+    ctx.beginPath();
+    ctx.moveTo(t3.x, t3.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(b3.x, b3.y);
+    ctx.closePath(); ctx.fillStyle = hsl(hue, 38); ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(b1.x, b1.y);
+    ctx.closePath(); ctx.fillStyle = hsl(hue, 28); ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
+    ctx.closePath(); ctx.fillStyle = hsl(hue, 58); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  function update(dt) {
+    const targetCam = Math.max(0, (stack.length - 4) * BH);
+    cam += (targetCam - cam) * 0.12 * dt;
+    if (flash > 0) flash -= 0.045 * dt;
+
+    chops.forEach(c => {
+      c.x += (c.vx || 0) * dt;
+      c.z += (c.vz || 0) * dt;
+      c.vy = (c.vy || 0) + 0.55 * dt;
+      c.y -= c.vy * dt;
+      c.life -= 0.018 * dt;
+    });
+    chops = chops.filter(c => c.life > 0 && c.y > -80);
+
+    particles.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 0.12 * dt; p.life -= 0.03 * dt; });
+    particles = particles.filter(p => p.life > 0);
+
+    if (state !== "play" || !moving) return;
+    moving.pos += moving.dir * moving.speed * dt;
+    if (moving.pos > 165 || moving.pos < -165) moving.dir *= -1;
+    if (moving.axis === "x") moving.x = moving.pos;
+    else moving.z = moving.pos;
+  }
+
+  function draw() {
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, "#160a28");
+    bg.addColorStop(1, "#05040a");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.strokeStyle = "rgba(255,255,255,.05)";
+    ctx.lineWidth = 1;
+    for (let i = -8; i <= 8; i++) {
+      const a = iso(i * 28, -220, 0), b = iso(i * 28, 220, 0);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+
+    stack.forEach(b => drawBox(b.x, b.z, b.y, b.w, b.d, BH, b.hue, 1));
+    chops.forEach(c => drawBox(c.x, c.z, c.y, c.w, c.d, BH, c.hue, Math.max(0, c.life)));
+    if (moving && state !== "menu") drawBox(moving.x, moving.z, moving.y, moving.w, moving.d, BH, moving.hue, 1);
+
+    particles.forEach(p => {
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    if (flash > 0) {
+      ctx.fillStyle = "rgba(255,40,70," + (flash * 0.35) + ")";
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(32, now - last) / 16.67;
+    last = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  function tap() {
+    if (state === "play") place();
+    else if (state === "menu") startGame();
+  }
+  canvas.addEventListener("pointerdown", e => { e.preventDefault(); tap(); });
+  addEventListener("keydown", e => {
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (state === "play") place(); else startGame(); }
+  });
+  goBtn.onclick = startGame;
+})();
+</script>
+</body>
+</html>
