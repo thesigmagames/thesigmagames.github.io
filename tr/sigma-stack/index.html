@@ -9,30 +9,31 @@
   html, body { margin: 0; height: 100%; overflow: hidden; background: #07060c; font-family: system-ui, sans-serif; color: #fff; }
   canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: pointer; }
   #hud { position: fixed; top: 14px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
-  #score { font-size: 56px; font-weight: 800; text-shadow: 0 6px 24px #000; }
-  #best, #combo { opacity: .75; font-size: 14px; margin-top: 2px; }
-  #combo { color: #ffe14d; min-height: 18px; font-weight: 700; }
-  #back { position: fixed; top: 16px; left: 14px; z-index: 3; color: #fff; text-decoration: none; opacity: .75; font-weight: 700; font-size: 14px; }
-  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.78); text-align: center; padding: 24px; z-index: 4; }
+  #score { font-size: 56px; font-weight: 800; text-shadow: 0 6px 24px rgba(0,0,0,0.8); color: #00d4ff; }
+  #best { opacity: .75; font-size: 14px; margin-top: 2px; }
+  #back { position: fixed; top: 16px; left: 14px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; }
+  #back:hover { opacity: 1; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.85); text-align: center; padding: 24px; z-index: 4; }
   #overlay.hide { display: none; }
-  h1 { font-size: clamp(32px, 8vw, 52px); margin: 0 0 8px; letter-spacing: 3px; }
-  .sub { opacity: .75; margin: 0 0 22px; line-height: 1.5; }
-  button { border: 0; border-radius: 14px; padding: 14px 32px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; }
+  h1 { font-size: clamp(32px, 8vw, 52px); margin: 0 0 8px; letter-spacing: 3px; background: linear-gradient(90deg, #00d4ff, #ff3cac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .sub { opacity: .8; margin: 0 0 22px; line-height: 1.5; font-size: 16px; }
+  button { border: 0; border-radius: 14px; padding: 14px 36px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.95); }
 </style>
 </head>
 <body>
-  <a id="back" href="../">← Geri Dön</a>
+  <a id="back" href="../">← Menü</a>
   <canvas id="c"></canvas>
   <div id="hud">
     <div id="score">0</div>
     <div id="best"></div>
-    <div id="combo"></div>
   </div>
   <div id="overlay">
     <h1>SIGMA STACK</h1>
-    <p class="sub">Tıkla / dokun / boşluk tuşu<br>Hizala · kesilme · kuleyi yükselt</p>
+    <p class="sub">Ekrana Dokun / Blokları Tam Zamanında Durdur<br>Kuleyi gökyüzüne kadar yükselt!</p>
     <button id="go">BAŞLA</button>
   </div>
+
 <script>
 (() => {
   const canvas = document.getElementById("c");
@@ -41,249 +42,342 @@
   const goBtn = document.getElementById("go");
   const scoreEl = document.getElementById("score");
   const bestEl = document.getElementById("best");
-  const comboEl = document.getElementById("combo");
-  const SAVE = "sigma-stack-best";
-  const SIZE = 100, BH = 22, LIMIT = 155;
 
-  let W = 0, H = 0, S = 1, state = "menu";
-  let stack = [], moving = null, chops = [], particles = [];
-  let score = 0, best = 0, combo = 0, hue = 190, camY = 0, flash = 0;
-  let busy = false, ac = null;
+  const SAVE_KEY = "sigma-stack-best";
+  const GW = 400, GH = 640;
+  const BLOCK_H = 26;
+  const PALETTE = ["#00d4ff", "#ff3cac", "#ffe14d", "#5dff8a", "#ff8a3c", "#b794ff"];
 
-  try { best = parseInt(localStorage.getItem(SAVE) || "0", 10) || 0; } catch (e) {}
-  bestEl.textContent = best ? ("Rekor " + best) : "";
+  let W = 0, H = 0, scale = 1, offsetX = 0, offsetY = 0;
+  let state = "menu"; // "menu", "play", "dead"
+  let score = 0, best = 0;
+
+  let stack = [];
+  let currentBlock = null;
+  let fallingDebris = [];
+  let particles = [];
+  let cameraY = 0;
+  let targetCameraY = 0;
+
+  let combo = 0;
+  let speed = 3.5;
+  let flash = 0, ac = null;
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("Rekor: " + best) : "";
 
   function resize() {
     W = innerWidth; H = innerHeight;
-    S = Math.min(W, H) / 560;
     const dpr = Math.min(2, devicePixelRatio || 1);
     canvas.width = W * dpr; canvas.height = H * dpr;
     canvas.style.width = W + "px"; canvas.style.height = H + "px";
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const scaleX = W / GW;
+    const scaleY = H / GH;
+    scale = Math.min(scaleX, scaleY);
+    offsetX = (W - GW * scale) / 2;
+    offsetY = (H - GH * scale) / 2;
+
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY);
   }
   addEventListener("resize", resize);
   resize();
 
-  function beep(f, d, v) {
+  function sound(freq, type = "sine", duration = 0.05, vol = 0.04) {
     try {
       if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
       if (ac.state === "suspended") ac.resume();
       const o = ac.createOscillator(), g = ac.createGain();
-      o.type = "sine"; o.frequency.value = f; g.gain.value = v || 0.05;
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
       o.connect(g); g.connect(ac.destination);
       o.start();
-      g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + d);
-      o.stop(ac.currentTime + d);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
     } catch (e) {}
   }
-  function hsl(h, l) { return "hsl(" + ((h % 360) + 360) % 360 + ",82%," + l + "%)"; }
 
-  function iso(x, z, y) {
-    return {
-      x: W / 2 + (x - z) * 0.86 * S,
-      y: H * 0.52 + (x + z) * 0.43 * S - (y - camY) * S
-    };
+  function getColor(index) {
+    return PALETTE[index % PALETTE.length];
   }
 
-  function startGame() {
+  function initGame() {
     state = "play";
-    score = 0; combo = 0; hue = 190; camY = BH; flash = 0; busy = false;
-    stack = [{ cx: 0, cz: 0, w: SIZE, d: SIZE, y: 0, hue }];
-    chops = []; particles = [];
-    spawnMoving();
-    overlay.classList.add("hide");
+    score = 0;
+    combo = 0;
+    speed = 3.5;
+    cameraY = 0;
+    targetCameraY = 0;
+    fallingDebris = [];
+    particles = [];
+    flash = 0;
+
+    // Taban Bloğu
+    const baseWidth = 220;
+    stack = [{
+      x: (GW - baseWidth) / 2,
+      y: GH - 140,
+      w: baseWidth,
+      color: getColor(0)
+    }];
+
+    spawnNextBlock();
+
     scoreEl.textContent = "0";
-    comboEl.textContent = "";
-    beep(520, 0.08, 0.04);
+    overlay.classList.add("hide");
+    sound(520, "sine", 0.1, 0.06);
   }
 
-  function spawnMoving() {
-    const top = stack[stack.length - 1];
-    const axis = stack.length % 2 === 1 ? "x" : "z";
-    moving = {
-      cx: top.cx, cz: top.cz, w: top.w, d: top.d,
-      y: stack.length * BH, hue: hue + 14,
-      axis, dir: 1, speed: Math.min(4.2, 1.7 + score * 0.035),
-      off: -LIMIT
+  function spawnNextBlock() {
+    const prev = stack[stack.length - 1];
+    const level = stack.length;
+    const dir = level % 2 === 0 ? 1 : -1;
+    const startX = dir === 1 ? -prev.w : GW;
+
+    currentBlock = {
+      x: startX,
+      y: prev.y - BLOCK_H,
+      w: prev.w,
+      dir: dir,
+      speed: Math.min(7.5, speed + level * 0.05),
+      color: getColor(level)
     };
-    applyOff();
-  }
 
-  function applyOff() {
-    const top = stack[stack.length - 1];
-    if (moving.axis === "x") { moving.cx = top.cx + moving.off; moving.cz = top.cz; }
-    else { moving.cz = top.cz + moving.off; moving.cx = top.cx; }
-  }
-
-  function die() {
-    if (state !== "play") return;
-    state = "dead";
-    moving = null;
-    flash = 1;
-    beep(110, 0.28, 0.08);
-    if (score > best) {
-      best = score;
-      try { localStorage.setItem(SAVE, String(best)); } catch (e) {}
+    // Kamera yüksekliğini güncelle
+    if (stack.length > 8) {
+      targetCameraY = (stack.length - 8) * BLOCK_H;
     }
-    bestEl.textContent = "Rekor " + best;
-    overlay.innerHTML = "<h1>OYUN BİTTİ</h1><p class='sub'>Kat " + score + (score >= best && score > 0 ? "<br>Yeni rekor!" : "") + "</p><button id='go2'>TEKRAR</button>";
-    overlay.classList.remove("hide");
-    document.getElementById("go2").onclick = startGame;
   }
 
-  function place() {
-    if (state !== "play" || !moving) return;
-    const top = stack[stack.length - 1];
-    const m = moving;
-    const axis = m.axis;
-    const delta = axis === "x" ? (m.cx - top.cx) : (m.cz - top.cz);
-    const size = axis === "x" ? top.w : top.d;
-    const abs = Math.abs(delta);
+  function placeBlock() {
+    if (state !== "play" || !currentBlock) return;
 
-    if (abs >= size - 0.8) { die(); return; }
+    const prev = stack[stack.length - 1];
+    const diff = currentBlock.x - prev.x;
+    const absDiff = Math.abs(diff);
 
-    const perfect = abs < 3.2;
-    if (perfect) {
-      m.cx = top.cx; m.cz = top.cz; m.w = top.w; m.d = top.d;
+    // Mükemmel Yerleştirme Toleransı (Combo)
+    if (absDiff < 4) {
+      currentBlock.x = prev.x;
       combo++;
-      if (combo >= 8) {
-        m.w = Math.min(SIZE, m.w + 8);
-        m.d = Math.min(SIZE, m.d + 8);
+      
+      // Her 5 mükemmel üst üste koymada blok hafifçe büyür
+      if (combo >= 5) {
+        currentBlock.w = Math.min(260, currentBlock.w + 12);
+        currentBlock.x = Math.max(10, currentBlock.x - 6);
       }
-      comboEl.textContent = combo >= 2 ? ("MÜKEMMEL x" + combo) : "MÜKEMMEL";
-      beep(620 + combo * 35, 0.09, 0.05);
-      const p = iso(m.cx, m.cz, m.y + BH);
-      for (let i = 0; i < 10; i++) {
-        particles.push({ x: p.x, y: p.y, vx: (Math.random() - 0.5) * 6, vy: -Math.random() * 4 - 1, life: 1, color: hsl(m.hue, 65) });
+
+      sound(400 + combo * 60, "triangle", 0.08, 0.06);
+
+      // Parlama Efekti Parçacıkları
+      for (let i = 0; i < 12; i++) {
+        particles.push({
+          x: currentBlock.x + Math.random() * currentBlock.w,
+          y: currentBlock.y + BLOCK_H / 2,
+          vx: (Math.random() - 0.5) * 6,
+          vy: (Math.random() - 0.5) * 4 - 2,
+          life: 0.9,
+          color: "#fff"
+        });
       }
     } else {
       combo = 0;
-      comboEl.textContent = "";
-      const left = axis === "x"
-        ? Math.max(top.cx - top.w / 2, m.cx - m.w / 2)
-        : Math.max(top.cz - top.d / 2, m.cz - m.d / 2);
-      const right = axis === "x"
-        ? Math.min(top.cx + top.w / 2, m.cx + m.w / 2)
-        : Math.min(top.cz + top.d / 2, m.cz + m.d / 2);
-      const newSize = right - left;
-      const newC = (left + right) / 2;
-      const sign = delta >= 0 ? 1 : -1;
-      const chopSize = abs;
-      const chopC = newC + sign * (newSize / 2 + chopSize / 2);
-      if (axis === "x") {
-        chops.push({ cx: chopC, cz: m.cz, w: chopSize, d: m.d, y: m.y, hue: m.hue, vx: sign * 2.2, vz: 0, vy: 0, life: 1 });
-        m.cx = newC; m.w = newSize; m.cz = top.cz; m.d = top.d;
-      } else {
-        chops.push({ cx: m.cx, cz: chopC, w: m.w, d: chopSize, y: m.y, hue: m.hue, vx: 0, vz: sign * 2.2, vy: 0, life: 1 });
-        m.cz = newC; m.d = newSize; m.cx = top.cx; m.w = top.w;
+      const newWidth = prev.w - absDiff;
+
+      if (newWidth <= 0) {
+        // Tamamen Kaçırdı -> Oyun Bitti
+        fallingDebris.push({
+          x: currentBlock.x,
+          y: currentBlock.y,
+          w: currentBlock.w,
+          vy: 0,
+          vx: currentBlock.dir * 3,
+          color: currentBlock.color
+        });
+        die();
+        return;
       }
-      beep(320, 0.07, 0.04);
+
+      // Parçalanan Kesiti Hesapla
+      let debrisX, debrisW;
+      if (diff > 0) {
+        // Sağdan Taşan Parça
+        currentBlock.w = newWidth;
+        debrisX = currentBlock.x + newWidth;
+        debrisW = absDiff;
+      } else {
+        // Soldan Taşan Parça
+        debrisX = currentBlock.x;
+        debrisW = absDiff;
+        currentBlock.x = prev.x;
+        currentBlock.w = newWidth;
+      }
+
+      // Düşen Parçayı Ekle
+      fallingDebris.push({
+        x: debrisX,
+        y: currentBlock.y,
+        w: debrisW,
+        vy: 0,
+        vx: (diff > 0 ? 1 : -1) * 2,
+        color: currentBlock.color
+      });
+
+      sound(260 + stack.length * 10, "sine", 0.05, 0.04);
     }
 
-    hue = m.hue;
-    stack.push({ cx: m.cx, cz: m.cz, w: m.w, d: m.d, y: m.y, hue: m.hue });
-    score = stack.length - 1;
-    scoreEl.textContent = String(score);
-    spawnMoving();
-  }
-
-  function drawBox(cx, cz, y, w, d, h, hue, alpha) {
-    if (w < 0.5 || d < 0.5) return;
-    const x = cx - w / 2, z = cz - d / 2;
-    const p = (xx, zz, yy) => iso(xx, zz, yy);
-    const t0 = p(x, z, y + h), t1 = p(x + w, z, y + h), t2 = p(x + w, z + d, y + h), t3 = p(x, z + d, y + h);
-    const b1 = p(x + w, z, y), b2 = p(x + w, z + d, y), b3 = p(x, z + d, y);
-    ctx.globalAlpha = alpha == null ? 1 : alpha;
-
-    ctx.beginPath();
-    ctx.moveTo(t3.x, t3.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(b3.x, b3.y);
-    ctx.closePath(); ctx.fillStyle = hsl(hue, 36); ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(b1.x, b1.y);
-    ctx.closePath(); ctx.fillStyle = hsl(hue, 26); ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
-    ctx.closePath(); ctx.fillStyle = hsl(hue, 58); ctx.fill();
-    ctx.globalAlpha = 1;
-  }
-
-  function update(dt) {
-    const follow = moving ? moving.y : (stack.length ? stack[stack.length - 1].y : 0);
-    camY += (follow - camY) * Math.min(1, 0.22 * dt);
-    if (flash > 0) flash -= 0.045 * dt;
-
-    chops.forEach(c => {
-      c.cx += (c.vx || 0) * dt;
-      c.cz += (c.vz || 0) * dt;
-      c.vy = (c.vy || 0) + 0.55 * dt;
-      c.y -= c.vy * dt;
-      c.life -= 0.02 * dt;
+    stack.push({
+      x: currentBlock.x,
+      y: currentBlock.y,
+      w: currentBlock.w,
+      color: currentBlock.color
     });
-    chops = chops.filter(c => c.life > 0 && c.y > camY - 200);
 
-    particles.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 0.12 * dt; p.life -= 0.03 * dt; });
+    score++;
+    scoreEl.textContent = String(score);
+    spawnNextBlock();
+  }
+
+  function die() {
+    state = "dead";
+    currentBlock = null;
+    flash = 1;
+    sound(120, "sawtooth", 0.3, 0.08);
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "Rekor: " + best;
+
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Yükseklik: ${score}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+  }
+
+  function update() {
+    // Kamera Yumuşatması
+    cameraY += (targetCameraY - cameraY) * 0.1;
+
+    // Flaş Efekti
+    if (flash > 0) flash -= 0.04;
+
+    // Düşen Parçalar
+    fallingDebris.forEach(d => {
+      d.vy += 0.4;
+      d.y += d.vy;
+      d.x += d.vx;
+    });
+    fallingDebris = fallingDebris.filter(d => d.y < GH + cameraY + 100);
+
+    // Parçacıklar
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      p.life -= 0.03;
+    });
     particles = particles.filter(p => p.life > 0);
 
-    if (state !== "play" || !moving) return;
-    moving.off += moving.dir * moving.speed * dt;
-    if (moving.off > LIMIT) { moving.off = LIMIT; moving.dir = -1; }
-    if (moving.off < -LIMIT) { moving.off = -LIMIT; moving.dir = 1; }
-    applyOff();
+    // Hareketli Blok
+    if (state === "play" && currentBlock) {
+      currentBlock.x += currentBlock.dir * currentBlock.speed;
+
+      // Duvarlardan Sektirme
+      if (currentBlock.dir === 1 && currentBlock.x + currentBlock.w >= GW + 40) {
+        currentBlock.dir = -1;
+      } else if (currentBlock.dir === -1 && currentBlock.x <= -40) {
+        currentBlock.dir = 1;
+      }
+    }
   }
 
   function draw() {
-    const bg = ctx.createLinearGradient(0, 0, 0, H);
-    bg.addColorStop(0, "#160a28");
+    // Arka Plan
+    const bg = ctx.createLinearGradient(0, 0, 0, GH);
+    bg.addColorStop(0, "#120a2a");
     bg.addColorStop(1, "#05040a");
     ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, GW, GH);
 
-    const from = Math.max(0, stack.length - 22);
-    for (let i = from; i < stack.length; i++) {
-      const b = stack[i];
-      drawBox(b.cx, b.cz, b.y, b.w, b.d, BH, b.hue, 1);
+    ctx.save();
+    ctx.translate(0, cameraY);
+
+    // Izgara Arka Plan Çizgileri
+    ctx.strokeStyle = "rgba(0, 212, 255, 0.03)";
+    ctx.lineWidth = 1;
+    for (let y = 0; y < GH + cameraY; y += 40) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(GW, y); ctx.stroke();
     }
-    chops.forEach(c => drawBox(c.cx, c.cz, c.y, c.w, c.d, BH, c.hue, Math.max(0, c.life)));
-    if (moving && state === "play") drawBox(moving.cx, moving.cz, moving.y, moving.w, moving.d, BH, moving.hue, 1);
 
-    particles.forEach(p => {
-      ctx.globalAlpha = Math.max(0, p.life);
-      ctx.fillStyle = p.color;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
+    // Üst Üste Yerleşmiş Bloklar
+    stack.forEach((b, i) => {
+      ctx.fillStyle = b.color;
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = i === stack.length - 1 ? 12 : 4;
+      ctx.beginPath();
+      ctx.roundRect(b.x, b.y, b.w, BLOCK_H - 2, 6);
+      ctx.fill();
+      ctx.shadowBlur = 0;
     });
-    ctx.globalAlpha = 1;
+
+    // Hareket Eden Blok
+    if (state === "play" && currentBlock) {
+      ctx.fillStyle = currentBlock.color;
+      ctx.shadowColor = currentBlock.color;
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.roundRect(currentBlock.x, currentBlock.y, currentBlock.w, BLOCK_H - 2, 6);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    // Düşen Parçalar
+    fallingDebris.forEach(d => {
+      ctx.fillStyle = d.color;
+      ctx.beginPath();
+      ctx.roundRect(d.x, d.y, d.w, BLOCK_H - 2, 4);
+      ctx.fill();
+    });
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.5, 3 * p.life), 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    });
+
+    ctx.restore();
+
+    // Flaş Efekti
     if (flash > 0) {
-      ctx.fillStyle = "rgba(255,40,70," + (flash * 0.35) + ")";
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = `rgba(255, 60, 172, ${Math.min(0.8, flash)})`;
+      ctx.fillRect(0, 0, GW, GH);
     }
   }
 
-  let last = performance.now();
-  function loop(now) {
-    const dt = Math.min(2.2, (now - last) / 16.67);
-    last = now;
-    update(dt);
+  function handleAction(e) {
+    if (e.target.tagName === "BUTTON" || e.target.tagName === "A") return;
+    if (state === "play") placeBlock();
+  }
+
+  window.addEventListener("mousedown", handleAction);
+  window.addEventListener("touchstart", handleAction, { passive: true });
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+      e.preventDefault();
+      handleAction(e);
+    }
+  });
+
+  goBtn.onclick = initGame;
+
+  function loop() {
+    update();
     draw();
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
-
-  function tap() {
-    if (busy) return;
-    if (state === "play") {
-      busy = true;
-      place();
-      setTimeout(() => { busy = false; }, 160);
-    } else if (state === "menu") startGame();
-  }
-  canvas.addEventListener("pointerdown", e => { e.preventDefault(); tap(); });
-  addEventListener("keydown", e => {
-    if (e.repeat) return;
-    if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (state === "play") tap(); else startGame(); }
-  });
-  goBtn.onclick = startGame;
 })();
 </script>
 </body>
