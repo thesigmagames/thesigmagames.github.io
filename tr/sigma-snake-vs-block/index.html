@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Snake vs Block</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #07060c; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: ew-resize; }
+  #hud { position: fixed; top: 14px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 56px; font-weight: 800; text-shadow: 0 6px 24px rgba(0,0,0,0.8); color: #00d4ff; }
+  #best { opacity: .75; font-size: 14px; margin-top: 2px; }
+  #back { position: fixed; top: 16px; left: 14px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; }
+  #back:hover { opacity: 1; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.85); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(30px, 7vw, 48px); margin: 0 0 8px; letter-spacing: 3px; background: linear-gradient(90deg, #00d4ff, #ff3cac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .sub { opacity: .8; margin: 0 0 22px; line-height: 1.5; font-size: 16px; }
+  button { border: 0; border-radius: 14px; padding: 14px 36px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.95); }
+</style>
+</head>
+<body>
+  <a id="back" href="../">← Menü</a>
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA SNAKE VS BLOCK</h1>
+    <p class="sub">Parmağını / Fareyi Sağa Sola Sürükle<br>Yemleri topla · Blokları kırıp geç!</p>
+    <button id="go">BAŞLA</button>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+
+  const SAVE_KEY = "sigma-snake-best";
+  const PALETTE = ["#00d4ff", "#ff3cac", "#ffe14d", "#5dff8a", "#ff8a3c", "#b794ff"];
+
+  const GW = 400, GH = 640;
+  const COLS = 5;
+  const BLOCK_SIZE = 72;
+  const BLOCK_MARGIN = 6;
+  const SNAKE_R = 9;
+
+  let W = 0, H = 0, scale = 1, offsetX = 0, offsetY = 0;
+  let state = "menu"; // "menu", "play", "dead"
+  let score = 0, best = 0;
+
+  let snakeX = GW / 2;
+  let targetX = GW / 2;
+  let snakeY = GH * 0.68;
+  let snakeLength = 5;
+  let trail = []; // Yılanın gövde halkaları için pozisyon geçmişi
+
+  let blocks = [];
+  let foods = [];
+  let particles = [];
+
+  let gameSpeed = 3.2;
+  let hitCooldown = 0;
+  let activeHitBlock = null;
+  let ac = null, flash = 0;
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("Rekor: " + best) : "";
+
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+
+    const scaleX = W / GW;
+    const scaleY = H / GH;
+    scale = Math.min(scaleX, scaleY);
+    offsetX = (W - GW * scale) / 2;
+    offsetY = (H - GH * scale) / 2;
+
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function sound(freq, type = "sine", duration = 0.05, vol = 0.04) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function initGame() {
+    state = "play";
+    score = 0;
+    snakeX = GW / 2;
+    targetX = GW / 2;
+    snakeLength = 5;
+    gameSpeed = 3.4;
+    flash = 0;
+    activeHitBlock = null;
+
+    trail = [];
+    for (let i = 0; i < 50; i++) {
+      trail.push({ x: snakeX, y: snakeY + i * 12 });
+    }
+
+    blocks = [];
+    foods = [];
+    particles = [];
+
+    // Başlangıç engelleri
+    spawnWave(-120);
+    spawnWave(-420);
+
+    scoreEl.textContent = "0";
+    overlay.classList.add("hide");
+    sound(520, "sine", 0.1, 0.06);
+  }
+
+  function spawnWave(startY) {
+    const isBlockRow = Math.random() < 0.65;
+
+    if (isBlockRow) {
+      // Blok Satırı (1 - 5 adet blok)
+      const count = Math.floor(Math.random() * 4) + 1;
+      const freeCols = [0, 1, 2, 3, 4];
+
+      for (let i = 0; i < count; i++) {
+        const cIdx = Math.floor(Math.random() * freeCols.length);
+        const col = freeCols.splice(cIdx, 1)[0];
+        
+        // Zorluk seviyesine göre blok HP
+        const minHp = Math.max(1, Math.floor(snakeLength * 0.3));
+        const maxHp = Math.floor(snakeLength * 1.5) + 3;
+        const hp = Math.floor(Math.random() * (maxHp - minHp + 1)) + minHp;
+
+        blocks.push({
+          x: 10 + col * (BLOCK_SIZE + BLOCK_MARGIN),
+          y: startY,
+          w: BLOCK_SIZE,
+          h: BLOCK_SIZE,
+          hp: hp,
+          color: PALETTE[Math.floor(Math.random() * PALETTE.length)]
+        });
+      }
+    } else {
+      // Yem Grubu (+1, +2, +5 vb.)
+      const foodCount = Math.floor(Math.random() * 3) + 1;
+      for (let i = 0; i < foodCount; i++) {
+        const col = Math.floor(Math.random() * COLS);
+        const val = Math.floor(Math.random() * 4) + 1;
+        foods.push({
+          x: 10 + col * (BLOCK_SIZE + BLOCK_MARGIN) + BLOCK_SIZE / 2,
+          y: startY + Math.random() * 40,
+          val: val
+        });
+      }
+    }
+  }
+
+  function die() {
+    state = "dead";
+    flash = 1;
+    sound(110, "sawtooth", 0.3, 0.08);
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "Rekor: " + best;
+
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Puan: ${score}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+  }
+
+  function update() {
+    // Parçacıklar
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      p.life -= 0.03;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    if (flash > 0) flash -= 0.04;
+    if (state !== "play") return;
+
+    // Yılan Kafa Hareket Yumuşatma
+    snakeX += (targetX - snakeX) * 0.22;
+    snakeX = Math.max(18, Math.min(GW - 18, snakeX));
+
+    // Ekran Akış Hızı (Bir bloka çarpıyorsa duraksar)
+    let currentSpeed = activeHitBlock ? 0 : gameSpeed;
+
+    // İz/Gövde Takip Güncellemesi
+    trail.unshift({ x: snakeX, y: snakeY });
+    if (trail.length > snakeLength * 8) {
+      trail.pop();
+    }
+
+    // Blokları ve Yemleri Aşağı Kaydır
+    blocks.forEach(b => b.y += currentSpeed);
+    foods.forEach(f => f.y += currentSpeed);
+
+    // Yeni Dalga Ekleme
+    let minY = 0;
+    blocks.concat(foods).forEach(o => { if (o.y < minY) minY = o.y; });
+    if (minY > -180) {
+      spawnWave(-320);
+    }
+
+    // Yem Çarpışma Kontrolü
+    foods.forEach((f, idx) => {
+      const dist = Math.hypot(snakeX - f.x, snakeY - f.y);
+      if (dist < SNAKE_R + 14) {
+        snakeLength += f.val;
+        sound(600 + f.val * 80, "sine", 0.06, 0.05);
+
+        for (let i = 0; i < 8; i++) {
+          particles.push({
+            x: f.x, y: f.y,
+            vx: (Math.random() - 0.5) * 5,
+            vy: (Math.random() - 0.5) * 5,
+            life: 1, color: "#ffe14d"
+          });
+        }
+        foods.splice(idx, 1);
+      }
+    });
+
+    // Blok Çarpışma Kontrolü
+    activeHitBlock = null;
+    blocks.forEach((b, idx) => {
+      if (
+        snakeX + SNAKE_R > b.x &&
+        snakeX - SNAKE_R < b.x + b.w &&
+        snakeY - SNAKE_R < b.y + b.h &&
+        snakeY + SNAKE_R > b.y
+      ) {
+        activeHitBlock = b;
+
+        // Vuruş Zamanlaması (Her tick'te 1 HP düşür)
+        hitCooldown++;
+        if (hitCooldown >= 4) {
+          hitCooldown = 0;
+          b.hp--;
+          snakeLength--;
+          score++;
+          scoreEl.textContent = String(score);
+          sound(280 + Math.min(400, score * 10), "triangle", 0.03, 0.04);
+
+          // Vuruş Parçacığı
+          for (let i = 0; i < 5; i++) {
+            particles.push({
+              x: snakeX, y: b.y + b.h,
+              vx: (Math.random() - 0.5) * 6,
+              vy: Math.random() * 4 + 1,
+              life: 0.8, color: b.color
+            });
+          }
+
+          // Yılanın canı bitti mi?
+          if (snakeLength <= 0) {
+            die();
+            return;
+          }
+        }
+      }
+    });
+
+    // Kırılan blokları sil
+    blocks = blocks.filter(b => b.hp > 0);
+
+    // Ekrandan çıkan objeleri temizle
+    blocks = blocks.filter(b => b.y < GH + 100);
+    foods = foods.filter(f => f.y < GH + 100);
+
+    // Zamanla hafif hızlanma
+    gameSpeed = Math.min(6.5, 3.4 + score * 0.015);
+  }
+
+  function draw() {
+    // Arka Plan Gradient
+    const bg = ctx.createLinearGradient(0, 0, 0, GH);
+    bg.addColorStop(0, "#120a2a");
+    bg.addColorStop(1, "#05040a");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, GW, GH);
+
+    // Arka Plan Izgara Yolları
+    ctx.strokeStyle = "rgba(0, 212, 255, 0.05)";
+    ctx.lineWidth = 1;
+    for (let c = 1; c < COLS; c++) {
+      const x = 10 + c * (BLOCK_SIZE + BLOCK_MARGIN) - BLOCK_MARGIN / 2;
+      ctx.beginPath();
+      ctx.moveTo(x, 0); ctx.lineTo(x, GH);
+      ctx.stroke();
+    }
+
+    // Yemleri Çiz (+1, +5 vb.)
+    foods.forEach(f => {
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 10, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffe14d";
+      ctx.shadowColor = "#ffe14d";
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = "#07060c";
+      ctx.font = "800 12px system-ui";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("+" + f.val, f.x, f.y);
+    });
+
+    // Blokları Çiz
+    blocks.forEach(b => {
+      ctx.fillStyle = b.color;
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.roundRect(b.x, b.y, b.w, b.h, 12);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = "#07060c";
+      ctx.font = "800 22px system-ui";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(b.hp), b.x + b.w / 2, b.y + b.h / 2);
+    });
+
+    // Yılan Gövdesini Çiz
+    if (state !== "menu") {
+      for (let i = 0; i < snakeLength; i++) {
+        const idx = Math.min(i * 7, trail.length - 1);
+        const pos = trail[idx] || { x: snakeX, y: snakeY + i * 12 };
+
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, SNAKE_R, 0, Math.PI * 2);
+        
+        if (i === 0) {
+          // Kafa (Parlayan Turkuaz)
+          ctx.fillStyle = "#00d4ff";
+          ctx.shadowColor = "#00d4ff";
+          ctx.shadowBlur = 14;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // Yılanın üzerindeki sayı
+          ctx.fillStyle = "#fff";
+          ctx.font = "700 13px system-ui";
+          ctx.textAlign = "center";
+          ctx.fillText(String(snakeLength), pos.x, pos.y - 16);
+        } else {
+          // Gövde Halkaları
+          ctx.fillStyle = "rgba(0, 212, 255, " + Math.max(0.3, 1 - i / snakeLength) + ")";
+          ctx.fill();
+        }
+      }
+    }
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.5, 3 * p.life), 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    });
+
+    // Flaş Efekti
+    if (flash > 0) {
+      ctx.fillStyle = `rgba(255, 60, 172, ${Math.min(0.8, flash)})`;
+      ctx.fillRect(0, 0, GW, GH);
+    }
+  }
+
+  // Kontrol Etkileşimleri (Parak / Fare Sürükleme)
+  function handleMove(e) {
+    if (state !== "play") return;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const x = (clientX - rect.left - offsetX) / scale;
+    targetX = x;
+  }
+
+  window.addEventListener("mousemove", handleMove);
+  window.addEventListener("touchmove", handleMove, { passive: true });
+
+  goBtn.onclick = initGame;
+
+  // Oyun Döngüsü
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
