@@ -47,7 +47,7 @@
 
   let W = 0, H = 0, S = 1, state = "menu";
   let stack = [], moving = null, chops = [], particles = [];
-  let score = 0, best = 0, combo = 0, hue = 190, cam = 0, flash = 0;
+  let score = 0, best = 0, combo = 0, hue = 190, camY = 0, flash = 0;
   let busy = false, ac = null;
 
   try { best = parseInt(localStorage.getItem(SAVE) || "0", 10) || 0; } catch (e) {}
@@ -77,16 +77,17 @@
     } catch (e) {}
   }
   function hsl(h, l) { return "hsl(" + ((h % 360) + 360) % 360 + ",82%," + l + "%)"; }
+
   function iso(x, z, y) {
     return {
       x: W / 2 + (x - z) * 0.86 * S,
-      y: H * 0.78 + cam * S + (x + z) * 0.43 * S - y * S
+      y: H * 0.52 + (x + z) * 0.43 * S - (y - camY) * S
     };
   }
 
   function startGame() {
     state = "play";
-    score = 0; combo = 0; hue = 190; cam = 0; flash = 0; busy = false;
+    score = 0; combo = 0; hue = 190; camY = BH; flash = 0; busy = false;
     stack = [{ cx: 0, cz: 0, w: SIZE, d: SIZE, y: 0, hue }];
     chops = []; particles = [];
     spawnMoving();
@@ -209,8 +210,8 @@
   }
 
   function update(dt) {
-    const targetCam = Math.max(0, (stack.length - 5) * BH);
-    cam += (targetCam - cam) * 0.14 * dt;
+    const follow = moving ? moving.y : (stack.length ? stack[stack.length - 1].y : 0);
+    camY += (follow - camY) * Math.min(1, 0.22 * dt);
     if (flash > 0) flash -= 0.045 * dt;
 
     chops.forEach(c => {
@@ -220,7 +221,7 @@
       c.y -= c.vy * dt;
       c.life -= 0.02 * dt;
     });
-    chops = chops.filter(c => c.life > 0 && c.y > -120);
+    chops = chops.filter(c => c.life > 0 && c.y > camY - 200);
 
     particles.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 0.12 * dt; p.life -= 0.03 * dt; });
     particles = particles.filter(p => p.life > 0);
