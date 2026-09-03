@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Helix</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #07060c; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  #hud { position: fixed; top: 14px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 56px; font-weight: 800; text-shadow: 0 6px 24px #000; }
+  #best { opacity: .7; font-size: 14px; margin-top: 2px; }
+  #back { position: fixed; top: 16px; left: 14px; z-index: 3; color: #fff; text-decoration: none; opacity: .75; font-weight: 700; font-size: 14px; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.78); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(32px, 8vw, 52px); margin: 0 0 8px; letter-spacing: 3px; }
+  .sub { opacity: .75; margin: 0 0 22px; line-height: 1.5; }
+  button { border: 0; border-radius: 14px; padding: 14px 32px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.96); }
+</style>
+</head>
+<body>
+  <a id="back" href="../">← Menü</a>
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA HELIX</h1>
+    <p class="sub">Sürükle veya ← →<br>Delikten düş · Siyaha değme</p>
+    <button id="go">BAŞLA</button>
+  </div>
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+  const SAVE = "sigma-helix-best";
+  const TAU = Math.PI * 2;
+  const N = 8;
+  const SLICE = TAU / N;
+  const GAP = 86;
+  const R = 14;
+  const GRAVITY = 0.62;
+  const BOUNCE = -11.4;
+  const PAL = ["#00d4ff", "#ff3cac", "#ffe14d", "#5dff8a", "#ff8a3c", "#b794ff"];
+
+  let W = 0, H = 0, state = "menu", rot = 0, rotV = 0;
+  let ballY = 0, ballVY = 0, camY = 0, score = 0, best = 0;
+  let floors = [], particles = [], squash = 1, flash = 0;
+  let dragging = false, lastX = 0, keys = {}, ac = null;
+
+  try { best = parseInt(localStorage.getItem(SAVE) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("Rekor " + best) : "";
+
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function wrap(a) { a %= TAU; return a < 0 ? a + TAU : a; }
+  function mix(hex, s) {
+    const n = parseInt(hex.slice(1), 16);
+    const c = v => Math.max(0, Math.min(255, Math.round(v * s)));
+    return "rgb(" + c((n >> 16) & 255) + "," + c((n >> 8) & 255) + "," + c(n & 255) + ")";
+  }
+  function beep(f, d, v) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = "sine"; o.frequency.value = f; g.gain.value = v || 0.05;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + d);
+      o.stop(ac.currentTime + d);
+    } catch (e) {}
+  }
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function makeFloor(level) {
+    const types = Array(N).fill("safe");
+    if (level === 0) {
+      types[0] = "gap"; types[1] = "gap";
+    } else {
+      const nGap = level < 5 ? 1 : 2;
+      const nDead = level < 4 ? 0 : level < 10 ? 1 : level < 18 ? 2 : 3;
+      const idx = shuffle([...Array(N).keys()]);
+      let k = 0;
+      for (let i = 0; i < nGap; i++) types[idx[k++]] = "gap";
+      for (let i = 0; i < nDead && k < N - 1; i++) types[idx[k++]] = "dead";
+      if (!types.includes("safe")) types[idx[N - 1]] = "safe";
+    }
+    return {
+      y: level * GAP,
+      level,
+      segs: types.map((type, i) => ({ a0: i * SLICE, a1: (i + 1) * SLICE, type }))
+    };
+  }
+
+  function typeAt(floor) {
+    const local = wrap(Math.PI / 2 - rot);
+    for (const s of floor.segs) {
+      if (local >= s.a0 && local < s.a1) return s.type;
+    }
+    return "gap";
+  }
+
+  function startGame() {
+    state = "play";
+    ballY = -40; ballVY = 0; camY = -80;
+    rot = 0; rotV = 0; score = 0; squash = 1; flash = 0;
+    particles = []; floors = [];
+    for (let i = 0; i < 28; i++) floors.push(makeFloor(i));
+    overlay.classList.add("hide");
+    scoreEl.textContent = "0";
+    beep(520, 0.08, 0.04);
+  }
+
+  function die() {
+    if (state !== "play") return;
+    state = "dead";
+    flash = 1;
+    beep(110, 0.28, 0.08);
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "Rekor " + best;
+    overlay.innerHTML = "<h1>OYUN BİTTİ</h1><p class='sub'>Kat " + score + (score >= best && score > 0 ? "<br>Yeni rekor!" : "") + "</p><button id='go2'>TEKRAR</button>";
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = startGame;
+    const p = world(ballY);
+    for (let i = 0; i < 20; i++) {
+      particles.push({ x: p.cx, y: p.cy + p.ry, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.8) * 7, life: 1, color: "#ff4d6d" });
+    }
+  }
+
+  function world(y) {
+    const dy = y - camY;
+    const scale = Math.max(0.48, 1.05 - dy * 0.00042);
+    const rx = Math.min(W * 0.38, 205) * scale;
+    return { cx: W / 2, cy: H * 0.40 + dy * 0.92, rx, ry: rx * 0.33, scale };
+  }
+
+  function drawSeg(a0, a1, p, thick, color, dead) {
+    const inner = 0.62;
+    ctx.beginPath();
+    for (let a = a0; a <= a1; a += 0.05) ctx.lineTo(p.cx + Math.cos(a) * p.rx, p.cy + Math.sin(a) * p.ry);
+    for (let a = a1; a >= a0; a -= 0.05) ctx.lineTo(p.cx + Math.cos(a) * p.rx, p.cy + Math.sin(a) * p.ry + thick);
+    ctx.closePath();
+    ctx.fillStyle = mix(color, dead ? 0.3 : 0.7);
+    ctx.fill();
+    ctx.beginPath();
+    for (let a = a0; a <= a1; a += 0.05) ctx.lineTo(p.cx + Math.cos(a) * p.rx, p.cy + Math.sin(a) * p.ry);
+    for (let a = a1; a >= a0; a -= 0.05) ctx.lineTo(p.cx + Math.cos(a) * p.rx * inner, p.cy + Math.sin(a) * p.ry * inner);
+    ctx.closePath();
+    ctx.fillStyle = dead ? "#16161e" : color;
+    ctx.fill();
+    if (dead) { ctx.strokeStyle = "#ff3355"; ctx.lineWidth = 2; ctx.stroke(); }
+  }
+
+  function update(dt) {
+    if (keys.ArrowLeft || keys.a || keys.A) rot -= 0.09 * dt;
+    if (keys.ArrowRight || keys.d || keys.D) rot += 0.09 * dt;
+    if (!dragging) { rot += rotV * dt; rotV *= Math.pow(0.86, dt); }
+
+    particles.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 0.14 * dt; p.life -= 0.03 * dt; });
+    particles = particles.filter(p => p.life > 0);
+    squash += (1 - squash) * 0.2 * dt;
+    if (flash > 0) flash -= 0.045 * dt;
+    if (state !== "play") return;
+
+    ballVY += GRAVITY * dt;
+    if (ballVY > 16) ballVY = 16;
+    ballY += ballVY * dt;
+
+    while (floors.length < Math.floor(ballY / GAP) + 24) floors.push(makeFloor(floors.length));
+
+    const by = ballY + R;
+    for (const f of floors) {
+      if (ballVY < 0) continue;
+      if (by >= f.y && by <= f.y + Math.max(16, ballVY + 5)) {
+        const t = typeAt(f);
+        if (t === "dead") { die(); return; }
+        if (t === "safe") {
+          ballY = f.y - R;
+          ballVY = BOUNCE;
+          squash = 1.35;
+          const p = world(f.y);
+          const col = PAL[f.level % PAL.length];
+          for (let i = 0; i < 7; i++) {
+            particles.push({ x: p.cx, y: p.cy + p.ry, vx: (Math.random() - 0.5) * 4, vy: -Math.random() * 3 - 1, life: 1, color: col });
+          }
+          beep(360 + (f.level % 8) * 40, 0.055, 0.03);
+        }
+      }
+    }
+
+    const s = Math.max(0, Math.floor(ballY / GAP));
+    if (s > score) { score = s; scoreEl.textContent = String(score); }
+    camY += (ballY - 70 - camY) * 0.16 * dt;
+  }
+
+  function draw() {
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, "#160a28");
+    bg.addColorStop(1, "#05040a");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    const vis = floors.filter(f => {
+      const dy = f.y - camY;
+      return dy > -140 && dy < 820;
+    }).sort((a, b) => b.y - a.y);
+
+    vis.forEach(f => {
+      const p = world(f.y);
+      const thick = 15 * p.scale;
+      const col = PAL[f.level % PAL.length];
+      const order = f.segs.slice().sort((a, b) =>
+        Math.sin((a.a0 + a.a1) / 2 + rot) - Math.sin((b.a0 + b.a1) / 2 + rot)
+      );
+      order.forEach(s => {
+        if (s.type === "gap") return;
+        const mid = (s.a0 + s.a1) / 2 + rot;
+        const shade = 0.55 + 0.45 * (Math.sin(mid) * 0.5 + 0.5);
+        drawSeg(s.a0 + rot, s.a1 + rot, p, thick, s.type === "dead" ? "#14141c" : mix(col, shade), s.type === "dead");
+      });
+    });
+
+    if (state !== "menu") {
+      const p = world(ballY + R);
+      const bx = p.cx, by = p.cy + p.ry - 2;
+
+      // Gölge
+      ctx.beginPath();
+      ctx.ellipse(bx, by + 10 * p.scale, 16 * p.scale, 6 * p.scale, 0, 0, TAU);
+      ctx.fillStyle = "rgba(0,0,0,.35)";
+      ctx.fill();
+
+      // Top Çizimi (Esnetme / Basılma Efekti)
+      ctx.save();
+      ctx.translate(bx, by - R * p.scale);
+      const sy = squash;
+      const sx = 1 / Math.sqrt(squash);
+      ctx.scale(p.scale * sx, p.scale * sy);
+
+      const rad = R;
+      const ballGrad = ctx.createRadialGradient(-rad * 0.3, -rad * 0.3, rad * 0.1, 0, 0, rad);
+      ballGrad.addColorStop(0, "#ffffff");
+      ballGrad.addColorStop(0.3, "#ff3cac");
+      ballGrad.addColorStop(1, "#990055");
+
+      ctx.beginPath();
+      ctx.arc(0, 0, rad, 0, TAU);
+      ctx.fillStyle = ballGrad;
+      ctx.shadowColor = "#ff3cac";
+      ctx.shadowBlur = 12 * p.scale;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.5, 3 * p.life), 0, TAU);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    });
+
+    // Flaş/Ölüm Efekti
+    if (flash > 0) {
+      ctx.fillStyle = "rgba(255, 60, 172, " + Math.min(1, flash * 0.6) + ")";
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  // Kontrol Olayları (Dokunmatik, Fare, Klavye)
+  function getX(e) {
+    return e.touches ? e.touches[0].clientX : e.clientX;
+  }
+
+  function onDown(e) {
+    dragging = true;
+    lastX = getX(e);
+    rotV = 0;
+  }
+
+  function onMove(e) {
+    if (!dragging) return;
+    const x = getX(e);
+    const dx = x - lastX;
+    const sens = 0.0075;
+    rot += dx * sens;
+    rotV = dx * sens;
+    lastX = x;
+  }
+
+  function onUp() {
+    dragging = false;
+  }
+
+  window.addEventListener("mousedown", onDown);
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+
+  window.addEventListener("touchstart", onDown, { passive: true });
+  window.addEventListener("touchmove", onMove, { passive: true });
+  window.addEventListener("touchend", onUp);
+  window.addEventListener("touchcancel", onUp);
+
+  window.addEventListener("keydown", e => { keys[e.key] = true; });
+  window.addEventListener("keyup", e => { keys[e.key] = false; });
+
+  goBtn.onclick = startGame;
+
+  // Ana Oyun Döngüsü
+  let lastTime = performance.now();
+  function loop(now) {
+    const dt = Math.min(3, (now - lastTime) / (1000 / 60));
+    lastTime = now;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
