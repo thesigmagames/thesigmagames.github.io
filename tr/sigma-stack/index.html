@@ -9,7 +9,7 @@
   html, body { margin: 0; height: 100%; overflow: hidden; background: #07060c; font-family: system-ui, sans-serif; color: #fff; }
   canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: pointer; }
   #hud { position: fixed; top: 14px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
-  #score { font-size: 56px; font-weight: 800; letter-spacing: 1px; text-shadow: 0 6px 24px #000; }
+  #score { font-size: 56px; font-weight: 800; text-shadow: 0 6px 24px #000; }
   #best, #combo { opacity: .75; font-size: 14px; margin-top: 2px; }
   #combo { color: #ffe14d; min-height: 18px; font-weight: 700; }
   #back { position: fixed; top: 16px; left: 14px; z-index: 3; color: #fff; text-decoration: none; opacity: .75; font-weight: 700; font-size: 14px; }
@@ -18,7 +18,6 @@
   h1 { font-size: clamp(32px, 8vw, 52px); margin: 0 0 8px; letter-spacing: 3px; }
   .sub { opacity: .75; margin: 0 0 22px; line-height: 1.5; }
   button { border: 0; border-radius: 14px; padding: 14px 32px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; }
-  button:active { transform: scale(.97); }
 </style>
 </head>
 <body>
@@ -44,17 +43,19 @@
   const bestEl = document.getElementById("best");
   const comboEl = document.getElementById("combo");
   const SAVE = "sigma-stack-best";
-  const SIZE = 100, BH = 18, IX = 0.86, IY = 0.48;
+  const SIZE = 100, BH = 22, LIMIT = 155;
 
-  let W = 0, H = 0, state = "menu", stack = [], moving = null, chops = [];
-  let particles = [], score = 0, best = 0, combo = 0, hue = 190, cam = 0, flash = 0;
-  let ac = null;
+  let W = 0, H = 0, S = 1, state = "menu";
+  let stack = [], moving = null, chops = [], particles = [];
+  let score = 0, best = 0, combo = 0, hue = 190, cam = 0, flash = 0;
+  let busy = false, ac = null;
 
   try { best = parseInt(localStorage.getItem(SAVE) || "0", 10) || 0; } catch (e) {}
   bestEl.textContent = best ? ("Rekor " + best) : "";
 
   function resize() {
     W = innerWidth; H = innerHeight;
+    S = Math.min(W, H) / 560;
     const dpr = Math.min(2, devicePixelRatio || 1);
     canvas.width = W * dpr; canvas.height = H * dpr;
     canvas.style.width = W + "px"; canvas.style.height = H + "px";
@@ -75,18 +76,18 @@
       o.stop(ac.currentTime + d);
     } catch (e) {}
   }
-  function hsl(h, l) { return "hsl(" + (h % 360) + ",82%," + l + "%)"; }
+  function hsl(h, l) { return "hsl(" + ((h % 360) + 360) % 360 + ",82%," + l + "%)"; }
   function iso(x, z, y) {
     return {
-      x: W / 2 + (x - z) * IX,
-      y: H * 0.78 - cam + (x + z) * IY - y
+      x: W / 2 + (x - z) * 0.86 * S,
+      y: H * 0.78 - cam * S + (x + z) * 0.43 * S - y * S
     };
   }
 
   function startGame() {
     state = "play";
-    score = 0; combo = 0; hue = 190; cam = 0; flash = 0;
-    stack = [{ x: -SIZE / 2, z: -SIZE / 2, w: SIZE, d: SIZE, y: 0, hue }];
+    score = 0; combo = 0; hue = 190; cam = 0; flash = 0; busy = false;
+    stack = [{ cx: 0, cz: 0, w: SIZE, d: SIZE, y: 0, hue }];
     chops = []; particles = [];
     spawnMoving();
     overlay.classList.add("hide");
@@ -98,19 +99,25 @@
   function spawnMoving() {
     const top = stack[stack.length - 1];
     const axis = stack.length % 2 === 1 ? "x" : "z";
-    const speed = Math.min(5.4, 2.15 + score * 0.055);
     moving = {
-      x: top.x, z: top.z, w: top.w, d: top.d,
-      y: stack.length * BH, hue: hue + 12,
-      axis, dir: 1, speed, pos: axis === "x" ? -170 : -170
+      cx: top.cx, cz: top.cz, w: top.w, d: top.d,
+      y: stack.length * BH, hue: hue + 14,
+      axis, dir: 1, speed: Math.min(4.2, 1.7 + score * 0.035),
+      off: -LIMIT
     };
-    if (axis === "x") moving.x = moving.pos;
-    else moving.z = moving.pos;
+    applyOff();
+  }
+
+  function applyOff() {
+    const top = stack[stack.length - 1];
+    if (moving.axis === "x") { moving.cx = top.cx + moving.off; moving.cz = top.cz; }
+    else { moving.cz = top.cz + moving.off; moving.cx = top.cx; }
   }
 
   function die() {
     if (state !== "play") return;
     state = "dead";
+    moving = null;
     flash = 1;
     beep(110, 0.28, 0.08);
     if (score > best) {
@@ -127,83 +134,73 @@
     if (state !== "play" || !moving) return;
     const top = stack[stack.length - 1];
     const m = moving;
-    let overlap, perfect = false;
+    const axis = m.axis;
+    const delta = axis === "x" ? (m.cx - top.cx) : (m.cz - top.cz);
+    const size = axis === "x" ? top.w : top.d;
+    const abs = Math.abs(delta);
 
-    if (m.axis === "x") {
-      const a = Math.max(top.x, m.x);
-      const b = Math.min(top.x + top.w, m.x + m.w);
-      overlap = b - a;
-      if (overlap <= 1.2) return die();
-      perfect = Math.abs(m.x - top.x) < 3;
-      if (perfect) {
-        m.x = top.x; m.w = top.w;
-      } else {
-        if (m.x < top.x) {
-          chops.push({ x: m.x, z: m.z, w: top.x - m.x, d: m.d, y: m.y, hue: m.hue, vx: -2.4, vy: 0, life: 1 });
-          m.x = top.x;
-        } else {
-          chops.push({ x: top.x + top.w, z: m.z, w: (m.x + m.w) - (top.x + top.w), d: m.d, y: m.y, hue: m.hue, vx: 2.4, vy: 0, life: 1 });
-        }
-        m.w = overlap;
-      }
-    } else {
-      const a = Math.max(top.z, m.z);
-      const b = Math.min(top.z + top.d, m.z + m.d);
-      overlap = b - a;
-      if (overlap <= 1.2) return die();
-      perfect = Math.abs(m.z - top.z) < 3;
-      if (perfect) {
-        m.z = top.z; m.d = top.d;
-      } else {
-        if (m.z < top.z) {
-          chops.push({ x: m.x, z: m.z, w: m.w, d: top.z - m.z, y: m.y, hue: m.hue, vx: 0, vy: 0, vz: -2.4, life: 1 });
-          m.z = top.z;
-        } else {
-          chops.push({ x: m.x, z: top.z + top.d, w: m.w, d: (m.z + m.d) - (top.z + top.d), y: m.y, hue: m.hue, vx: 0, vy: 0, vz: 2.4, life: 1 });
-        }
-        m.d = overlap;
-      }
-    }
+    if (abs >= size - 0.8) { die(); return; }
 
+    const perfect = abs < 3.2;
     if (perfect) {
+      m.cx = top.cx; m.cz = top.cz; m.w = top.w; m.d = top.d;
       combo++;
       if (combo >= 8) {
-        const grow = 8;
-        if (m.w < SIZE) { m.x -= grow / 2; m.w = Math.min(SIZE, m.w + grow); }
-        if (m.d < SIZE) { m.z -= grow / 2; m.d = Math.min(SIZE, m.d + grow); }
+        m.w = Math.min(SIZE, m.w + 8);
+        m.d = Math.min(SIZE, m.d + 8);
       }
       comboEl.textContent = combo >= 2 ? ("MÜKEMMEL x" + combo) : "MÜKEMMEL";
-      beep(660 + combo * 40, 0.09, 0.05);
-      const p = iso(m.x + m.w / 2, m.z + m.d / 2, m.y + BH);
-      for (let i = 0; i < 12; i++) {
+      beep(620 + combo * 35, 0.09, 0.05);
+      const p = iso(m.cx, m.cz, m.y + BH);
+      for (let i = 0; i < 10; i++) {
         particles.push({ x: p.x, y: p.y, vx: (Math.random() - 0.5) * 6, vy: -Math.random() * 4 - 1, life: 1, color: hsl(m.hue, 65) });
       }
     } else {
       combo = 0;
       comboEl.textContent = "";
+      const left = axis === "x"
+        ? Math.max(top.cx - top.w / 2, m.cx - m.w / 2)
+        : Math.max(top.cz - top.d / 2, m.cz - m.d / 2);
+      const right = axis === "x"
+        ? Math.min(top.cx + top.w / 2, m.cx + m.w / 2)
+        : Math.min(top.cz + top.d / 2, m.cz + m.d / 2);
+      const newSize = right - left;
+      const newC = (left + right) / 2;
+      const sign = delta >= 0 ? 1 : -1;
+      const chopSize = abs;
+      const chopC = newC + sign * (newSize / 2 + chopSize / 2);
+      if (axis === "x") {
+        chops.push({ cx: chopC, cz: m.cz, w: chopSize, d: m.d, y: m.y, hue: m.hue, vx: sign * 2.2, vz: 0, vy: 0, life: 1 });
+        m.cx = newC; m.w = newSize; m.cz = top.cz; m.d = top.d;
+      } else {
+        chops.push({ cx: m.cx, cz: chopC, w: m.w, d: chopSize, y: m.y, hue: m.hue, vx: 0, vz: sign * 2.2, vy: 0, life: 1 });
+        m.cz = newC; m.d = newSize; m.cx = top.cx; m.w = top.w;
+      }
       beep(320, 0.07, 0.04);
     }
 
     hue = m.hue;
-    stack.push({ x: m.x, z: m.z, w: m.w, d: m.d, y: m.y, hue: m.hue });
+    stack.push({ cx: m.cx, cz: m.cz, w: m.w, d: m.d, y: m.y, hue: m.hue });
     score = stack.length - 1;
     scoreEl.textContent = String(score);
     spawnMoving();
   }
 
-  function drawBox(x, z, y, w, d, h, hue, alpha) {
+  function drawBox(cx, cz, y, w, d, h, hue, alpha) {
+    if (w < 0.5 || d < 0.5) return;
+    const x = cx - w / 2, z = cz - d / 2;
     const p = (xx, zz, yy) => iso(xx, zz, yy);
     const t0 = p(x, z, y + h), t1 = p(x + w, z, y + h), t2 = p(x + w, z + d, y + h), t3 = p(x, z + d, y + h);
-    const b0 = p(x, z, y), b1 = p(x + w, z, y), b2 = p(x + w, z + d, y), b3 = p(x, z + d, y);
+    const b1 = p(x + w, z, y), b2 = p(x + w, z + d, y), b3 = p(x, z + d, y);
     ctx.globalAlpha = alpha == null ? 1 : alpha;
 
     ctx.beginPath();
     ctx.moveTo(t3.x, t3.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(b3.x, b3.y);
-    ctx.closePath(); ctx.fillStyle = hsl(hue, 38); ctx.fill();
+    ctx.closePath(); ctx.fillStyle = hsl(hue, 36); ctx.fill();
 
     ctx.beginPath();
     ctx.moveTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(b1.x, b1.y);
-    ctx.closePath(); ctx.fillStyle = hsl(hue, 28); ctx.fill();
+    ctx.closePath(); ctx.fillStyle = hsl(hue, 26); ctx.fill();
 
     ctx.beginPath();
     ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
@@ -212,27 +209,27 @@
   }
 
   function update(dt) {
-    const targetCam = Math.max(0, (stack.length - 4) * BH);
-    cam += (targetCam - cam) * 0.12 * dt;
+    const targetCam = Math.max(0, (stack.length - 5) * BH);
+    cam += (targetCam - cam) * 0.14 * dt;
     if (flash > 0) flash -= 0.045 * dt;
 
     chops.forEach(c => {
-      c.x += (c.vx || 0) * dt;
-      c.z += (c.vz || 0) * dt;
+      c.cx += (c.vx || 0) * dt;
+      c.cz += (c.vz || 0) * dt;
       c.vy = (c.vy || 0) + 0.55 * dt;
       c.y -= c.vy * dt;
-      c.life -= 0.018 * dt;
+      c.life -= 0.02 * dt;
     });
-    chops = chops.filter(c => c.life > 0 && c.y > -80);
+    chops = chops.filter(c => c.life > 0 && c.y > -120);
 
     particles.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 0.12 * dt; p.life -= 0.03 * dt; });
     particles = particles.filter(p => p.life > 0);
 
     if (state !== "play" || !moving) return;
-    moving.pos += moving.dir * moving.speed * dt;
-    if (moving.pos > 165 || moving.pos < -165) moving.dir *= -1;
-    if (moving.axis === "x") moving.x = moving.pos;
-    else moving.z = moving.pos;
+    moving.off += moving.dir * moving.speed * dt;
+    if (moving.off > LIMIT) { moving.off = LIMIT; moving.dir = -1; }
+    if (moving.off < -LIMIT) { moving.off = -LIMIT; moving.dir = 1; }
+    applyOff();
   }
 
   function draw() {
@@ -242,16 +239,13 @@
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
-    ctx.strokeStyle = "rgba(255,255,255,.05)";
-    ctx.lineWidth = 1;
-    for (let i = -8; i <= 8; i++) {
-      const a = iso(i * 28, -220, 0), b = iso(i * 28, 220, 0);
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    const from = Math.max(0, stack.length - 22);
+    for (let i = from; i < stack.length; i++) {
+      const b = stack[i];
+      drawBox(b.cx, b.cz, b.y, b.w, b.d, BH, b.hue, 1);
     }
-
-    stack.forEach(b => drawBox(b.x, b.z, b.y, b.w, b.d, BH, b.hue, 1));
-    chops.forEach(c => drawBox(c.x, c.z, c.y, c.w, c.d, BH, c.hue, Math.max(0, c.life)));
-    if (moving && state !== "menu") drawBox(moving.x, moving.z, moving.y, moving.w, moving.d, BH, moving.hue, 1);
+    chops.forEach(c => drawBox(c.cx, c.cz, c.y, c.w, c.d, BH, c.hue, Math.max(0, c.life)));
+    if (moving && state === "play") drawBox(moving.cx, moving.cz, moving.y, moving.w, moving.d, BH, moving.hue, 1);
 
     particles.forEach(p => {
       ctx.globalAlpha = Math.max(0, p.life);
@@ -267,7 +261,7 @@
 
   let last = performance.now();
   function loop(now) {
-    const dt = Math.min(32, now - last) / 16.67;
+    const dt = Math.min(2.2, (now - last) / 16.67);
     last = now;
     update(dt);
     draw();
@@ -276,12 +270,17 @@
   requestAnimationFrame(loop);
 
   function tap() {
-    if (state === "play") place();
-    else if (state === "menu") startGame();
+    if (busy) return;
+    if (state === "play") {
+      busy = true;
+      place();
+      setTimeout(() => { busy = false; }, 160);
+    } else if (state === "menu") startGame();
   }
   canvas.addEventListener("pointerdown", e => { e.preventDefault(); tap(); });
   addEventListener("keydown", e => {
-    if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (state === "play") place(); else startGame(); }
+    if (e.repeat) return;
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (state === "play") tap(); else startGame(); }
   });
   goBtn.onclick = startGame;
 })();
