@@ -2,147 +2,126 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>THE SIGMA GAMES | OYUNLAR</title>
     <style>
-        body { background: #0a0a0a; color: #00FF9D; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .oyun-butonu { 
-            display: inline-block; 
-            padding: 20px 40px; 
-            border: 2px solid #00FF9D; 
-            color: #00FF9D; 
-            text-decoration: none; 
-            font-size: 1.5em; 
-            margin: 20px; 
-            transition: 0.3s;
+        :root {
+            --bg-color: #0a0a0a;
+            --card-bg: #121212;
+            --accent-color: #00FF9D;
+            --accent-glow: rgba(0, 255, 157, 0.3);
+            --text-color: #ffffff;
         }
-        .oyun-butonu:hover { background: #00FF9D; color: #0a0a0a; }
-        .ping_pong-butonu:hover { background: #00FF9D; color: #0a0a0a; }
-        body { background: #0a0a0a; color: #00FF9D; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .ping_pong-butonu { 
-            display: inline-block; 
-            padding: 20px 40px; 
-            border: 2px solid #00FF9D; 
-            color: #00FF9D; 
-            text-decoration: none; 
-            font-size: 1.5em; 
-            margin: 20px; 
-            transition: 0.3s;
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
-        .ping_pong-butonu:hover { background: #00FF9D; color: #0a0a0a; }
-        body { background: #0a0a0a; color: #00FF9D; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .o2048-butonu { 
-            display: inline-block; 
-            padding: 20px 40px; 
-            border: 2px solid #00FF9D; 
-            color: #00FF9D; 
-            text-decoration: none; 
-            font-size: 1.5em; 
-            margin: 20px; 
-            transition: 0.3s;
+
+        body { 
+            background: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            text-align: center; 
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
-        .o2048-butonu:hover { background: #00FF9D; color: #0a0a0a; }
-        body { background: #0a0a0a; color: #00FF9D; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .sbird-butonu { 
-            display: inline-block; 
-            padding: 20px 40px; 
-            border: 2px solid #00FF9D; 
-            color: #00FF9D; 
-            text-decoration: none; 
-            font-size: 1.5em; 
-            margin: 20px; 
-            transition: 0.3s;
+
+        h1 {
+            font-size: 3rem;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-bottom: 40px;
+            text-shadow: 0 0 15px var(--accent-glow);
         }
-        .sbird-butonu:hover { background: #00FF9D; color: #0a0a0a; }
-        body { background: #0a0a0a; color: #00FF9D; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .smemory-butonu { 
-            display: inline-block; 
-            padding: 20px 40px; 
-            border: 2px solid #00FF9D; 
-            color: #00FF9D; 
-            text-decoration: none; 
-            font-size: 1.5em; 
-            margin: 20px; 
-            transition: 0.3s;
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
         }
-        .smemory-butonu:hover { background: #00FF9D; color: #0a0a0a; }
-        body { background: #0a0a0a; color: #00FF9D; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .sbb-butonu { 
-            display: inline-block; 
-            padding: 20px 40px; 
-            border: 2px solid #00FF9D; 
-            color: #00FF9D; 
-            text-decoration: none; 
-            font-size: 1.5em; 
-            margin: 20px; 
-            transition: 0.3s;
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            justify-content: center;
+            padding: 10px;
         }
-        .sbb-butonu:hover { background: #00FF9D; color: #0a0a0a; }
-        body { background: #0a0a0a; color: #00FF9D; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .ping_pong-butonu { 
-            display: inline-block; 
-            padding: 20px 40px; 
-            border: 2px solid #00FF9D; 
-            color: #00FF9D; 
-            text-decoration: none; 
-            font-size: 1.5em; 
-            margin: 20px; 
-            transition: 0.3s;
+
+        .game-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: var(--card-bg);
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-        .ping_pong-butonu:hover { background: #00FF9D; color: #0a0a0a; }
-        body { background: #0a0a0a; color: #00FF9D; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .ssshooter-butonu { 
-            display: inline-block; 
-            padding: 20px 40px; 
-            border: 2px solid #00FF9D; 
-            color: #00FF9D; 
-            text-decoration: none; 
-            font-size: 1.5em; 
-            margin: 20px; 
-            transition: 0.3s;
+
+        .game-btn:hover { 
+            background: var(--accent-color); 
+            color: var(--bg-color);
+            box-shadow: 0 0 20px var(--accent-glow);
+            transform: translateY(-5px);
         }
-        .ssshooter-butonu:hover { background: #00FF9D; color: #0a0a0a; }
-        body { background: #0a0a0a; color: #00FF9D; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .swm-butonu { 
-            display: inline-block; 
-            padding: 20px 40px; 
-            border: 2px solid #00FF9D; 
-            color: #00FF9D; 
-            text-decoration: none; 
-            font-size: 1.5em; 
-            margin: 20px; 
-            transition: 0.3s;
+
+        .footer-nav {
+            margin-top: 50px;
         }
-        .swm-butonu:hover { background: #00FF9D; color: #0a0a0a; }
-        body { background: #0a0a0a; color: #00FF9D; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .stis-butonu { 
-            display: inline-block; 
-            padding: 20px 40px; 
-            border: 2px solid #00FF9D; 
-            color: #00FF9D; 
-            text-decoration: none; 
-            font-size: 1.5em; 
-            margin: 20px; 
-            transition: 0.3s;
+
+        .back-btn {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 1.1rem;
+            border-bottom: 1px dashed var(--accent-color);
+            padding-bottom: 4px;
+            transition: opacity 0.2s;
         }
-        .stis-butonu:hover { background: #00FF9D; color: #0a0a0a; }
+
+        .back-btn:hover {
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
-    <h1>SİGMA OYUNLAR</h1>
-    
-    <!-- Sigma Arena Butonu -->
-    <a href="sigma-arena/" class="oyun-butonu">SIGMA ARENA</a>
-    <a href="pong-game/" class="ping_pong-butonu">PİNG PONG OYUNU</a>
-    <a href="2048/" class="o2048-butonu">2048</a>
-    <a href="sigma-bird/" class="sbird-butonu">SIGMA BIRD</a>
-    <a href="sigma-memory/" class="smemory-butonu">SIGMA MEMORY</a>
-    <a href="sigma-brick-breaker/" class="sbb-butonu">SIGMA BRICK BREAKER</a>
-    <a href="tetris/" class="tetris-butonu">TETRIS</a>
-    <a href="sigma-space-shooter/" class="ssshooter-butonu">SIGMA SPACE SHOOTER</a>
-    <a href="sigma-whack-mole/" class="swm-butonu">SIGMA WHACK-A-MOLE</a>
-    <a href="sigma-snake/" class="stis">SIGMA SNAKE</a>
-    
-    <br><br>
-    <a href="../" style="font-size: 1em;">Ana Sayfaya Dön</a>
+
+    <div class="container">
+        <h1>THE SIGMA GAMES</h1>
+        
+        <div class="game-grid">
+            <a href="sigma-clicker/" class="game-btn">Sigma Clicker</a>
+            <a href="sigma-arena/" class="game-btn">Sigma Arena</a>
+            <a href="pong-game/" class="game-btn">Sigma Ping Pong</a>
+            <a href="2048/" class="game-btn">Sigma 2048</a>
+            <a href="sigma-bird/" class="game-btn">Sigma Bird</a>
+            <a href="sigma-memory/" class="game-btn">Sigma Memory</a>
+            <a href="sigma-brick-breaker/" class="game-btn">Sigma Brick Breaker</a>
+            <a href="tetris/" class="game-btn">Sigma Tetris</a>
+            <a href="sigma-space-shooter/" class="game-btn">Sigma Space Shooter</a>
+            <a href="sigma-whack-mole/" class="game-btn">Sigma Whack A Mole</a>
+            <a href="sigma-snake/" class="game-btn">Sigma Snake</a>
+            <a href="sigma-stack/" class="game-btn">Sigma Stack</a>
+            <a href="sigma-strike/" class="game-btn">Sigma Strike</a>
+        </div>
+    </div>
+
+    <div class="footer-nav">
+        <a href="../" class="back-btn">← Ana Sayfaya Dön</a>
+    </div>
+
 </body>
 </html>
