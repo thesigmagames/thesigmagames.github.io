@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Color Switch</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #07060c; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: pointer; }
+  #hud { position: fixed; top: 14px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 56px; font-weight: 800; text-shadow: 0 6px 24px rgba(0,0,0,0.8); color: #00d4ff; }
+  #best { opacity: .75; font-size: 14px; margin-top: 2px; }
+  #back { position: fixed; top: 16px; left: 14px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; }
+  #back:hover { opacity: 1; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.85); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(28px, 7vw, 46px); margin: 0 0 8px; letter-spacing: 2px; background: linear-gradient(90deg, #00d4ff, #ff3cac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .sub { opacity: .8; margin: 0 0 22px; line-height: 1.5; font-size: 16px; }
+  button { border: 0; border-radius: 14px; padding: 14px 36px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.95); }
+</style>
+</head>
+<body>
+  <a id="back" href="../">← Menü</a>
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA COLOR SWITCH</h1>
+    <p class="sub">Ekrana Dokun / Zıpla<br>Sadece KENDİ RENGİNDEN olan engellerden geç!</p>
+    <button id="go">BAŞLA</button>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+
+  const SAVE_KEY = "sigma-color-best";
+  const GW = 400, GH = 640;
+  const COLORS = ["#00d4ff", "#ff3cac", "#ffe14d", "#5dff8a"];
+
+  const GRAVITY = 0.36;
+  const JUMP = -6.8;
+  const BALL_R = 9;
+
+  let W = 0, H = 0, scale = 1, offsetX = 0, offsetY = 0;
+  let state = "menu"; // "menu", "play", "dead"
+  let score = 0, best = 0;
+
+  let ball = { x: GW / 2, y: GH - 140, vy: 0, colorIdx: 0, color: COLORS[0] };
+  let cameraY = 0;
+
+  let obstacles = [];
+  let stars = [];
+  let switchers = [];
+  let particles = [];
+  let flash = 0, ac = null;
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("Rekor: " + best) : "";
+
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+
+    const scaleX = W / GW;
+    const scaleY = H / GH;
+    scale = Math.min(scaleX, scaleY);
+    offsetX = (W - GW * scale) / 2;
+    offsetY = (H - GH * scale) / 2;
+
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function sound(freq, type = "sine", duration = 0.05, vol = 0.04) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function setBallColor(idx) {
+    ball.colorIdx = idx;
+    ball.color = COLORS[idx];
+  }
+
+  function initGame() {
+    state = "play";
+    score = 0;
+    cameraY = 0;
+    ball = { x: GW / 2, y: GH - 180, vy: JUMP, colorIdx: 0, color: COLORS[0] };
+    setBallColor(Math.floor(Math.random() * COLORS.length));
+
+    obstacles = [];
+    stars = [];
+    switchers = [];
+    particles = [];
+    flash = 0;
+
+    // İlk parkurları oluştur
+    let currentY = GH - 380;
+    for (let i = 0; i < 4; i++) {
+      createObstacleSet(currentY);
+      currentY -= 280;
+    }
+
+    scoreEl.textContent = "0";
+    overlay.classList.add("hide");
+    sound(520, "sine", 0.1, 0.06);
+  }
+
+  function createObstacleSet(y) {
+    const radius = 80;
+    obstacles.push({
+      x: GW / 2,
+      y: y,
+      r: radius,
+      thickness: 14,
+      angle: 0,
+      speed: (Math.random() < 0.5 ? 1 : -1) * (0.02 + Math.random() * 0.015)
+    });
+
+    // Engelin içine Yıldız koy
+    stars.push({ x: GW / 2, y: y, size: 14, collected: false });
+
+    // Engelin üst tarafına Renk Değiştirici koy
+    if (Math.random() < 0.85) {
+      switchers.push({ x: GW / 2, y: y - 140, r: 12, collected: false });
+    }
+  }
+
+  function jump() {
+    if (state === "play") {
+      ball.vy = JUMP;
+      sound(480, "sine", 0.04, 0.05);
+
+      for (let i = 0; i < 4; i++) {
+        particles.push({
+          x: ball.x, y: ball.y + BALL_R,
+          vx: (Math.random() - 0.5) * 3,
+          vy: Math.random() * 3 + 1,
+          life: 0.7, color: ball.color
+        });
+      }
+    }
+  }
+
+  function die() {
+    state = "dead";
+    flash = 1;
+    sound(110, "sawtooth", 0.3, 0.08);
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "Rekor: " + best;
+
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Skor: ${score}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+  }
+
+  function update() {
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      p.life -= 0.03;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    if (flash > 0) flash -= 0.04;
+    if (state !== "play") return;
+
+    // Fiziği uygula
+    ball.vy += GRAVITY;
+    ball.y += ball.vy;
+
+    // Kamera yukarı takibi
+    const targetCamY = Math.max(0, (GH * 0.55) - ball.y);
+    if (targetCamY > cameraY) {
+      cameraY += (targetCamY - cameraY) * 0.1;
+    }
+
+    // Ekran altından düşme kontrolü
+    if (ball.y - cameraY > GH + 40) {
+      die();
+      return;
+    }
+
+    // Engelleri döndür ve çarpışma kontrolü
+    obstacles.forEach(obs => {
+      obs.angle += obs.speed;
+
+      // Top ile halkanın merkez mesafesi
+      const dist = Math.hypot(ball.x - obs.x, ball.y - obs.y);
+      const innerR = obs.r - obs.thickness / 2;
+      const outerR = obs.r + obs.thickness / 2;
+
+      // Top halkanın gövdesiyle temas ediyor mu?
+      if (dist + BALL_R >= innerR && dist - BALL_R <= outerR) {
+        // Çarpışılan noktanın açısını bul
+        let angle = Math.atan2(ball.y - obs.y, ball.x - obs.x) - obs.angle;
+        // Açıyı [0, 2PI) aralığına normalize et
+        angle = (angle % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+
+        // 4 renk diliminden hangisinde olduğunu bul
+        const segIdx = Math.floor(angle / (Math.PI / 2)) % 4;
+
+        if (COLORS[segIdx] !== ball.color) {
+          die();
+        }
+      }
+    });
+
+    // Yıldız Toplama
+    stars.forEach(star => {
+      if (!star.collected) {
+        const dist = Math.hypot(ball.x - star.x, ball.y - star.y);
+        if (dist < star.size + BALL_R) {
+          star.collected = true;
+          score++;
+          scoreEl.textContent = String(score);
+          sound(880, "sine", 0.08, 0.06);
+
+          for (let i = 0; i < 8; i++) {
+            particles.push({
+              x: star.x, y: star.y,
+              vx: (Math.random() - 0.5) * 5,
+              vy: (Math.random() - 0.5) * 5,
+              life: 1, color: "#ffe14d"
+            });
+          }
+        }
+      }
+    });
+
+    // Renk Değiştirici İtemi
+    switchers.forEach(sw => {
+      if (!sw.collected) {
+        const dist = Math.hypot(ball.x - sw.x, ball.y - sw.y);
+        if (dist < sw.r + BALL_R) {
+          sw.collected = true;
+          
+          // Mevcut renkten farklı rastgele bir renk seç
+          let newIdx;
+          do {
+            newIdx = Math.floor(Math.random() * COLORS.length);
+          } while (newIdx === ball.colorIdx);
+          
+          setBallColor(newIdx);
+          sound(640, "triangle", 0.08, 0.06);
+
+          for (let i = 0; i < 10; i++) {
+            particles.push({
+              x: sw.x, y: sw.y,
+              vx: (Math.random() - 0.5) * 6,
+              vy: (Math.random() - 0.5) * 6,
+              life: 1, color: COLORS[i % COLORS.length]
+            });
+          }
+        }
+      }
+    });
+
+    // Sonsuz Bölüm Üretimi (En yukarıya yaklaştıkça yenilerini ekle)
+    const topObstacleY = obstacles.length > 0 ? obstacles[obstacles.length - 1].y : 0;
+    if (topObstacleY > ball.y - GH) {
+      createObstacleSet(topObstacleY - 280);
+    }
+  }
+
+  function draw() {
+    // Arka Plan Gradient
+    const bg = ctx.createLinearGradient(0, 0, 0, GH);
+    bg.addColorStop(0, "#120a2a");
+    bg.addColorStop(1, "#05040a");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, GW, GH);
+
+    ctx.save();
+    ctx.translate(0, cameraY);
+
+    // Dönen Halka Engelleri
+    obstacles.forEach(obs => {
+      ctx.save();
+      ctx.translate(obs.x, obs.y);
+      ctx.rotate(obs.angle);
+
+      ctx.lineWidth = obs.thickness;
+
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.arc(0, 0, obs.r, i * Math.PI / 2, (i + 1) * Math.PI / 2);
+        ctx.strokeStyle = COLORS[i];
+        ctx.shadowColor = COLORS[i];
+        ctx.shadowBlur = 10;
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    });
+
+    // Yıldızları Çiz
+    stars.forEach(s => {
+      if (s.collected) return;
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.fillStyle = "#ffe14d";
+      ctx.shadowColor = "#ffe14d";
+      ctx.shadowBlur = 12;
+
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * s.size,
+                   -Math.sin((18 + i * 72) * Math.PI / 180) * s.size);
+        ctx.lineTo(Math.cos((54 + i * 72) * Math.PI / 180) * (s.size / 2),
+                   -Math.sin((54 + i * 72) * Math.PI / 180) * (s.size / 2));
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    });
+
+    // Renk Değiştirici İtemlerini Çiz
+    switchers.forEach(sw => {
+      if (sw.collected) return;
+      ctx.save();
+      ctx.translate(sw.x, sw.y);
+
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, sw.r, i * Math.PI / 2, (i + 1) * Math.PI / 2);
+        ctx.fillStyle = COLORS[i];
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.5, 3 * p.life), 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    });
+
+    // Oyuncu Topu
+    if (state === "play") {
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2);
+      ctx.fillStyle = ball.color;
+      ctx.shadowColor = ball.color;
+      ctx.shadowBlur = 14;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.restore();
+
+    // Flaş Efekti
+    if (flash > 0) {
+      ctx.fillStyle = `rgba(255, 60, 172, ${Math.min(0.8, flash)})`;
+      ctx.fillRect(0, 0, GW, GH);
+    }
+  }
+
+  function handleAction(e) {
+    if (e.target.tagName === "BUTTON" || e.target.tagName === "A") return;
+    if (state === "play") jump();
+  }
+
+  window.addEventListener("mousedown", handleAction);
+  window.addEventListener("touchstart", handleAction, { passive: true });
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+      e.preventDefault();
+      handleAction(e);
+    }
+  });
+
+  goBtn.onclick = initGame;
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
