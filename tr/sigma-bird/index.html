@@ -1,33 +1,312 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIGMA BIRD</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Bird</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #07060c; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: pointer; }
+  #hud { position: fixed; top: 14px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 56px; font-weight: 800; text-shadow: 0 6px 24px rgba(0,0,0,0.8); color: #00d4ff; }
+  #best { opacity: .75; font-size: 14px; margin-top: 2px; }
+  #back { position: fixed; top: 16px; left: 14px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; }
+  #back:hover { opacity: 1; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.85); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(32px, 8vw, 52px); margin: 0 0 8px; letter-spacing: 3px; background: linear-gradient(90deg, #00d4ff, #ff3cac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .sub { opacity: .8; margin: 0 0 22px; line-height: 1.5; font-size: 16px; }
+  button { border: 0; border-radius: 14px; padding: 14px 36px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.95); }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>⚡ SIGMA BIRD ⚡</h1>
-        
-        <div class="game-info">
-            <p>SPACE ya da CLICK - Kuşu Uçur</p>
-            <p>Borulara çarpmamaya dikkat et!</p>
-        </div>
-        
-        <canvas id="gameCanvas" width="600" height="400"></canvas>
-        
-        <div class="score-board">
-            <div class="score">Skor: <span id="score">0</span></div>
-        </div>
-        
-        <button id="startBtn" class="btn">OYUNU BAŞLAT</button>
-        <button id="resetBtn" class="btn">SIFIRLA</button>
-        
-        <br><br>
-        <a href="../../" class="back-link">← Geri Dön</a>
-    </div>
-    
-    <script src="game.js"></script>
+  <a id="back" href="../">← Menü</a>
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA BIRD</h1>
+    <p class="sub">Ekrana Dokun / Boşluk Tuşuna Bas<br>Neon engellerden kaç · En yüksek skoru yap!</p>
+    <button id="go">BAŞLA</button>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+
+  const SAVE_KEY = "sigma-bird-best";
+  const GW = 400, GH = 640;
+  const GAP = 150;
+  const PIPE_W = 54;
+  const GRAVITY = 0.38;
+  const JUMP = -7.2;
+
+  let W = 0, H = 0, scale = 1, offsetX = 0, offsetY = 0;
+  let state = "menu"; // "menu", "play", "dead"
+  let score = 0, best = 0;
+
+  let birdX = 90;
+  let birdY = GH / 2;
+  let birdVy = 0;
+  let birdRadius = 13;
+  let birdAngle = 0;
+
+  let pipes = [];
+  let particles = [];
+  let spawnTimer = 0;
+  let ac = null, flash = 0;
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("Rekor: " + best) : "";
+
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+
+    const scaleX = W / GW;
+    const scaleY = H / GH;
+    scale = Math.min(scaleX, scaleY);
+    offsetX = (W - GW * scale) / 2;
+    offsetY = (H - GH * scale) / 2;
+
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function sound(freq, type = "sine", duration = 0.05, vol = 0.04) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function initGame() {
+    state = "play";
+    score = 0;
+    birdY = GH / 2;
+    birdVy = JUMP;
+    birdAngle = 0;
+    pipes = [];
+    particles = [];
+    spawnTimer = 0;
+    flash = 0;
+
+    scoreEl.textContent = "0";
+    overlay.classList.add("hide");
+    sound(520, "sine", 0.1, 0.06);
+  }
+
+  function flap() {
+    if (state === "play") {
+      birdVy = JUMP;
+      sound(440, "sine", 0.04, 0.05);
+
+      for (let i = 0; i < 5; i++) {
+        particles.push({
+          x: birdX - 8,
+          y: birdY,
+          vx: (Math.random() - 0.5) * 3 - 2,
+          vy: Math.random() * 2 + 1,
+          life: 0.8,
+          color: "#00d4ff"
+        });
+      }
+    }
+  }
+
+  function die() {
+    state = "dead";
+    flash = 1;
+    sound(120, "sawtooth", 0.25, 0.08);
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "Rekor: " + best;
+
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Puan: ${score}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+  }
+
+  function spawnPipe() {
+    const minH = 70;
+    const maxH = GH - GAP - minH - 60;
+    const topH = Math.floor(Math.random() * (maxH - minH + 1)) + minH;
+
+    pipes.push({
+      x: GW,
+      topH: topH,
+      bottomY: topH + GAP,
+      passed: false
+    });
+  }
+
+  function update() {
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      p.life -= 0.03;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    if (flash > 0) flash -= 0.04;
+    if (state !== "play") return;
+
+    // Kuş fiziği ve açı hesabı
+    birdVy += GRAVITY;
+    birdY += birdVy;
+    birdAngle = Math.min(Math.PI / 4, Math.max(-Math.PI / 6, birdVy * 0.08));
+
+    // Sınır kontrolleri
+    if (birdY - birdRadius <= 0 || birdY + birdRadius >= GH) {
+      die();
+      return;
+    }
+
+    // Engeller
+    spawnTimer++;
+    if (spawnTimer >= 100) {
+      spawnTimer = 0;
+      spawnPipe();
+    }
+
+    pipes.forEach(p => {
+      p.x -= 2.6;
+
+      // Skor geçişi
+      if (!p.passed && p.x + PIPE_W < birdX) {
+        p.passed = true;
+        score++;
+        scoreEl.textContent = String(score);
+        sound(880, "sine", 0.08, 0.05);
+      }
+
+      // Çarpışma Tespiti (AABB + Circle)
+      const inX = birdX + birdRadius > p.x && birdX - birdRadius < p.x + PIPE_W;
+      const hitTop = birdY - birdRadius < p.topH;
+      const hitBottom = birdY + birdRadius > p.bottomY;
+
+      if (inX && (hitTop || hitBottom)) {
+        die();
+      }
+    });
+
+    pipes = pipes.filter(p => p.x + PIPE_W > -20);
+  }
+
+  function draw() {
+    const bg = ctx.createLinearGradient(0, 0, 0, GH);
+    bg.addColorStop(0, "#120a2a");
+    bg.addColorStop(1, "#05040a");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, GW, GH);
+
+    // Izgara çizgileri
+    ctx.strokeStyle = "rgba(0, 212, 255, 0.04)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < GW; x += 40) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, GH); ctx.stroke();
+    }
+
+    // Engeller (Pipes)
+    pipes.forEach(p => {
+      ctx.fillStyle = "#ff3cac";
+      ctx.shadowColor = "#ff3cac";
+      ctx.shadowBlur = 12;
+
+      // Üst Sütun
+      ctx.beginPath();
+      ctx.roundRect(p.x, 0, PIPE_W, p.topH, [0, 0, 8, 8]);
+      ctx.fill();
+
+      // Alt Sütun
+      ctx.beginPath();
+      ctx.roundRect(p.x, p.bottomY, PIPE_W, GH - p.bottomY, [8, 8, 0, 0]);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.5, 3 * p.life), 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    });
+
+    // Kuş
+    if (state === "play") {
+      ctx.save();
+      ctx.translate(birdX, birdY);
+      ctx.rotate(birdAngle);
+
+      ctx.beginPath();
+      ctx.arc(0, 0, birdRadius, 0, Math.PI * 2);
+      ctx.fillStyle = "#00d4ff";
+      ctx.shadowColor = "#00d4ff";
+      ctx.shadowBlur = 14;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Göz Detayı
+      ctx.beginPath();
+      ctx.arc(5, -4, 3, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    if (flash > 0) {
+      ctx.fillStyle = `rgba(255, 60, 172, ${Math.min(0.8, flash)})`;
+      ctx.fillRect(0, 0, GW, GH);
+    }
+  }
+
+  function handleAction(e) {
+    if (e.target.tagName === "BUTTON" || e.target.tagName === "A") return;
+    if (state === "play") flap();
+  }
+
+  window.addEventListener("mousedown", handleAction);
+  window.addEventListener("touchstart", handleAction, { passive: true });
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+      e.preventDefault();
+      handleAction(e);
+    }
+  });
+
+  goBtn.onclick = initGame;
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
 </body>
 </html>
