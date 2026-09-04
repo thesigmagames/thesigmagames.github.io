@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Neon Dash</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #06050a; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: pointer; }
+  #hud { position: fixed; top: 16px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 52px; font-weight: 900; color: #00ffcc; text-shadow: 0 0 20px rgba(0,255,204,0.6); font-family: monospace; }
+  #best { opacity: .8; font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+  #back { position: fixed; top: 16px; left: 16px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 10px; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(6,5,10,.9); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(32px, 7vw, 52px); margin: 0 0 10px; background: linear-gradient(90deg, #00ffcc, #ff007f); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+  .sub { opacity: .85; margin: 0 0 24px; line-height: 1.5; font-size: 16px; }
+  button { border: 0; border-radius: 14px; padding: 16px 42px; font-size: 19px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00ffcc, #ff007f); color: #000; box-shadow: 0 4px 25px rgba(0, 255, 204, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.95); }
+</style>
+</head>
+<body>
+  <a id="back" href="../">← Menü</a>
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA NEON DASH</h1>
+    <p class="sub">Zıplamak İçin Ekrana Dokun veya Boşluk Tuşuna Bas!<br>Engellerin üstünden atla, ne kadar ileri gidebilirsin?</p>
+    <button id="go">BAŞLA</button>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+
+  const SAVE_KEY = "sigma-dash-best";
+  const GW = 800, GH = 450;
+  
+  let scale = 1, offsetX = 0, offsetY = 0;
+  let state = "menu";
+  let score = 0, best = 0;
+  let gameSpeed = 6;
+
+  // Oyuncu
+  const player = {
+    x: 120, y: 0, size: 36, vy: 0,
+    isGrounded: false, rotation: 0,
+    targetRotation: 0
+  };
+
+  const FLOOR_Y = 340;
+  const GRAVITY = 0.72;
+  const JUMP_FORCE = -12.8;
+
+  let obstacles = [];
+  let particles = [];
+  let bgOffset = 0;
+  let spawnTimer = 0;
+  let ac = null;
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("REKOR: " + best) : "";
+
+  function resize() {
+    const W = innerWidth, H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+
+    scale = Math.min(W / GW, H / GH);
+    offsetX = (W - GW * scale) / 2;
+    offsetY = (H - GH * scale) / 2;
+
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function sound(freq, type = "square", duration = 0.08, vol = 0.05) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function jump() {
+    if (state === "play" && player.isGrounded) {
+      player.vy = JUMP_FORCE;
+      player.isGrounded = false;
+      player.targetRotation += Math.PI / 2;
+      sound(320, "square", 0.08, 0.06);
+
+      for (let i = 0; i < 8; i++) {
+        particles.push({
+          x: player.x + player.size / 2, y: player.y + player.size,
+          vx: (Math.random() - 0.5) * 4, vy: Math.random() * 2,
+          size: 4, life: 0.5, color: "#00ffcc"
+        });
+      }
+    }
+  }
+
+  function initGame() {
+    state = "play";
+    score = 0;
+    gameSpeed = 6.5;
+    player.y = FLOOR_Y - player.size;
+    player.vy = 0;
+    player.isGrounded = true;
+    player.rotation = 0;
+    player.targetRotation = 0;
+
+    obstacles = [];
+    particles = [];
+    spawnTimer = 0;
+
+    scoreEl.textContent = "0";
+    overlay.classList.add("hide");
+    sound(580, "sine", 0.1, 0.08);
+  }
+
+  function die() {
+    state = "dead";
+    sound(130, "sawtooth", 0.3, 0.1);
+
+    // Patlama efektleri
+    for (let i = 0; i < 30; i++) {
+      particles.push({
+        x: player.x + player.size / 2, y: player.y + player.size / 2,
+        vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.5) * 12,
+        size: Math.random() * 6 + 2, life: 1.0, color: "#ff007f"
+      });
+    }
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "REKOR: " + best;
+
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Skor: ${score}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+  }
+
+  function spawnObstacle() {
+    const types = ["spike", "double_spike", "block"];
+    const type = types[Math.floor(Math.random() * types.length)];
+    obstacles.push({ x: GW + 40, type, passed: false });
+  }
+
+  function update() {
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    if (state !== "play") return;
+
+    // Hızlanma
+    gameSpeed += 0.0008;
+    bgOffset = (bgOffset + gameSpeed) % 40;
+
+    // Oyuncu Fizikleri
+    player.vy += GRAVITY;
+    player.y += player.vy;
+
+    if (!player.isGrounded) {
+      player.rotation += (player.targetRotation - player.rotation) * 0.2;
+    }
+
+    // Tabana Değme
+    if (player.y >= FLOOR_Y - player.size) {
+      player.y = FLOOR_Y - player.size;
+      player.vy = 0;
+      player.isGrounded = true;
+      player.rotation = player.targetRotation = Math.round(player.rotation / (Math.PI / 2)) * (Math.PI / 2);
+    }
+
+    // Izgara Arkası İz Efekti
+    if (Math.random() < 0.6) {
+      particles.push({
+        x: player.x, y: player.y + player.size - 4,
+        vx: -gameSpeed * 0.5, vy: (Math.random() - 0.5),
+        size: 3, life: 0.4, color: "#00ffcc"
+      });
+    }
+
+    // Engel Üretimi
+    spawnTimer++;
+    if (spawnTimer > 75 / (gameSpeed / 6)) {
+      if (Math.random() < 0.7) {
+        spawnObstacle();
+        spawnTimer = 0;
+      }
+    }
+
+    // Engelleri Güncelle & Çarpışma
+    const px = player.x + 4, py = player.y + 4, ps = player.size - 8;
+
+    obstacles.forEach(o => {
+      o.x -= gameSpeed;
+
+      // Çarpışma Kutuları
+      let ox = o.x, oy = FLOOR_Y - 36, ow = 36, oh = 36;
+      if (o.type === "double_spike") { ow = 72; }
+
+      if (o.type === "spike" || o.type === "double_spike") {
+        // Diken Çarpışma Testi
+        if (px < ox + ow && px + ps > ox && py + ps > oy + 10) {
+          die();
+        }
+      } else if (o.type === "block") {
+        // Blok Çarpışma Testi
+        if (px < ox + ow && px + ps > ox && py < oy + oh && py + ps > oy) {
+          die();
+        }
+      }
+
+      // Skor Artışı
+      if (!o.passed && o.x < player.x) {
+        o.passed = true;
+        score += 10;
+        scoreEl.textContent = String(score);
+        sound(700, "sine", 0.04, 0.03);
+      }
+    });
+
+    obstacles = obstacles.filter(o => o.x > -100);
+  }
+
+  function draw() {
+    // Arka Plan
+    ctx.fillStyle = "#06050a";
+    ctx.fillRect(0, 0, GW, GH);
+
+    // Grid (Izgara) Efekti
+    ctx.strokeStyle = "rgba(0, 255, 204, 0.08)";
+    ctx.lineWidth = 1;
+    for (let x = -bgOffset; x < GW; x += 40) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, GH); ctx.stroke();
+    }
+    for (let y = 0; y < GH; y += 40) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(GW, y); ctx.stroke();
+    }
+
+    // Zemin
+    ctx.fillStyle = "#00ffcc";
+    ctx.shadowColor = "#00ffcc";
+    ctx.shadowBlur = 15;
+    ctx.fillRect(0, FLOOR_Y, GW, 4);
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = "rgba(0, 255, 204, 0.05)";
+    ctx.fillRect(0, FLOOR_Y + 4, GW, GH - FLOOR_Y);
+
+    // Engeller
+    obstacles.forEach(o => {
+      ctx.shadowBlur = 12;
+      if (o.type === "spike") {
+        ctx.fillStyle = "#ff007f"; ctx.shadowColor = "#ff007f";
+        ctx.beginPath();
+        ctx.moveTo(o.x, FLOOR_Y);
+        ctx.lineTo(o.x + 18, FLOOR_Y - 36);
+        ctx.lineTo(o.x + 36, FLOOR_Y);
+        ctx.closePath(); ctx.fill();
+      } else if (o.type === "double_spike") {
+        ctx.fillStyle = "#ff007f"; ctx.shadowColor = "#ff007f";
+        ctx.beginPath();
+        ctx.moveTo(o.x, FLOOR_Y); ctx.lineTo(o.x + 18, FLOOR_Y - 36); ctx.lineTo(o.x + 36, FLOOR_Y);
+        ctx.moveTo(o.x + 36, FLOOR_Y); ctx.lineTo(o.x + 54, FLOOR_Y - 36); ctx.lineTo(o.x + 72, FLOOR_Y);
+        ctx.closePath(); ctx.fill();
+      } else if (o.type === "block") {
+        ctx.fillStyle = "#ffe14d"; ctx.shadowColor = "#ffe14d";
+        ctx.fillRect(o.x, FLOOR_Y - 36, 36, 36);
+      }
+      ctx.shadowBlur = 0;
+    });
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillRect(p.x, p.y, p.size, p.size);
+      ctx.globalAlpha = 1.0;
+    });
+
+    // Oyuncu (Kare)
+    if (state === "play") {
+      ctx.save();
+      ctx.translate(player.x + player.size / 2, player.y + player.size / 2);
+      ctx.rotate(player.rotation);
+
+      ctx.fillStyle = "#00ffcc";
+      ctx.shadowColor = "#00ffcc";
+      ctx.shadowBlur = 16;
+      ctx.fillRect(-player.size / 2, -player.size / 2, player.size, player.size);
+
+      // İç Desen
+      ctx.fillStyle = "#06050a";
+      ctx.fillRect(-player.size / 4, -player.size / 4, player.size / 2, player.size / 2);
+      ctx.restore();
+    }
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // Kontroller
+  window.addEventListener("pointerdown", jump);
+  window.addEventListener("keydown", e => {
+    if (e.code === "Space" || e.code === "ArrowUp") {
+      e.preventDefault();
+      jump();
+    }
+  });
+
+  goBtn.onclick = initGame;
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
