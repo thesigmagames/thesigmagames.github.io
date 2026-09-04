@@ -59,9 +59,9 @@
   let rotationSpeed = 0.03;
   let speedTimer = 0;
 
-  let knivesOnTarget = []; // { angle, color }
+  let knivesOnTarget = [];
   let remainingKnives = 7;
-  let activeKnife = null; // { x, y, vy, isFlying }
+  let activeKnife = null;
 
   let particles = [];
   let flash = 0, ac = null;
@@ -107,7 +107,6 @@
     flash = 0;
 
     scoreEl.textContent = "0";
-    stageEl.textContent = "Bölüm " + stage;
     overlay.classList.add("hide");
 
     startStage();
@@ -118,13 +117,13 @@
     knivesOnTarget = [];
     remainingKnives = 6 + Math.min(stage, 6);
     targetAngle = 0;
-    rotationSpeed = (0.025 + stage * 0.005) * (stage % 2 === 0 ? -1 : 1);
+    rotationSpeed = (0.025 + stage * 0.004) * (stage % 2 === 0 ? -1 : 1);
 
-    // İleri seviyelerde çark üzerinde hazır saplı bıçaklar başlat
-    const initialKnives = Math.min(Math.floor(stage / 2), 4);
+    // Üst bölümlerde çark üzerinde engeller oluştur (fırlatma noktasına denk gelmeyecek şekilde)
+    const initialKnives = Math.min(Math.floor((stage - 1) / 2), 4);
     for (let i = 0; i < initialKnives; i++) {
       knivesOnTarget.push({
-        angle: (Math.PI * 2 / initialKnives) * i,
+        angle: (Math.PI * 2 / initialKnives) * i + Math.PI / 4,
         color: "#ff3cac"
       });
     }
@@ -145,12 +144,13 @@
   function throwKnife() {
     if (state !== "play" || !activeKnife || activeKnife.isFlying) return;
     activeKnife.isFlying = true;
-    activeKnife.vy = -28;
+    activeKnife.vy = -32;
     sound(400, "triangle", 0.04, 0.05);
   }
 
   function die() {
     state = "dead";
+    activeKnife = null;
     flash = 1;
     sound(110, "sawtooth", 0.3, 0.08);
 
@@ -176,27 +176,24 @@
 
     if (state !== "play") return;
 
-    // Hedef Çarkı Döndürme
+    // Hedef Çark Dönüşü
     speedTimer += 0.02;
-    if (stage > 2 && Math.sin(speedTimer) > 0.8) {
-      targetAngle += rotationSpeed * 1.8;
+    if (stage > 2 && Math.sin(speedTimer) > 0.85) {
+      targetAngle += rotationSpeed * 1.6;
     } else {
       targetAngle += rotationSpeed;
     }
 
-    // Uçan Bıçak Güncellemesi
+    // Uçan Bıçak Kontrolü
     if (activeKnife && activeKnife.isFlying) {
       activeKnife.y += activeKnife.vy;
 
-      // Çarka Ulaşma Mesafesi
-      const hitDistance = TARGET_Y + TARGET_R;
-      if (activeKnife.y <= hitDistance) {
-        // Çarpışma Açısı Hesabı (Aşağıdan saplandığı için PI/2)
+      if (activeKnife.y <= TARGET_Y + TARGET_R) {
+        // Çarpışma Açısı
         let hitAngle = (Math.PI / 2 - targetAngle) % (Math.PI * 2);
         if (hitAngle < 0) hitAngle += Math.PI * 2;
 
-        // Çarptı mı kontrol et (Daha önce saplanmış bıçak var mı?)
-        const minAngleDiff = 0.22; // ~12.5 Derece
+        const minAngleDiff = 0.24; // Tolerans
         let collided = false;
 
         for (let k of knivesOnTarget) {
@@ -209,10 +206,7 @@
         }
 
         if (collided) {
-          // Bıçağa Çarptı -> Düşme Efekti ve Oyun Bitti
-          activeKnife.vy = 8;
-          activeKnife.isFlying = false;
-
+          // Çarptı -> Oyun Bitti
           for (let i = 0; i < 12; i++) {
             particles.push({
               x: activeKnife.x, y: activeKnife.y,
@@ -223,27 +217,29 @@
           }
           die();
         } else {
-          // Başarıyla Saplandı
+          // Saplandı
           knivesOnTarget.push({ angle: hitAngle, color: "#00d4ff" });
           score++;
           remainingKnives--;
           scoreEl.textContent = String(score);
           sound(700, "sine", 0.06, 0.06);
 
-          for (let i = 0; i < 10; i++) {
+          for (let i = 0; i < 8; i++) {
             particles.push({
-              x: activeKnife.x, y: activeKnife.y,
+              x: GW / 2, y: TARGET_Y + TARGET_R,
               vx: (Math.random() - 0.5) * 6,
               vy: Math.random() * -4,
               life: 0.8, color: "#00d4ff"
             });
           }
 
+          // Çifte tetiklenmeyi önlemek için aktif bıçağı hemen kaldır
+          activeKnife = null;
+
           if (remainingKnives <= 0) {
-            // Bölüm Tamamlandı
             stage++;
             sound(880, "triangle", 0.12, 0.08);
-            setTimeout(startStage, 250);
+            setTimeout(startStage, 200);
           } else {
             resetKnife();
           }
@@ -257,21 +253,19 @@
     ctx.translate(x, y);
     ctx.rotate(angle);
 
-    // Bıçak Gövdesi
     ctx.fillStyle = color;
     ctx.shadowColor = color;
     ctx.shadowBlur = 8;
 
     ctx.beginPath();
-    ctx.moveTo(0, -35); // Keskin Uç
+    ctx.moveTo(0, -35);
     ctx.lineTo(6, -5);
-    ctx.lineTo(3, 15);  // Kabza Bağlantısı
+    ctx.lineTo(3, 15);
     ctx.lineTo(-3, 15);
     ctx.lineTo(-6, -5);
     ctx.closePath();
     ctx.fill();
 
-    // Bıçak Tutacağı
     ctx.fillStyle = "#fff";
     ctx.fillRect(-2, 15, 4, 18);
 
@@ -279,7 +273,6 @@
   }
 
   function draw() {
-    // Arka Plan
     const bg = ctx.createLinearGradient(0, 0, 0, GH);
     bg.addColorStop(0, "#120a2a");
     bg.addColorStop(1, "#05040a");
@@ -288,12 +281,11 @@
 
     ctx.save();
 
-    // Dönen Hedef Çarkı
+    // Dönen Çark
     ctx.save();
     ctx.translate(GW / 2, TARGET_Y);
     ctx.rotate(targetAngle);
 
-    // Dış Halka Neonu
     ctx.beginPath();
     ctx.arc(0, 0, TARGET_R, 0, Math.PI * 2);
     ctx.fillStyle = "#1a1835";
@@ -304,7 +296,6 @@
     ctx.fill();
     ctx.stroke();
 
-    // İç Çark Desenleri
     ctx.beginPath();
     ctx.arc(0, 0, TARGET_R - 18, 0, Math.PI * 2);
     ctx.strokeStyle = "rgba(255, 60, 172, 0.4)";
@@ -316,7 +307,7 @@
     ctx.fillStyle = "#ff3cac";
     ctx.fill();
 
-    // Çarka Saplanmış Bıçaklar
+    // Saplanmış Bıçaklar
     knivesOnTarget.forEach(k => {
       ctx.save();
       ctx.rotate(k.angle);
@@ -326,12 +317,12 @@
 
     ctx.restore();
 
-    // Altta Kalan Yedek Bıçak Simgeleri
+    // Kalan Bıçak Simgeleri
     for (let i = 0; i < remainingKnives; i++) {
       drawKnife(28 + i * 18, GH - 30, 0, "rgba(0, 212, 255, 0.4)");
     }
 
-    // Aktif Fırlatılan / Bekleyen Bıçak
+    // Aktif Bıçak
     if (activeKnife) {
       drawKnife(activeKnife.x, activeKnife.y, 0, "#00d4ff");
     }
@@ -348,7 +339,6 @@
 
     ctx.restore();
 
-    // Flaş Efekti
     if (flash > 0) {
       ctx.fillStyle = `rgba(255, 60, 172, ${Math.min(0.8, flash)})`;
       ctx.fillRect(0, 0, GW, GH);
