@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Neon Jump</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #05040a; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: pointer; }
+  #hud { position: fixed; top: 16px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 52px; font-weight: 900; color: #00ffcc; text-shadow: 0 0 20px rgba(0,255,204,0.6); font-family: monospace; }
+  #best { opacity: .8; font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+  #back { position: fixed; top: 16px; left: 16px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 10px; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.92); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(30px, 7vw, 50px); margin: 0 0 10px; background: linear-gradient(90deg, #00ffcc, #ff007f); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+  .sub { opacity: .85; margin: 0 0 24px; line-height: 1.5; font-size: 16px; }
+  button { border: 0; border-radius: 14px; padding: 16px 42px; font-size: 19px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00ffcc, #ff007f); color: #000; box-shadow: 0 4px 25px rgba(0, 255, 204, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.95); }
+</style>
+</head>
+<body>
+  <a id="back" href="../">← Menü</a>
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA NEON JUMP</h1>
+    <p class="sub">Parmağınla/Fareyle Karakteri Yönlendir veya Yön Tuşlarını Kullan!<br>Platformlardan zıplayarak olabildiğince yukarı tırman!</p>
+    <button id="go">BAŞLA</button>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+
+  const SAVE_KEY = "sigma-jump-best";
+  const GW = 600, GH = 900;
+  
+  let scale = 1, offsetX = 0, offsetY = 0;
+  let state = "menu";
+  let score = 0, best = 0;
+  let maxScoreHeight = 0;
+
+  const player = {
+    x: GW / 2, y: GH - 200,
+    r: 18, vx: 0, vy: 0,
+    jumpForce: -13.5
+  };
+
+  const GRAVITY = 0.42;
+  let platforms = [];
+  let particles = [];
+  let cameraY = 0;
+  let ac = null;
+  let keys = {};
+  let pointerX = null;
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("REKOR: " + best) : "";
+
+  function resize() {
+    const W = innerWidth, H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+
+    scale = Math.min(W / GW, H / GH);
+    offsetX = (W - GW * scale) / 2;
+    offsetY = (H - GH * scale) / 2;
+
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function sound(freq, type = "sine", duration = 0.08, vol = 0.05) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function spawnPlatform(y) {
+    const w = Math.max(70, 110 - score * 0.05);
+    const x = Math.random() * (GW - w - 40) + 20;
+    
+    // Tip Seçimi
+    let type = "normal";
+    const rand = Math.random();
+    if (rand < 0.18 && score > 300) type = "broken";
+    else if (rand < 0.35 && score > 150) type = "moving";
+
+    platforms.push({
+      x, y, w, h: 16,
+      type,
+      vx: type === "moving" ? (Math.random() > 0.5 ? 2.5 : -2.5) : 0,
+      broken: false
+    });
+  }
+
+  function initGame() {
+    state = "play";
+    score = 0;
+    maxScoreHeight = GH - 200;
+    cameraY = 0;
+
+    player.x = GW / 2;
+    player.y = GH - 200;
+    player.vx = 0;
+    player.vy = player.jumpForce;
+
+    platforms = [];
+    particles = [];
+
+    // Başlangıç Taban Platformu
+    platforms.push({ x: GW / 2 - 80, y: GH - 100, w: 160, h: 18, type: "normal", vx: 0 });
+
+    for (let y = GH - 200; y > -1000; y -= 85) {
+      spawnPlatform(y);
+    }
+
+    scoreEl.textContent = "0";
+    overlay.classList.add("hide");
+    sound(520, "sine", 0.1, 0.06);
+  }
+
+  function die() {
+    state = "dead";
+    sound(110, "sawtooth", 0.35, 0.1);
+
+    for (let i = 0; i < 25; i++) {
+      particles.push({
+        x: player.x, y: player.y,
+        vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8,
+        color: "#00ffcc", life: 0.8, size: Math.random() * 5 + 2
+      });
+    }
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "REKOR: " + best;
+
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Skor: ${score}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+  }
+
+  function update() {
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    if (state !== "play") return;
+
+    // Yanal Kontrol
+    if (pointerX !== null) {
+      player.vx = (pointerX - player.x) * 0.15;
+    } else {
+      if (keys["ArrowLeft"] || keys["a"]) player.vx = -7;
+      else if (keys["ArrowRight"] || keys["d"]) player.vx = 7;
+      else player.vx *= 0.85;
+    }
+
+    player.x += player.vx;
+
+    // Ekran Kenarlarından Geçiş (Pac-Man Tipi)
+    if (player.x < -player.r) player.x = GW + player.r;
+    if (player.x > GW + player.r) player.x = -player.r;
+
+    // Yerçekimi
+    player.vy += GRAVITY;
+    player.y += player.vy;
+
+    // Kamera Yükselmesi
+    if (player.y < GH * 0.4 + cameraY) {
+      const diff = (GH * 0.4 + cameraY) - player.y;
+      cameraY -= diff;
+    }
+
+    // Skor Hesabı
+    const currentHeight = Math.floor((GH - 200 - player.y) / 10);
+    if (currentHeight > score) {
+      score = currentHeight;
+      scoreEl.textContent = String(score);
+    }
+
+    // Platform Hareketleri & Çarpışma
+    platforms.forEach(p => {
+      if (p.type === "moving") {
+        p.x += p.vx;
+        if (p.x <= 10 || p.x + p.w >= GW - 10) p.vx *= -1;
+      }
+
+      // Sadece Düşerken Çarpışma
+      if (player.vy > 0 &&
+          player.y + player.r >= p.y &&
+          player.y + player.r <= p.y + p.h + 10 &&
+          player.x + player.r >= p.x &&
+          player.x - player.r <= p.x + p.w &&
+          !p.broken) {
+
+        if (p.type === "broken") {
+          p.broken = true;
+          sound(220, "sawtooth", 0.08, 0.06);
+          for (let i = 0; i < 8; i++) {
+            particles.push({
+              x: p.x + p.w / 2, y: p.y,
+              vx: (Math.random() - 0.5) * 6, vy: Math.random() * 4,
+              color: "#ff007f", life: 0.5, size: 4
+            });
+          }
+        } else {
+          player.vy = player.jumpForce;
+          sound(620, "sine", 0.05, 0.05);
+
+          for (let i = 0; i < 6; i++) {
+            particles.push({
+              x: player.x, y: player.y + player.r,
+              vx: (Math.random() - 0.5) * 4, vy: Math.random() * 2,
+              color: "#00ffcc", life: 0.4, size: 3
+            });
+          }
+        }
+      }
+    });
+
+    // Yeni Platform Ekleme / Temizleme
+    const highestPlatformY = platforms.reduce((min, p) => Math.min(min, p.y), GH);
+    if (highestPlatformY > cameraY - 100) {
+      spawnPlatform(highestPlatformY - 85);
+    }
+
+    platforms = platforms.filter(p => p.y < cameraY + GH + 50);
+
+    // Düşme Kontrolü
+    if (player.y - player.r > cameraY + GH) {
+      die();
+    }
+  }
+
+  function draw() {
+    ctx.fillStyle = "#05040a";
+    ctx.fillRect(0, 0, GW, GH);
+
+    ctx.save();
+    ctx.translate(0, -cameraY);
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillRect(p.x, p.y, p.size, p.size);
+    });
+    ctx.globalAlpha = 1.0;
+
+    // Platformlar
+    platforms.forEach(p => {
+      if (p.broken) return;
+
+      if (p.type === "normal") {
+        ctx.fillStyle = "#00ffcc";
+        ctx.shadowColor = "#00ffcc";
+        ctx.shadowBlur = 10;
+      } else if (p.type === "moving") {
+        ctx.fillStyle = "#ffe14d";
+        ctx.shadowColor = "#ffe14d";
+        ctx.shadowBlur = 12;
+      } else if (p.type === "broken") {
+        ctx.fillStyle = "#ff007f";
+        ctx.shadowColor = "#ff007f";
+        ctx.shadowBlur = 8;
+      }
+
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+      ctx.shadowBlur = 0;
+    });
+
+    // Oyuncu
+    if (state === "play") {
+      ctx.fillStyle = "#00ffcc";
+      ctx.shadowColor = "#00ffcc";
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // İç Parlama
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(player.x - 4, player.y - 4, player.r * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // Kontroller
+  function handlePointer(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    pointerX = (clientX - rect.left - offsetX) / scale;
+  }
+
+  window.addEventListener("pointerdown", e => { handlePointer(e); });
+  window.addEventListener("pointermove", e => { if (pointerX !== null) handlePointer(e); });
+  window.addEventListener("pointerup", () => pointerX = null);
+
+  window.addEventListener("keydown", e => keys[e.key] = true);
+  window.addEventListener("keyup", e => keys[e.key] = false);
+
+  goBtn.onclick = initGame;
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
