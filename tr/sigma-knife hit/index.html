@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Knife Hit</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #07060c; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: pointer; }
+  #hud { position: fixed; top: 14px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 56px; font-weight: 800; text-shadow: 0 6px 24px rgba(0,0,0,0.8); color: #00d4ff; }
+  #stage { opacity: .85; font-size: 16px; font-weight: 700; color: #ff3cac; margin-top: -6px; }
+  #best { opacity: .75; font-size: 14px; margin-top: 2px; }
+  #back { position: fixed; top: 16px; left: 14px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; }
+  #back:hover { opacity: 1; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.85); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(32px, 8vw, 52px); margin: 0 0 8px; letter-spacing: 3px; background: linear-gradient(90deg, #00d4ff, #ff3cac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .sub { opacity: .8; margin: 0 0 22px; line-height: 1.5; font-size: 16px; }
+  button { border: 0; border-radius: 14px; padding: 14px 36px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.95); }
+</style>
+</head>
+<body>
+  <a id="back" href="../">← Menü</a>
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="stage">Bölüm 1</div>
+    <div id="best"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA KNIFE HIT</h1>
+    <p class="sub">Ekrana Dokun / Bıçağı Fırlat<br>Diğer bıçaklara çarpmadan çarkı temizle!</p>
+    <button id="go">BAŞLA</button>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const stageEl = document.getElementById("stage");
+  const bestEl = document.getElementById("best");
+
+  const SAVE_KEY = "sigma-knife-best";
+  const GW = 400, GH = 640;
+  const TARGET_R = 65;
+  const TARGET_Y = 220;
+
+  let W = 0, H = 0, scale = 1, offsetX = 0, offsetY = 0;
+  let state = "menu"; // "menu", "play", "dead"
+  let score = 0, best = 0, stage = 1;
+
+  let targetAngle = 0;
+  let rotationSpeed = 0.03;
+  let speedTimer = 0;
+
+  let knivesOnTarget = []; // { angle, color }
+  let remainingKnives = 7;
+  let activeKnife = null; // { x, y, vy, isFlying }
+
+  let particles = [];
+  let flash = 0, ac = null;
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("Rekor: " + best) : "";
+
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+
+    const scaleX = W / GW;
+    const scaleY = H / GH;
+    scale = Math.min(scaleX, scaleY);
+    offsetX = (W - GW * scale) / 2;
+    offsetY = (H - GH * scale) / 2;
+
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function sound(freq, type = "sine", duration = 0.05, vol = 0.04) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function initGame() {
+    state = "play";
+    score = 0;
+    stage = 1;
+    particles = [];
+    flash = 0;
+
+    scoreEl.textContent = "0";
+    stageEl.textContent = "Bölüm " + stage;
+    overlay.classList.add("hide");
+
+    startStage();
+    sound(520, "sine", 0.1, 0.06);
+  }
+
+  function startStage() {
+    knivesOnTarget = [];
+    remainingKnives = 6 + Math.min(stage, 6);
+    targetAngle = 0;
+    rotationSpeed = (0.025 + stage * 0.005) * (stage % 2 === 0 ? -1 : 1);
+
+    // İleri seviyelerde çark üzerinde hazır saplı bıçaklar başlat
+    const initialKnives = Math.min(Math.floor(stage / 2), 4);
+    for (let i = 0; i < initialKnives; i++) {
+      knivesOnTarget.push({
+        angle: (Math.PI * 2 / initialKnives) * i,
+        color: "#ff3cac"
+      });
+    }
+
+    resetKnife();
+    stageEl.textContent = "Bölüm " + stage;
+  }
+
+  function resetKnife() {
+    activeKnife = {
+      x: GW / 2,
+      y: GH - 100,
+      vy: 0,
+      isFlying: false
+    };
+  }
+
+  function throwKnife() {
+    if (state !== "play" || !activeKnife || activeKnife.isFlying) return;
+    activeKnife.isFlying = true;
+    activeKnife.vy = -28;
+    sound(400, "triangle", 0.04, 0.05);
+  }
+
+  function die() {
+    state = "dead";
+    flash = 1;
+    sound(110, "sawtooth", 0.3, 0.08);
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "Rekor: " + best;
+
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Skor: ${score}<br>Bölüm: ${stage}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+  }
+
+  function update() {
+    if (flash > 0) flash -= 0.04;
+
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      p.life -= 0.03;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    if (state !== "play") return;
+
+    // Hedef Çarkı Döndürme
+    speedTimer += 0.02;
+    if (stage > 2 && Math.sin(speedTimer) > 0.8) {
+      targetAngle += rotationSpeed * 1.8;
+    } else {
+      targetAngle += rotationSpeed;
+    }
+
+    // Uçan Bıçak Güncellemesi
+    if (activeKnife && activeKnife.isFlying) {
+      activeKnife.y += activeKnife.vy;
+
+      // Çarka Ulaşma Mesafesi
+      const hitDistance = TARGET_Y + TARGET_R;
+      if (activeKnife.y <= hitDistance) {
+        // Çarpışma Açısı Hesabı (Aşağıdan saplandığı için PI/2)
+        let hitAngle = (Math.PI / 2 - targetAngle) % (Math.PI * 2);
+        if (hitAngle < 0) hitAngle += Math.PI * 2;
+
+        // Çarptı mı kontrol et (Daha önce saplanmış bıçak var mı?)
+        const minAngleDiff = 0.22; // ~12.5 Derece
+        let collided = false;
+
+        for (let k of knivesOnTarget) {
+          let diff = Math.abs(k.angle - hitAngle);
+          diff = Math.min(diff, Math.PI * 2 - diff);
+          if (diff < minAngleDiff) {
+            collided = true;
+            break;
+          }
+        }
+
+        if (collided) {
+          // Bıçağa Çarptı -> Düşme Efekti ve Oyun Bitti
+          activeKnife.vy = 8;
+          activeKnife.isFlying = false;
+
+          for (let i = 0; i < 12; i++) {
+            particles.push({
+              x: activeKnife.x, y: activeKnife.y,
+              vx: (Math.random() - 0.5) * 8,
+              vy: (Math.random() - 0.5) * 8,
+              life: 1, color: "#ff3cac"
+            });
+          }
+          die();
+        } else {
+          // Başarıyla Saplandı
+          knivesOnTarget.push({ angle: hitAngle, color: "#00d4ff" });
+          score++;
+          remainingKnives--;
+          scoreEl.textContent = String(score);
+          sound(700, "sine", 0.06, 0.06);
+
+          for (let i = 0; i < 10; i++) {
+            particles.push({
+              x: activeKnife.x, y: activeKnife.y,
+              vx: (Math.random() - 0.5) * 6,
+              vy: Math.random() * -4,
+              life: 0.8, color: "#00d4ff"
+            });
+          }
+
+          if (remainingKnives <= 0) {
+            // Bölüm Tamamlandı
+            stage++;
+            sound(880, "triangle", 0.12, 0.08);
+            setTimeout(startStage, 250);
+          } else {
+            resetKnife();
+          }
+        }
+      }
+    }
+  }
+
+  function drawKnife(x, y, angle = 0, color = "#00d4ff") {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    // Bıçak Gövdesi
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+
+    ctx.beginPath();
+    ctx.moveTo(0, -35); // Keskin Uç
+    ctx.lineTo(6, -5);
+    ctx.lineTo(3, 15);  // Kabza Bağlantısı
+    ctx.lineTo(-3, 15);
+    ctx.lineTo(-6, -5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Bıçak Tutacağı
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(-2, 15, 4, 18);
+
+    ctx.restore();
+  }
+
+  function draw() {
+    // Arka Plan
+    const bg = ctx.createLinearGradient(0, 0, 0, GH);
+    bg.addColorStop(0, "#120a2a");
+    bg.addColorStop(1, "#05040a");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, GW, GH);
+
+    ctx.save();
+
+    // Dönen Hedef Çarkı
+    ctx.save();
+    ctx.translate(GW / 2, TARGET_Y);
+    ctx.rotate(targetAngle);
+
+    // Dış Halka Neonu
+    ctx.beginPath();
+    ctx.arc(0, 0, TARGET_R, 0, Math.PI * 2);
+    ctx.fillStyle = "#1a1835";
+    ctx.strokeStyle = "#00d4ff";
+    ctx.lineWidth = 6;
+    ctx.shadowColor = "#00d4ff";
+    ctx.shadowBlur = 16;
+    ctx.fill();
+    ctx.stroke();
+
+    // İç Çark Desenleri
+    ctx.beginPath();
+    ctx.arc(0, 0, TARGET_R - 18, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255, 60, 172, 0.4)";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(0, 0, 14, 0, Math.PI * 2);
+    ctx.fillStyle = "#ff3cac";
+    ctx.fill();
+
+    // Çarka Saplanmış Bıçaklar
+    knivesOnTarget.forEach(k => {
+      ctx.save();
+      ctx.rotate(k.angle);
+      drawKnife(0, TARGET_R + 8, Math.PI, k.color);
+      ctx.restore();
+    });
+
+    ctx.restore();
+
+    // Altta Kalan Yedek Bıçak Simgeleri
+    for (let i = 0; i < remainingKnives; i++) {
+      drawKnife(28 + i * 18, GH - 30, 0, "rgba(0, 212, 255, 0.4)");
+    }
+
+    // Aktif Fırlatılan / Bekleyen Bıçak
+    if (activeKnife) {
+      drawKnife(activeKnife.x, activeKnife.y, 0, "#00d4ff");
+    }
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.5, 3 * p.life), 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    });
+
+    ctx.restore();
+
+    // Flaş Efekti
+    if (flash > 0) {
+      ctx.fillStyle = `rgba(255, 60, 172, ${Math.min(0.8, flash)})`;
+      ctx.fillRect(0, 0, GW, GH);
+    }
+  }
+
+  function handleAction(e) {
+    if (e.target.tagName === "BUTTON" || e.target.tagName === "A") return;
+    if (state === "play") throwKnife();
+  }
+
+  window.addEventListener("mousedown", handleAction);
+  window.addEventListener("touchstart", handleAction, { passive: true });
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+      e.preventDefault();
+      handleAction(e);
+    }
+  });
+
+  goBtn.onclick = initGame;
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
