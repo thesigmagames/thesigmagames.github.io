@@ -1,33 +1,294 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIGMA SNAKE</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Cyber Snake</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #05040a; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: pointer; }
+  #hud { position: fixed; top: 16px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 52px; font-weight: 900; color: #00ffcc; text-shadow: 0 0 20px rgba(0,255,204,0.6); font-family: monospace; }
+  #best { opacity: .8; font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+  #back { position: fixed; top: 16px; left: 16px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 10px; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.92); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(30px, 7vw, 50px); margin: 0 0 10px; background: linear-gradient(90deg, #00ffcc, #ff007f); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+  .sub { opacity: .85; margin: 0 0 24px; line-height: 1.5; font-size: 16px; }
+  button { border: 0; border-radius: 14px; padding: 16px 42px; font-size: 19px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00ffcc, #ff007f); color: #000; box-shadow: 0 4px 25px rgba(0, 255, 204, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.95); }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>⚡ SIGMA SNAKE ⚡</h1>
-        
-        <div class="game-info">
-            <p>⬆️ W / ⬇️ S / ⬅️ A / ➡️ D - Hareket Et</p>
-            <p>SPACE - Başla / Duraklat</p>
-        </div>
-        
-        <canvas id="gameCanvas" width="600" height="400"></canvas>
-        
-        <div class="score-board">
-            <div class="score">Skor: <span id="score">0</span></div>
-        </div>
-        
-        <button id="startBtn" class="btn">OYUNU BAŞLAT</button>
-        <button id="resetBtn" class="btn">SIFIRLA</button>
-        
-        <br><br>
-        <a href="../../" class="back-link">← Geri Dön</a>
-    </div>
-    
-    <script src="game.js"></script>
+  <a id="back" href="../">← Menü</a>
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA CYBER SNAKE</h1>
+    <p class="sub">Yön Tuşları / WASD veya Parmağını Ekranda Kaydırarak Oyna!<br>Neon yemleri topla, kendine ve duvarlara çarpma!</p>
+    <button id="go">BAŞLA</button>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+
+  const SAVE_KEY = "sigma-snake-best";
+  const GW = 600, GH = 600;
+  const GRID_SIZE = 20;
+  const CELL = GW / GRID_SIZE;
+
+  let scale = 1, offsetX = 0, offsetY = 0;
+  let state = "menu";
+  let score = 0, best = 0;
+
+  let snake = [];
+  let dir = { x: 1, y: 0 };
+  let nextDir = { x: 1, y: 0 };
+  let food = { x: 0, y: 0, isSpecial: false };
+  let particles = [];
+  let moveTimer = 0;
+  let moveInterval = 7; // Kare günceleme hızı
+  let ac = null;
+
+  let touchStartX = 0, touchStartY = 0;
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("REKOR: " + best) : "";
+
+  function resize() {
+    const W = innerWidth, H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+
+    scale = Math.min(W / GW, H / GH);
+    offsetX = (W - GW * scale) / 2;
+    offsetY = (H - GH * scale) / 2;
+
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function sound(freq, type = "sine", duration = 0.08, vol = 0.05) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function spawnFood() {
+    let valid = false;
+    while (!valid) {
+      food.x = Math.floor(Math.random() * GRID_SIZE);
+      food.y = Math.floor(Math.random() * GRID_SIZE);
+      valid = !snake.some(segment => segment.x === food.x && segment.y === food.y);
+    }
+    food.isSpecial = Math.random() < 0.2;
+  }
+
+  function initGame() {
+    state = "play";
+    score = 0;
+    moveInterval = 7;
+    dir = { x: 1, y: 0 };
+    nextDir = { x: 1, y: 0 };
+
+    snake = [
+      { x: 5, y: 10 },
+      { x: 4, y: 10 },
+      { x: 3, y: 10 }
+    ];
+
+    particles = [];
+    spawnFood();
+
+    scoreEl.textContent = "0";
+    overlay.classList.add("hide");
+    sound(580, "sine", 0.1, 0.06);
+  }
+
+  function die() {
+    state = "dead";
+    sound(120, "sawtooth", 0.35, 0.1);
+
+    const head = snake[0];
+    for (let i = 0; i < 30; i++) {
+      particles.push({
+        x: head.x * CELL + CELL / 2,
+        y: head.y * CELL + CELL / 2,
+        vx: (Math.random() - 0.5) * 8,
+        vy: (Math.random() - 0.5) * 8,
+        color: "#ff007f", life: 0.8, size: Math.random() * 5 + 2
+      });
+    }
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "REKOR: " + best;
+
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Skor: ${score}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+  }
+
+  function update() {
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    if (state !== "play") return;
+
+    moveTimer++;
+    if (moveTimer < moveInterval) return;
+    moveTimer = 0;
+
+    dir = nextDir;
+    const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+
+    // Duvara Çarpma Testi
+    if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
+      die();
+      return;
+    }
+
+    // Kendine Çarpma Testi
+    if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+      die();
+      return;
+    }
+
+    snake.unshift(head);
+
+    // Yem Yeme Testi
+    if (head.x === food.x && head.y === food.y) {
+      const pts = food.isSpecial ? 30 : 10;
+      score += pts;
+      scoreEl.textContent = String(score);
+
+      sound(food.isSpecial ? 900 : 700, "square", 0.06, 0.05);
+
+      if (moveInterval > 3 && score % 50 === 0) moveInterval--;
+
+      for (let i = 0; i < 12; i++) {
+        particles.push({
+          x: food.x * CELL + CELL / 2,
+          y: food.y * CELL + CELL / 2,
+          vx: (Math.random() - 0.5) * 6,
+          vy: (Math.random() - 0.5) * 6,
+          color: food.isSpecial ? "#ffe14d" : "#00ffcc",
+          life: 0.6, size: 4
+        });
+      }
+
+      spawnFood();
+    } else {
+      snake.pop();
+    }
+  }
+
+  function draw() {
+    ctx.fillStyle = "#05040a";
+    ctx.fillRect(0, 0, GW, GH);
+
+    // Izgara Desen
+    ctx.strokeStyle = "rgba(0, 255, 204, 0.05)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= GRID_SIZE; i++) {
+      ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, GH); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(GW, i * CELL); ctx.stroke();
+    }
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillRect(p.x, p.y, p.size, p.size);
+    });
+    ctx.globalAlpha = 1.0;
+
+    // Yem
+    ctx.fillStyle = food.isSpecial ? "#ffe14d" : "#00ffcc";
+    ctx.shadowColor = food.isSpecial ? "#ffe14d" : "#00ffcc";
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    ctx.arc(food.x * CELL + CELL / 2, food.y * CELL + CELL / 2, CELL / 2 - 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Yılan
+    snake.forEach((segment, idx) => {
+      ctx.fillStyle = idx === 0 ? "#ffffff" : "#ff007f";
+      ctx.shadowColor = idx === 0 ? "#ffffff" : "#ff007f";
+      ctx.shadowBlur = idx === 0 ? 16 : 8;
+
+      ctx.fillRect(
+        segment.x * CELL + 2,
+        segment.y * CELL + 2,
+        CELL - 4,
+        CELL - 4
+      );
+    });
+
+    ctx.shadowBlur = 0;
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // Klavye Kontrolleri
+  window.addEventListener("keydown", e => {
+    if (state !== "play") return;
+    if ((e.key === "ArrowUp" || e.key === "w") && dir.y === 0) nextDir = { x: 0, y: -1 };
+    else if ((e.key === "ArrowDown" || e.key === "s") && dir.y === 0) nextDir = { x: 0, y: 1 };
+    else if ((e.key === "ArrowLeft" || e.key === "a") && dir.x === 0) nextDir = { x: -1, y: 0 };
+    else if ((e.key === "ArrowRight" || e.key === "d") && dir.x === 0) nextDir = { x: 1, y: 0 };
+  });
+
+  // Dokunmatik Kaydırma (Swipe) Kontrolleri
+  window.addEventListener("touchstart", e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  window.addEventListener("touchend", e => {
+    if (state !== "play") return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 30 && dir.x === 0) nextDir = { x: 1, y: 0 };
+      else if (dx < -30 && dir.x === 0) nextDir = { x: -1, y: 0 };
+    } else {
+      if (dy > 30 && dir.y === 0) nextDir = { x: 0, y: 1 };
+      else if (dy < -30 && dir.y === 0) nextDir = { x: 0, y: -1 };
+    }
+  }, { passive: true });
+
+  goBtn.onclick = initGame;
+  requestAnimationFrame(loop);
+})();
+</script>
 </body>
 </html>
