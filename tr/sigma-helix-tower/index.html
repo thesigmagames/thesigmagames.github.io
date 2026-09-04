@@ -3,26 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Sigma Helix Tower 3D</title>
+<title>Sigma Helix Tower 3D - Ultra FPS</title>
 <style>
   * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #07060c; font-family: system-ui, sans-serif; color: #fff; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #080711; font-family: system-ui, sans-serif; color: #fff; }
   canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
   canvas:active { cursor: grabbing; }
   #hud { position: fixed; top: 16px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
-  #score { font-size: 60px; font-weight: 900; text-shadow: 0 8px 28px rgba(0,0,0,0.8); color: #00d4ff; font-family: monospace; }
-  #best { opacity: .8; font-size: 15px; margin-top: 2px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-  #back { position: fixed; top: 16px; left: 16px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 10px; backdrop-filter: blur(8px); }
-  #back:hover { opacity: 1; background: rgba(255,255,255,0.2); }
-  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.88); text-align: center; padding: 24px; z-index: 4; backdrop-filter: blur(10px); }
+  #score { font-size: 56px; font-weight: 900; text-shadow: 0 4px 16px rgba(0,0,0,0.8); color: #00d4ff; font-family: monospace; }
+  #best { opacity: .8; font-size: 14px; margin-top: 2px; font-weight: 700; letter-spacing: 1px; }
+  #back { position: fixed; top: 16px; left: 16px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 10px; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.92); text-align: center; padding: 24px; z-index: 4; }
   #overlay.hide { display: none; }
-  h1 { font-size: clamp(32px, 7vw, 54px); margin: 0 0 10px; letter-spacing: 2px; background: linear-gradient(90deg, #00d4ff, #ff3cac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
-  .sub { opacity: .85; margin: 0 0 26px; line-height: 1.6; font-size: 16px; max-width: 380px; }
-  button { border: 0; border-radius: 16px; padding: 16px 42px; font-size: 19px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; box-shadow: 0 6px 25px rgba(0, 212, 255, 0.4); transition: transform 0.15s, box-shadow 0.15s; }
-  button:hover { transform: scale(1.03); box-shadow: 0 8px 30px rgba(0, 212, 255, 0.6); }
+  h1 { font-size: clamp(28px, 6vw, 48px); margin: 0 0 10px; background: linear-gradient(90deg, #00d4ff, #ff3cac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+  .sub { opacity: .85; margin: 0 0 24px; line-height: 1.5; font-size: 15px; }
+  button { border: 0; border-radius: 14px; padding: 16px 40px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4); }
   button:active { transform: scale(0.96); }
 </style>
-<!-- 3D WebGL Motoru (Three.js) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
@@ -32,9 +29,9 @@
     <div id="best"></div>
   </div>
   <div id="overlay">
-    <h1>SIGMA HELIX TOWER 3D</h1>
-    <p class="sub">Ekranı Sürükle veya Yön Tuşlarını Kullan<br>Kuleyi döndür, kırmızılara çarpmadan boşluklardan aşağı süzül!</p>
-    <button id="go">BAŞLA</button>
+    <h1>SIGMA HELIX 3D</h1>
+    <p class="sub">Sürükle veya Sol/Sağ Yön Tuşlarını Kullan<br>Kırmızılara basma, boşluklardan aşağı in!</p>
+    <button id="go">OYNAMA'YA BAŞLA</button>
   </div>
 
 <script>
@@ -44,25 +41,28 @@
   const scoreEl = document.getElementById("score");
   const bestEl = document.getElementById("best");
 
-  const SAVE_KEY = "sigma-helix-3d-best";
-  const INNER_R = 1.8, OUTER_R = 6.2, FLOOR_GAP = 9.5;
+  const SAVE_KEY = "sigma-helix-opt-best";
+  const INNER_R = 1.6, OUTER_R = 5.8, FLOOR_GAP = 8.5;
   const SECTORS = 8;
+  const ANGLE_STEP = (Math.PI * 2) / SECTORS;
 
-  let state = "menu"; // "menu", "play", "dead"
+  let state = "menu";
   let score = 0, best = 0;
   
-  let scene, camera, renderer, towerGroup, ball, ballLight;
+  let scene, camera, renderer, towerGroup, ball;
   let ballY = 0, ballVy = 0;
   let floors = [];
-  let particles = [];
   let ac = null;
-
   let isDragging = false, lastX = 0;
+
+  // Performans İçin Tek Geometri Paylaşımı
+  let sharedSectorGeo = null;
+  let safeMat, trapMat, poleMat, ballMat;
 
   try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
   bestEl.textContent = best ? ("REKOR: " + best) : "";
 
-  function sound(freq, type = "sine", duration = 0.06, vol = 0.05) {
+  function sound(freq, type = "sine", duration = 0.05, vol = 0.04) {
     try {
       if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
       if (ac.state === "suspended") ac.resume();
@@ -75,134 +75,89 @@
     } catch (e) {}
   }
 
-  // 3D Sahne Kurulumu
   function init3D() {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x07060c);
-    scene.fog = new THREE.FogExp2(0x07060c, 0.015);
+    scene.background = new THREE.Color(0x080711);
 
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
     
-    renderer = new THREE.WebGLRenderer({ antialias: true });
+    // Hafifletilmiş WebGL (Gölgesiz, Düşük Piksel Yükü)
+    renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     document.body.appendChild(renderer.domElement);
 
-    // Işıklandırma
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
+    // Hızlı Işıklandırma
+    const amb = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(amb);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
-    dirLight.position.set(20, 40, 20);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 1024;
-    dirLight.shadow.mapSize.height = 1024;
-    dirLight.shadow.camera.near = 10;
-    dirLight.shadow.camera.far = 100;
-    dirLight.shadow.camera.left = -15;
-    dirLight.shadow.camera.right = 15;
-    dirLight.shadow.camera.top = 15;
-    dirLight.shadow.camera.bottom = -15;
-    scene.add(dirLight);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+    dir.position.set(10, 20, 15);
+    scene.add(dir);
 
-    // Ana Kule Grubu
+    // Materyaller
+    safeMat = new THREE.MeshLambertMaterial({ color: 0x00d4ff });
+    trapMat = new THREE.MeshLambertMaterial({ color: 0xff3cac });
+    poleMat = new THREE.MeshLambertMaterial({ color: 0x16132b });
+    ballMat = new THREE.MeshPhongMaterial({ color: 0xffffe0, shininess: 80 });
+
+    // Tek Bir Parça Dilim Geometrisi Oluştur (Tüm katlar bunu paylaşır)
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, OUTER_R, 0, ANGLE_STEP - 0.06, false);
+    shape.absarc(0, 0, INNER_R, ANGLE_STEP - 0.06, 0, true);
+    shape.closePath();
+
+    sharedSectorGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.3, bevelEnabled: false });
+    sharedSectorGeo.rotateX(Math.PI / 2);
+
+    // Kule Grubu
     towerGroup = new THREE.Group();
     scene.add(towerGroup);
 
-    // Orta Direk (Silindir)
-    const poleGeo = new THREE.CylinderGeometry(INNER_R, INNER_R, 300, 32);
-    const poleMat = new THREE.MeshStandardMaterial({ color: 0x18152e, roughness: 0.3, metalness: 0.8 });
+    // Ana Direk
+    const poleGeo = new THREE.CylinderGeometry(INNER_R, INNER_R, 400, 16);
     const pole = new THREE.Mesh(poleGeo, poleMat);
-    pole.position.y = -100;
-    pole.receiveShadow = true;
+    pole.position.y = -150;
     towerGroup.add(pole);
 
-    // Top Model
-    const ballGeo = new THREE.SphereGeometry(0.75, 32, 32);
-    const ballMat = new THREE.MeshStandardMaterial({
-      color: 0xffe14d,
-      roughness: 0.15,
-      metalness: 0.4,
-      emissive: 0x332a00
-    });
+    // Top
+    const ballGeo = new THREE.SphereGeometry(0.65, 16, 16);
     ball = new THREE.Mesh(ballGeo, ballMat);
-    ball.castShadow = true;
     ball.position.set(0, 0, (INNER_R + OUTER_R) / 2);
     scene.add(ball);
 
-    // Topun Kendi Işığı (Glow Hissiyatı)
-    ballLight = new THREE.PointLight(0xffe14d, 1.2, 12);
-    scene.add(ballLight);
-
-    window.addEventListener("resize", onWindowResize);
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
   }
 
-  function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  }
-
-  // Extruded 3D Dilim Geometrisi Üretimi
-  function createSectorGeometry(startAngle, angleLength, depth = 0.4) {
-    const shape = new THREE.Shape();
-    const endAngle = startAngle + angleLength;
-    shape.absarc(0, 0, OUTER_R, startAngle, endAngle, false);
-    shape.absarc(0, 0, INNER_R, endAngle, startAngle, true);
-    shape.closePath();
-
-    const extrudeSettings = {
-      depth: depth,
-      bevelEnabled: true,
-      bevelSegments: 2,
-      steps: 1,
-      bevelSize: 0.12,
-      bevelThickness: 0.12
-    };
-    const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    geom.rotateX(Math.PI / 2);
-    return geom;
-  }
-
-  // Kat Oluşturma
   function createFloor(index) {
     const floorGroup = new THREE.Group();
     const floorY = -index * FLOOR_GAP;
     floorGroup.position.y = floorY;
 
-    const angleStep = (Math.PI * 2) / SECTORS;
     const types = new Array(SECTORS).fill("safe");
-
-    // Boşluklar ve Kırmızı Tuzaklar
     const gapCount = index === 0 ? 2 : Math.min(3, 1 + Math.floor(Math.random() * 2));
-    const trapCount = index === 0 ? 0 : Math.min(3, Math.floor(Math.random() * (index > 5 ? 3 : 2)));
+    const trapCount = index === 0 ? 0 : Math.min(3, Math.floor(Math.random() * 2));
 
     let g = 0;
     while (g < gapCount) {
-      let idx = Math.floor(Math.random() * SECTORS);
-      if (types[idx] === "safe") { types[idx] = "gap"; g++; }
+      let r = Math.floor(Math.random() * SECTORS);
+      if (types[r] === "safe") { types[r] = "gap"; g++; }
     }
-
     let t = 0;
     while (t < trapCount) {
-      let idx = Math.floor(Math.random() * SECTORS);
-      if (types[idx] === "safe") { types[idx] = "trap"; t++; }
+      let r = Math.floor(Math.random() * SECTORS);
+      if (types[r] === "safe") { types[r] = "trap"; t++; }
     }
-
-    // Materyaller
-    const safeMat = new THREE.MeshStandardMaterial({ color: 0x00d4ff, roughness: 0.25, metalness: 0.2 });
-    const trapMat = new THREE.MeshStandardMaterial({ color: 0xff3cac, roughness: 0.2, metalness: 0.5, emissive: 0x440011 });
 
     for (let i = 0; i < SECTORS; i++) {
       if (types[i] === "gap") continue;
 
-      const startA = i * angleStep;
-      const geom = createSectorGeometry(startA, angleStep - 0.03);
-      const mesh = new THREE.Mesh(geom, types[i] === "trap" ? trapMat : safeMat);
-      mesh.receiveShadow = true;
-      mesh.castShadow = true;
+      const mesh = new THREE.Mesh(sharedSectorGeo, types[i] === "trap" ? trapMat : safeMat);
+      mesh.rotation.y = i * ANGLE_STEP;
       floorGroup.add(mesh);
     }
 
@@ -217,50 +172,21 @@
     ballVy = 0;
     towerGroup.rotation.y = 0;
 
-    // Temizlik
     floors.forEach(f => towerGroup.remove(f.group));
     floors = [];
-    particles.forEach(p => scene.remove(p.mesh));
-    particles = [];
 
-    // Başlangıç Katları
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 15; i++) {
       floors.push(createFloor(i));
     }
 
     scoreEl.textContent = "0";
     overlay.classList.add("hide");
-    sound(520, "sine", 0.1, 0.08);
+    sound(520, "sine", 0.08, 0.06);
   }
 
-  function spawnSplash(y) {
-    const splashGeo = new THREE.CircleGeometry(0.65, 16);
-    splashGeo.rotateX(-Math.PI / 2);
-    const splashMat = new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.8 });
-    const splash = new THREE.Mesh(splashGeo, splashMat);
-    splash.position.set(0, y + 0.21, (INNER_R + OUTER_R) / 2);
-    towerGroup.add(splash);
-  }
-
-   function die() {
+  function die() {
     state = "dead";
-    sound(110, "sawtooth", 0.35, 0.1);
-
-    // Kırılma Parçacıkları
-    for (let i = 0; i < 25; i++) {
-      const pGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-      const pMat = new THREE.MeshBasicMaterial({ color: 0xff3cac });
-      const pMesh = new THREE.Mesh(pGeo, pMat);
-      pMesh.position.copy(ball.position);
-      scene.add(pMesh);
-      particles.push({
-        mesh: pMesh,
-        vx: (Math.random() - 0.5) * 0.4,
-        vy: Math.random() * 0.4,
-        vz: (Math.random() - 0.5) * 0.4,
-        life: 1.0
-      });
-    }
+    sound(120, "sawtooth", 0.25, 0.08);
 
     if (score > best) {
       best = score;
@@ -268,74 +194,58 @@
     }
     bestEl.textContent = "REKOR: " + best;
 
-    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Skor: ${score}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Kat: ${score}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
     overlay.classList.remove("hide");
     document.getElementById("go2").onclick = initGame;
   }
 
   function update() {
-    // Parçacık Fiziği
-    particles.forEach(p => {
-      p.mesh.position.x += p.vx;
-      p.mesh.position.y += p.vy;
-      p.mesh.position.z += p.vz;
-      p.vy -= 0.015;
-      p.life -= 0.025;
-      p.mesh.scale.setScalar(Math.max(0.01, p.life));
-    });
-    particles = particles.filter(p => {
-      if (p.life <= 0) { scene.remove(p.mesh); return false; }
-      return true;
-    });
-
     if (state !== "play") return;
 
-    // Yerçekimi ve Top Hareketi
-    ballVy -= 0.018;
+    // Kesintisiz Hafif Fizik
+    ballVy -= 0.016;
     ballY += ballVy;
 
-    // Kamera Takibi
-    const targetCamY = ballY + 7;
-    camera.position.y += (targetCamY - camera.position.y) * 0.15;
+    // Kamera Yumuşak Takibi
+    const targetCamY = ballY + 5.5;
+    camera.position.y += (targetCamY - camera.position.y) * 0.2;
     camera.position.x = 0;
-    camera.position.z = 18;
-    camera.lookAt(0, ballY - 1.5, 0);
+    camera.position.z = 16;
+    camera.lookAt(0, ballY - 1, 0);
 
     ball.position.y = ballY;
-    ballLight.position.set(ball.position.x, ball.position.y + 0.5, ball.position.z);
 
-    // Çarpışma Kontrolü
+    // Çarpışma Testi
+    const ballRadius = 0.65;
     floors.forEach(f => {
-      const topY = f.y + 0.2;
+      const topY = f.y + 0.15;
       
-      // Katın Üst Yüzeyine Temas
-      if (ballY - 0.75 <= topY && ballY - ballVy - 0.75 >= topY - 0.5) {
-        // Topun kuleye göre mevcut açısı
-        let angle = (-towerGroup.rotation.y % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-        let segIdx = Math.floor(angle / ((Math.PI * 2) / SECTORS)) % SECTORS;
+      if (ballVy < 0 && (ballY - ballRadius) <= topY && (ballY - ballVy - ballRadius) >= f.y - 0.4) {
+        // Topun kuledeki denk geldiği dilim
+        let normAngle = (-towerGroup.rotation.y) % (Math.PI * 2);
+        if (normAngle < 0) normAngle += Math.PI * 2;
+        let segIdx = Math.floor(normAngle / ANGLE_STEP) % SECTORS;
         let type = f.types[segIdx];
 
         if (type === "safe") {
-          ballY = topY + 0.75;
-          ballVy = 0.38; // Zıplama
-          spawnSplash(f.y);
-          sound(480, "sine", 0.05, 0.06);
+          ballY = topY + ballRadius;
+          ballVy = 0.34; // Sekme
+          sound(480, "sine", 0.04, 0.05);
         } else if (type === "trap") {
           die();
         }
       }
 
-      // Katı Tamamen Geçme (Skor)
-      if (!f.passed && ballY < f.y - 1) {
+      if (!f.passed && ballY < f.y - 0.5) {
         f.passed = true;
         score++;
         scoreEl.textContent = String(score);
-        sound(780, "triangle", 0.07, 0.06);
+        sound(750, "triangle", 0.05, 0.04);
       }
     });
 
-    // Yeni Kat Ekleme
-    if (floors[floors.length - 1].y > ballY - 80) {
+    // Otomatik Kat Ekleme/Silme (Hafıza Yönetimi)
+    if (floors[floors.length - 1].y > ballY - 50) {
       floors.push(createFloor(floors.length));
     }
   }
@@ -348,10 +258,10 @@
     requestAnimationFrame(render);
   }
 
-  // Kontroller (Sürükleme ve Klavye)
+  // Akıcı Dokunmatik/Klavye Kontrolleri
   function rotateTower(dx) {
     if (state === "play" && towerGroup) {
-      towerGroup.rotation.y += dx * 0.0075;
+      towerGroup.rotation.y += dx * 0.009;
     }
   }
 
