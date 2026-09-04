@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Neon Runner</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #05040a; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: pointer; }
+  #hud { position: fixed; top: 16px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 52px; font-weight: 900; color: #00ffcc; text-shadow: 0 0 20px rgba(0,255,204,0.6); font-family: monospace; }
+  #best { opacity: .8; font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+  #back { position: fixed; top: 16px; left: 16px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 10px; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.92); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(30px, 7vw, 50px); margin: 0 0 10px; background: linear-gradient(90deg, #00ffcc, #ff007f); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+  .sub { opacity: .85; margin: 0 0 24px; line-height: 1.5; font-size: 16px; }
+  button { border: 0; border-radius: 14px; padding: 16px 42px; font-size: 19px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00ffcc, #ff007f); color: #000; box-shadow: 0 4px 25px rgba(0, 255, 204, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.95); }
+</style>
+</head>
+<body>
+  <a id="back" href="../">← Menü</a>
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA NEON RUNNER</h1>
+    <p class="sub">Zıplamak için <b>Tıkla / Yukarı Tuşu</b><br>Eğilmek için <b>Aşağı Tuşu</b><br>Neon engellerden kaç ve kristalleri topla!</p>
+    <button id="go">BAŞLA</button>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+
+  const SAVE_KEY = "sigma-runner-best";
+  const GW = 900, GH = 500;
+  const GROUND_Y = GH - 90;
+
+  let scale = 1, offsetX = 0, offsetY = 0;
+  let state = "menu";
+  let score = 0, best = 0;
+  let gameSpeed = 7;
+
+  const player = {
+    x: 120, y: GROUND_Y - 50,
+    w: 42, h: 50, normalH: 50, slideH: 26,
+    vy: 0, gravity: 0.72, jumpForce: -14.5,
+    isGrounded: true, isSliding: false
+  };
+
+  let obstacles = [];
+  let coins = [];
+  let particles = [];
+  let bgGridX = 0;
+  let spawnTimer = 0;
+  let coinTimer = 0;
+  let ac = null;
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("REKOR: " + best) : "";
+
+  function resize() {
+    const W = innerWidth, H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+
+    scale = Math.min(W / GW, H / GH);
+    offsetX = (W - GW * scale) / 2;
+    offsetY = (H - GH * scale) / 2;
+
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function sound(freq, type = "sine", duration = 0.08, vol = 0.05) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function doJump() {
+    if (state !== "play") return;
+    if (player.isGrounded) {
+      player.vy = player.jumpForce;
+      player.isGrounded = false;
+      player.isSliding = false;
+      player.h = player.normalH;
+      sound(580, "sine", 0.08, 0.06);
+
+      for (let i = 0; i < 8; i++) {
+        particles.push({
+          x: player.x + player.w / 2, y: player.y + player.h,
+          vx: (Math.random() - 0.5) * 4, vy: Math.random() * 2,
+          color: "#00ffcc", life: 0.5, size: 3
+        });
+      }
+    }
+  }
+
+  function setSlide(sliding) {
+    if (state !== "play" || !player.isGrounded) return;
+    if (sliding && !player.isSliding) {
+      player.isSliding = true;
+      player.h = player.slideH;
+      player.y = GROUND_Y - player.slideH;
+      sound(320, "triangle", 0.06, 0.05);
+    } else if (!sliding && player.isSliding) {
+      player.isSliding = false;
+      player.h = player.normalH;
+      player.y = GROUND_Y - player.normalH;
+    }
+  }
+
+  function spawnObstacle() {
+    const type = Math.random() > 0.45 ? "low" : "high";
+    if (type === "low") {
+      obstacles.push({
+        x: GW + 40, y: GROUND_Y - 45, w: 32, h: 45, type: "low", color: "#ff007f"
+      });
+    } else {
+      obstacles.push({
+        x: GW + 40, y: GROUND_Y - 105, w: 45, h: 45, type: "high", color: "#ffe14d"
+      });
+    }
+  }
+
+  function spawnCoin() {
+    const coinY = Math.random() > 0.5 ? GROUND_Y - 35 : GROUND_Y - 95;
+    coins.push({ x: GW + 40, y: coinY, r: 12, color: "#00ffcc" });
+  }
+
+  function initGame() {
+    state = "play";
+    score = 0;
+    gameSpeed = 7.5;
+
+    player.y = GROUND_Y - player.normalH;
+    player.h = player.normalH;
+    player.vy = 0;
+    player.isGrounded = true;
+    player.isSliding = false;
+
+    obstacles = [];
+    coins = [];
+    particles = [];
+    spawnTimer = 0;
+    coinTimer = 0;
+
+    scoreEl.textContent = "0";
+    overlay.classList.add("hide");
+    sound(600, "sine", 0.1, 0.06);
+  }
+
+  function die() {
+    state = "dead";
+    sound(110, "sawtooth", 0.35, 0.1);
+
+    for (let i = 0; i < 30; i++) {
+      particles.push({
+        x: player.x + player.w / 2, y: player.y + player.h / 2,
+        vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10,
+        color: "#00ffcc", life: 0.8, size: Math.random() * 5 + 2
+      });
+    }
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "REKOR: " + best;
+
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Skor: ${score}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+  }
+
+  function update() {
+    // Parçacıklar
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    if (state !== "play") return;
+
+    // Skor ve Hızlanma
+    score += 1;
+    scoreEl.textContent = String(Math.floor(score / 5));
+    if (score % 300 === 0 && gameSpeed < 14) gameSpeed += 0.5;
+
+    // Arka Plan İlerlemesi
+    bgGridX = (bgGridX - gameSpeed) % 40;
+
+    // Fizik
+    player.vy += player.gravity;
+    player.y += player.vy;
+
+    if (player.y + player.h >= GROUND_Y) {
+      player.y = GROUND_Y - player.h;
+      player.vy = 0;
+      player.isGrounded = true;
+    }
+
+    // İz Efekti
+    if (Math.random() < 0.6) {
+      particles.push({
+        x: player.x, y: player.y + player.h - 5,
+        vx: -gameSpeed * 0.4, vy: (Math.random() - 0.5) * 2,
+        color: "#00ffcc", life: 0.4, size: 3
+      });
+    }
+
+    // Engel Üretimi
+    spawnTimer++;
+    if (spawnTimer > Math.max(45, 90 - (gameSpeed * 3))) {
+      spawnObstacle();
+      spawnTimer = 0;
+    }
+
+    // Kristal Üretimi
+    coinTimer++;
+    if (coinTimer > 60) {
+      if (Math.random() < 0.6) spawnCoin();
+      coinTimer = 0;
+    }
+
+    // Engel Hareketi & Çarpışma
+    obstacles.forEach(o => {
+      o.x -= gameSpeed;
+
+      // AABB Çarpışma Testi
+      if (player.x < o.x + o.w && player.x + player.w > o.x &&
+          player.y < o.y + o.h && player.y + player.h > o.y) {
+        die();
+      }
+    });
+    obstacles = obstacles.filter(o => o.x + o.w > -50);
+
+    // Kristal Toplama
+    coins.forEach((c, idx) => {
+      c.x -= gameSpeed;
+
+      const dist = Math.hypot((player.x + player.w / 2) - c.x, (player.y + player.h / 2) - c.y);
+      if (dist < player.w / 2 + c.r) {
+        score += 100;
+        sound(900, "sine", 0.06, 0.05);
+
+        for (let i = 0; i < 8; i++) {
+          particles.push({
+            x: c.x, y: c.y,
+            vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
+            color: "#00ffcc", life: 0.5, size: 4
+          });
+        }
+        coins.splice(idx, 1);
+      }
+    });
+    coins = coins.filter(c => c.x + c.r > -30);
+  }
+
+  function draw() {
+    ctx.fillStyle = "#05040a";
+    ctx.fillRect(0, 0, GW, GH);
+
+    // Synthwave Izgara Zemin
+    ctx.strokeStyle = "rgba(0, 255, 204, 0.15)";
+    ctx.lineWidth = 1;
+    for (let x = bgGridX; x < GW; x += 40) {
+      ctx.beginPath(); ctx.moveTo(x, GROUND_Y); ctx.lineTo(x, GH); ctx.stroke();
+    }
+    for (let y = GROUND_Y; y < GH; y += 18) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(GW, y); ctx.stroke();
+    }
+
+    // Zemin Çizgisi
+    ctx.strokeStyle = "#00ffcc";
+    ctx.lineWidth = 3;
+    ctx.shadowColor = "#00ffcc";
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.moveTo(0, GROUND_Y);
+    ctx.lineTo(GW, GROUND_Y);
+    ctx.stroke();
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillRect(p.x, p.y, p.size, p.size);
+    });
+    ctx.globalAlpha = 1.0;
+
+    // Engeller
+    obstacles.forEach(o => {
+      ctx.fillStyle = o.color;
+      ctx.shadowColor = o.color;
+      ctx.shadowBlur = 14;
+      ctx.fillRect(o.x, o.y, o.w, o.h);
+    });
+
+    // Kristalller
+    coins.forEach(c => {
+      ctx.fillStyle = c.color;
+      ctx.shadowColor = c.color;
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Oyuncu
+    if (state === "play" || state === "dead") {
+      ctx.fillStyle = "#00ffcc";
+      ctx.shadowColor = "#00ffcc";
+      ctx.shadowBlur = 18;
+      ctx.fillRect(player.x, player.y, player.w, player.h);
+
+      // İç Detay
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(player.x + player.w - 12, player.y + 8, 6, 8);
+    }
+
+    ctx.shadowBlur = 0;
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // Kontroller
+  window.addEventListener("keydown", e => {
+    if (e.key === "ArrowUp" || e.key === "w" || e.key === " ") {
+      doJump();
+    } else if (e.key === "ArrowDown" || e.key === "s") {
+      setSlide(true);
+    }
+  });
+
+  window.addEventListener("keyup", e => {
+    if (e.key === "ArrowDown" || e.key === "s") {
+      setSlide(false);
+    }
+  });
+
+  // Dokunmatik Kontrol (Üst Taraf Zıplama, Alt Taraf Kayma)
+  window.addEventListener("pointerdown", e => {
+    if (state !== "play") return;
+    const rect = canvas.getBoundingClientRect();
+    const touchY = (e.clientY - rect.top) / rect.height;
+
+    if (touchY < 0.65) {
+      doJump();
+    } else {
+      setSlide(true);
+    }
+  });
+
+  window.addEventListener("pointerup", () => setSlide(false));
+
+  goBtn.onclick = initGame;
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
