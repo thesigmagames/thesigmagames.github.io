@@ -1,34 +1,350 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIGMA SPACE SHOOTER</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Space Shooter</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #05040a; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  #hud { position: fixed; top: 16px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 52px; font-weight: 900; color: #00f0ff; text-shadow: 0 0 20px rgba(0,240,255,0.6); font-family: monospace; }
+  #best { opacity: .8; font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+  #back { position: fixed; top: 16px; left: 16px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 10px; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.92); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(32px, 7vw, 52px); margin: 0 0 10px; background: linear-gradient(90deg, #00f0ff, #ff007f); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+  .sub { opacity: .85; margin: 0 0 24px; line-height: 1.5; font-size: 16px; }
+  button { border: 0; border-radius: 14px; padding: 16px 42px; font-size: 19px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00f0ff, #ff007f); color: #000; box-shadow: 0 4px 25px rgba(0, 240, 255, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.95); }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>⚡ SIGMA SPACE SHOOTER ⚡</h1>
-        
-        <div class="game-info">
-            <p>← → - Hareket Et | SPACE - Ateş Et</p>
-            <p>Düşmanları vur ve sağ kal!</p>
-        </div>
-        
-        <canvas id="gameCanvas" width="600" height="400"></canvas>
-        
-        <div class="score-board">
-            <div class="score">Skor: <span id="score">0</span></div>
-            <div class="score">Can: <span id="health">3</span></div>
-        </div>
-        
-        <button id="startBtn" class="btn">OYUNU BAŞLAT</button>
-        <button id="resetBtn" class="btn">SIFIRLA</button>
-        
-        <br><br>
-        <a href="../../" class="back-link">← Geri Dön</a>
-    </div>
-    
-    <script src="game.js"></script>
+  <a id="back" href="../">← Menü</a>
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA SPACE SHOOTER</h1>
+    <p class="sub">Parmağınla/Fareyle Gemiyi Yönet veya Yön Tuşlarını Kullan!<br>Düşman gemilerini yok et, ateşlerden kaç!</p>
+    <button id="go">BAŞLA</button>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+
+  const SAVE_KEY = "sigma-space-best";
+  const GW = 600, GH = 800;
+  
+  let scale = 1, offsetX = 0, offsetY = 0;
+  let state = "menu";
+  let score = 0, best = 0;
+
+  const player = { x: GW / 2, y: GH - 100, size: 28, speed: 7 };
+  let lasers = [];
+  let enemyLasers = [];
+  let enemies = [];
+  let particles = [];
+  let stars = [];
+  let shootTimer = 0;
+  let enemySpawnTimer = 0;
+  let ac = null;
+
+  let keys = {};
+  let pointerX = null, pointerY = null;
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("REKOR: " + best) : "";
+
+  for (let i = 0; i < 70; i++) {
+    stars.push({
+      x: Math.random() * GW,
+      y: Math.random() * GH,
+      size: Math.random() * 2 + 1,
+      speed: Math.random() * 3 + 1
+    });
+  }
+
+  function resize() {
+    const W = innerWidth, H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+
+    scale = Math.min(W / GW, H / GH);
+    offsetX = (W - GW * scale) / 2;
+    offsetY = (H - GH * scale) / 2;
+
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function sound(freq, type = "sawtooth", duration = 0.08, vol = 0.05) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function initGame() {
+    state = "play";
+    score = 0;
+    player.x = GW / 2;
+    player.y = GH - 100;
+    lasers = [];
+    enemyLasers = [];
+    enemies = [];
+    particles = [];
+    shootTimer = 0;
+    enemySpawnTimer = 0;
+
+    scoreEl.textContent = "0";
+    overlay.classList.add("hide");
+    sound(600, "sine", 0.1, 0.06);
+  }
+
+  function die() {
+    state = "dead";
+    sound(110, "sawtooth", 0.4, 0.1);
+
+    for (let i = 0; i < 40; i++) {
+      particles.push({
+        x: player.x, y: player.y,
+        vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10,
+        size: Math.random() * 5 + 2, life: 1.0, color: "#00f0ff"
+      });
+    }
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "REKOR: " + best;
+
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Skor: ${score}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+  }
+
+  function update() {
+    // Yıldız Arka Planı
+    stars.forEach(s => {
+      s.y += s.speed;
+      if (s.y > GH) { s.y = 0; s.x = Math.random() * GW; }
+    });
+
+    // Parçacıklar
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    if (state !== "play") return;
+
+    // Oyuncu Hareketi (Dokunmatik/Fare VEYA Tuşlar)
+    if (pointerX !== null && pointerY !== null) {
+      player.x += (pointerX - player.x) * 0.2;
+      player.y += (pointerY - player.y) * 0.2;
+    } else {
+      if (keys["ArrowLeft"] || keys["a"]) player.x -= player.speed;
+      if (keys["ArrowRight"] || keys["d"]) player.x += player.speed;
+      if (keys["ArrowUp"] || keys["w"]) player.y -= player.speed;
+      if (keys["ArrowDown"] || keys["s"]) player.y += player.speed;
+    }
+
+    player.x = Math.max(player.size, Math.min(GW - player.size, player.x));
+    player.y = Math.max(player.size, Math.min(GH - player.size, player.y));
+
+    // Otomatik Lazer Atışı
+    shootTimer++;
+    if (shootTimer > 10) {
+      lasers.push({ x: player.x - 10, y: player.y - 15, vy: -14 });
+      lasers.push({ x: player.x + 10, y: player.y - 15, vy: -14 });
+      sound(800, "square", 0.04, 0.03);
+      shootTimer = 0;
+    }
+
+    // Lazer Hareketleri
+    lasers.forEach(l => l.y += l.vy);
+    lasers = lasers.filter(l => l.y > -20);
+
+    enemyLasers.forEach(el => el.y += el.vy);
+    enemyLasers = enemyLasers.filter(el => el.y < GH + 20);
+
+    // Düşman Üretimi
+    enemySpawnTimer++;
+    if (enemySpawnTimer > 35) {
+      enemies.push({
+        x: Math.random() * (GW - 60) + 30,
+        y: -30,
+        size: 22,
+        vx: (Math.random() - 0.5) * 3,
+        vy: Math.random() * 2 + 2,
+        shootTimer: Math.floor(Math.random() * 40)
+      });
+      enemySpawnTimer = 0;
+    }
+
+    // Düşman Güncellemesi
+    enemies.forEach(e => {
+      e.x += e.vx;
+      e.y += e.vy;
+
+      if (e.x < e.size || e.x > GW - e.size) e.vx *= -1;
+
+      // Düşman Ateşi
+      e.shootTimer++;
+      if (e.shootTimer > 60) {
+        enemyLasers.push({ x: e.x, y: e.y + 15, vy: 6 });
+        e.shootTimer = 0;
+      }
+
+      // Oyuncu - Düşman Çarpışması
+      const dist = Math.hypot(player.x - e.x, player.y - e.y);
+      if (dist < player.size + e.size) die();
+    });
+
+    // Lazer - Düşman Çarpışması
+    lasers.forEach((l, li) => {
+      enemies.forEach((e, ei) => {
+        if (Math.hypot(l.x - e.x, l.y - e.y) < e.size + 8) {
+          // Patlama Efekti
+          for (let i = 0; i < 12; i++) {
+            particles.push({
+              x: e.x, y: e.y,
+              vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
+              size: Math.random() * 4 + 1, life: 0.6, color: "#ff007f"
+            });
+          }
+          sound(200, "sawtooth", 0.08, 0.05);
+          enemies.splice(ei, 1);
+          lasers.splice(li, 1);
+          score += 20;
+          scoreEl.textContent = String(score);
+        }
+      });
+    });
+
+    // Düşman Lazeri - Oyuncu Çarpışması
+    enemyLasers.forEach(el => {
+      if (Math.hypot(player.x - el.x, player.y - el.y) < player.size) die();
+    });
+
+    enemies = enemies.filter(e => e.y < GH + 40);
+  }
+
+  function draw() {
+    ctx.fillStyle = "#05040a";
+    ctx.fillRect(0, 0, GW, GH);
+
+    // Yıldızlar
+    ctx.fillStyle = "#ffffff";
+    stars.forEach(s => {
+      ctx.globalAlpha = Math.random() * 0.5 + 0.3;
+      ctx.fillRect(s.x, s.y, s.size, s.size);
+    });
+    ctx.globalAlpha = 1.0;
+
+    // Oyuncu Lazerleri
+    ctx.fillStyle = "#00f0ff";
+    ctx.shadowColor = "#00f0ff";
+    ctx.shadowBlur = 10;
+    lasers.forEach(l => ctx.fillRect(l.x - 2, l.y, 4, 14));
+
+    // Düşman Lazerleri
+    ctx.fillStyle = "#ff007f";
+    ctx.shadowColor = "#ff007f";
+    enemyLasers.forEach(el => ctx.fillRect(el.x - 2, el.y, 4, 10));
+    ctx.shadowBlur = 0;
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillRect(p.x, p.y, p.size, p.size);
+    });
+    ctx.globalAlpha = 1.0;
+
+    // Düşmanlar
+    enemies.forEach(e => {
+      ctx.fillStyle = "#ff007f";
+      ctx.shadowColor = "#ff007f";
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.moveTo(e.x, e.y + e.size);
+      ctx.lineTo(e.x - e.size, e.y - e.size);
+      ctx.lineTo(e.x + e.size, e.y - e.size);
+      ctx.closePath();
+      ctx.fill();
+    });
+
+    // Oyuncu Gemi
+    if (state === "play") {
+      ctx.fillStyle = "#00f0ff";
+      ctx.shadowColor = "#00f0ff";
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.moveTo(player.x, player.y - player.size);
+      ctx.lineTo(player.x - player.size, player.y + player.size);
+      ctx.lineTo(player.x, player.y + player.size / 2);
+      ctx.lineTo(player.x + player.size, player.y + player.size);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // Kontrol Dinleyicileri
+  function getCanvasCoords(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left - offsetX) / scale,
+      y: (clientY - rect.top - offsetY) / scale
+    };
+  }
+
+  window.addEventListener("pointerdown", e => {
+    const coords = getCanvasCoords(e);
+    pointerX = coords.x; pointerY = coords.y;
+  });
+  window.addEventListener("pointermove", e => {
+    if (pointerX !== null) {
+      const coords = getCanvasCoords(e);
+      pointerX = coords.x; pointerY = coords.y;
+    }
+  });
+  window.addEventListener("pointerup", () => { pointerX = null; pointerY = null; });
+
+  window.addEventListener("keydown", e => keys[e.key] = true);
+  window.addEventListener("keyup", e => keys[e.key] = false);
+
+  goBtn.onclick = initGame;
+  requestAnimationFrame(loop);
+})();
+</script>
 </body>
 </html>
