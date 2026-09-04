@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Cyber Breakout</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #05040a; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: none; }
+  #hud { position: fixed; top: 16px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 52px; font-weight: 900; color: #00ffcc; text-shadow: 0 0 20px rgba(0,255,204,0.6); font-family: monospace; }
+  #best { opacity: .8; font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+  #back { position: fixed; top: 16px; left: 16px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 10px; cursor: pointer; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.92); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(30px, 7vw, 50px); margin: 0 0 10px; background: linear-gradient(90deg, #00ffcc, #ff007f); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+  .sub { opacity: .85; margin: 0 0 24px; line-height: 1.5; font-size: 16px; }
+  button { border: 0; border-radius: 14px; padding: 16px 42px; font-size: 19px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00ffcc, #ff007f); color: #000; box-shadow: 0 4px 25px rgba(0, 255, 204, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.95); }
+</style>
+</head>
+<body>
+  <a id="back" href="../">← Menü</a>
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA CYBER BREAKOUT</h1>
+    <p class="sub">Raketi Parmağınla/Fareyle Kaydır veya Yön Tuşlarını Kullan!<br>Topu düşürmeden tüm neon blokları yok et!</p>
+    <button id="go">BAŞLA</button>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+
+  const SAVE_KEY = "sigma-breakout-best";
+  const GW = 700, GH = 900;
+  
+  let scale = 1, offsetX = 0, offsetY = 0;
+  let state = "menu";
+  let score = 0, best = 0;
+  let level = 1;
+
+  const paddle = { x: GW / 2 - 60, y: GH - 60, w: 120, h: 18, speed: 9 };
+  const ball = { x: GW / 2, y: GH - 90, vx: 5, vy: -6, r: 9, speed: 8 };
+
+  let bricks = [];
+  let particles = [];
+  let ac = null;
+  let keys = {};
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("REKOR: " + best) : "";
+
+  function resize() {
+    const W = innerWidth, H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+
+    scale = Math.min(W / GW, H / GH);
+    offsetX = (W - GW * scale) / 2;
+    offsetY = (H - GH * scale) / 2;
+
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function sound(freq, type = "sine", duration = 0.06, vol = 0.05) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function generateBricks() {
+    bricks = [];
+    const rows = 6 + Math.min(level, 4);
+    const cols = 8;
+    const padding = 10;
+    const brickW = (GW - (padding * (cols + 1))) / cols;
+    const brickH = 26;
+    const colors = ["#ff007f", "#00ffcc", "#ffe14d", "#7000ff", "#ff8800"];
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        bricks.push({
+          x: padding + c * (brickW + padding),
+          y: 80 + r * (brickH + padding),
+          w: brickW,
+          h: brickH,
+          color: colors[r % colors.length],
+          hp: r === 0 ? 2 : 1
+        });
+      }
+    }
+  }
+
+  function initGame() {
+    state = "play";
+    score = 0;
+    level = 1;
+    paddle.x = GW / 2 - paddle.w / 2;
+    ball.x = GW / 2;
+    ball.y = GH - 90;
+    ball.speed = 7.5;
+    ball.vx = (Math.random() > 0.5 ? 1 : -1) * 4;
+    ball.vy = -6;
+    particles = [];
+
+    generateBricks();
+    scoreEl.textContent = "0";
+    overlay.classList.add("hide");
+    sound(520, "sine", 0.1, 0.06);
+  }
+
+  function die() {
+    state = "dead";
+    sound(120, "sawtooth", 0.35, 0.1);
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "REKOR: " + best;
+
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Skor: ${score}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+  }
+
+  function update() {
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    if (state !== "play") return;
+
+    // Klavye Hareketi
+    if (keys["ArrowLeft"] || keys["a"]) paddle.x -= paddle.speed;
+    if (keys["ArrowRight"] || keys["d"]) paddle.x += paddle.speed;
+    paddle.x = Math.max(10, Math.min(GW - paddle.w - 10, paddle.x));
+
+    // Top Hareketi
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    // Duvar Çarpmaları
+    if (ball.x - ball.r <= 0 || ball.x + ball.r >= GW) {
+      ball.vx *= -1;
+      sound(400, "sine", 0.03, 0.04);
+    }
+    if (ball.y - ball.r <= 0) {
+      ball.vy *= -1;
+      sound(400, "sine", 0.03, 0.04);
+    }
+
+    // Tabana Düşme
+    if (ball.y + ball.r >= GH) {
+      die();
+    }
+
+    // Rakete Çarpma
+    if (ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h &&
+        ball.x >= paddle.x && ball.x <= paddle.x + paddle.w) {
+      
+      const hitPoint = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2);
+      ball.vx = hitPoint * (ball.speed * 0.85);
+      ball.vy = -Math.sqrt(Math.max(10, ball.speed * ball.speed - ball.vx * ball.vx));
+      sound(600, "triangle", 0.05, 0.05);
+
+      for (let i = 0; i < 6; i++) {
+        particles.push({
+          x: ball.x, y: paddle.y,
+          vx: (Math.random() - 0.5) * 4, vy: -Math.random() * 3,
+          color: "#00ffcc", life: 0.5, size: 3
+        });
+      }
+    }
+
+    // Tuğla Çarpmaları
+    bricks.forEach((b, idx) => {
+      if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w &&
+          ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
+        
+        ball.vy *= -1;
+        b.hp--;
+
+        // Parçacık Patlaması
+        for (let i = 0; i < 10; i++) {
+          particles.push({
+            x: b.x + b.w / 2, y: b.y + b.h / 2,
+            vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6,
+            color: b.color, life: 0.6, size: Math.random() * 4 + 2
+          });
+        }
+
+        if (b.hp <= 0) {
+          score += 15;
+          scoreEl.textContent = String(score);
+          sound(800, "square", 0.05, 0.04);
+          bricks.splice(idx, 1);
+        } else {
+          sound(350, "sine", 0.04, 0.04);
+        }
+      }
+    });
+
+    // Seviye Temizleme
+    if (bricks.length === 0) {
+      level++;
+      ball.speed += 0.8;
+      ball.x = GW / 2; ball.y = GH - 90;
+      ball.vy = -ball.speed;
+      generateBricks();
+      sound(900, "sine", 0.15, 0.07);
+    }
+  }
+
+  function draw() {
+    ctx.fillStyle = "#05040a";
+    ctx.fillRect(0, 0, GW, GH);
+
+    // Tuğlalar
+    bricks.forEach(b => {
+      ctx.fillStyle = b.color;
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = b.hp > 1 ? 15 : 8;
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+
+      if (b.hp > 1) {
+        ctx.fillStyle = "rgba(255,255,255,0.4)";
+        ctx.fillRect(b.x + 4, b.y + 4, b.w - 8, b.h - 8);
+      }
+    });
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillRect(p.x, p.y, p.size, p.size);
+    });
+    ctx.globalAlpha = 1.0;
+
+    // Raket
+    ctx.fillStyle = "#00ffcc";
+    ctx.shadowColor = "#00ffcc";
+    ctx.shadowBlur = 16;
+    ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+
+    // Top
+    ctx.fillStyle = "#ff007f";
+    ctx.shadowColor = "#ff007f";
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // Kontrol Dinleyicileri
+  function handlePointer(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const canvasX = (clientX - rect.left - offsetX) / scale;
+    paddle.x = canvasX - paddle.w / 2;
+    paddle.x = Math.max(10, Math.min(GW - paddle.w - 10, paddle.x));
+  }
+
+  window.addEventListener("pointermove", handlePointer);
+  window.addEventListener("touchmove", handlePointer);
+
+  window.addEventListener("keydown", e => keys[e.key] = true);
+  window.addEventListener("keyup", e => keys[e.key] = false);
+
+  goBtn.onclick = initGame;
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
