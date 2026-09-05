@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Brawl Arena</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0f19; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  #hud { position: fixed; top: 16px; left: 16px; pointer-events: none; z-index: 2; font-family: monospace; }
+  #score { font-size: 28px; font-weight: 900; color: #00ffcc; text-shadow: 0 0 10px rgba(0,255,204,0.5); }
+  #super-bar-bg { width: 180px; height: 14px; background: rgba(255,255,255,0.15); border-radius: 7px; margin-top: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.3); }
+  #super-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #00ffcc, #ff007f); transition: width 0.1s; }
+  #super-txt { font-size: 11px; font-weight: 800; margin-top: 4px; color: #ff007f; letter-spacing: 1px; }
+  #back { position: fixed; top: 16px; right: 16px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 10px; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(11,15,25,.95); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(30px, 7vw, 50px); margin: 0 0 10px; background: linear-gradient(90deg, #00ffcc, #ff007f); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+  .sub { opacity: .85; margin: 0 0 24px; line-height: 1.5; font-size: 15px; max-width: 420px; }
+  button { border: 0; border-radius: 14px; padding: 16px 42px; font-size: 19px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00ffcc, #ff007f); color: #000; box-shadow: 0 4px 25px rgba(0, 255, 204, 0.4); transition: transform 0.1s; }
+  button:active { transform: scale(0.95); }
+  #super-btn { position: fixed; bottom: 24px; right: 24px; width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(135deg, #ff007f, #a800ff); border: 3px solid #fff; color: #fff; font-weight: 900; font-size: 13px; z-index: 3; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(255,0,127,0.6); pointer-events: auto; }
+  #super-btn:active { transform: scale(0.9); }
+</style>
+</head>
+<body>
+  <a id="back" href="../">← Menü</a>
+  <canvas id="c"></canvas>
+  
+  <div id="hud">
+    <div id="score">SKOR: 0</div>
+    <div id="super-bar-bg"><div id="super-bar"></div></div>
+    <div id="super-txt">SİGMA ULTİ: %0</div>
+  </div>
+
+  <button id="super-btn">ULTİ!</button>
+
+  <div id="overlay">
+    <h1>SIGMA BRAWL ARENA</h1>
+    <p class="sub"><b>Masaüstü:</b> WASD ile Yürü, Fare ile Ateş Et, Sağ Tık / Space ile Ulti At!<br><b>Mobil:</b> Ekranı Sürükleyerek Yürü/Ateş Et, Ulti Butonunu Kullan!</p>
+    <button id="go">BAŞLA</button>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const superBar = document.getElementById("super-bar");
+  const superTxt = document.getElementById("super-txt");
+  const superBtn = document.getElementById("super-btn");
+
+  const SAVE_KEY = "sigma-brawl-best";
+  const GW = 900, GH = 600;
+
+  let scale = 1, offsetX = 0, offsetY = 0;
+  let state = "menu";
+  let score = 0, best = 0;
+
+  const player = { x: GW / 2, y: GH / 2, r: 18, hp: 100, maxHp: 100, super: 0, speed: 4.5 };
+  let bullets = [];
+  let enemies = [];
+  let particles = [];
+  let mousePos = { x: GW / 2, y: GH / 2 };
+  let keys = {};
+  let shootTimer = 0;
+  let spawnTimer = 0;
+  let ac = null;
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+
+  function resize() {
+    const W = innerWidth, H = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+
+    scale = Math.min(W / GW, H / GH);
+    offsetX = (W - GW * scale) / 2;
+    offsetY = (H - GH * scale) / 2;
+
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * offsetX, dpr * offsetY);
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  function sound(freq, type = "sine", duration = 0.08, vol = 0.05) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function initGame() {
+    state = "play";
+    score = 0;
+    player.x = GW / 2;
+    player.y = GH / 2;
+    player.hp = 100;
+    player.super = 0;
+    bullets = [];
+    enemies = [];
+    particles = [];
+
+    scoreEl.textContent = "SKOR: 0";
+    superBar.style.width = "0%";
+    superTxt.textContent = "SİGMA ULTİ: %0";
+    overlay.classList.add("hide");
+    sound(520, "sine", 0.1, 0.06);
+  }
+
+  function die() {
+    state = "dead";
+    sound(120, "sawtooth", 0.35, 0.1);
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+
+    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Skor: ${score}<br>En Yüksek Rekor: ${best}</p><button id='go2'>TEKRAR SAVAŞ</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+  }
+
+  function triggerSuper() {
+    if (player.super < 100 || state !== "play") return;
+    player.super = 0;
+    superBar.style.width = "0%";
+    superTxt.textContent = "SİGMA ULTİ: %0";
+
+    sound(880, "square", 0.2, 0.08);
+
+    // 360 Derece Sigma Nova Patlaması
+    for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
+      bullets.push({
+        x: player.x,
+        y: player.y,
+        vx: Math.cos(angle) * 10,
+        vy: Math.sin(angle) * 10,
+        isEnemy: false,
+        damage: 40,
+        color: "#ff007f",
+        r: 8
+      });
+    }
+
+    for (let i = 0; i < 30; i++) {
+      particles.push({
+        x: player.x, y: player.y,
+        vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.5) * 12,
+        color: "#ff007f", life: 0.6, size: 5
+      });
+    }
+  }
+
+  function spawnEnemy() {
+    const side = Math.floor(Math.random() * 4);
+    let x, y;
+    if (side === 0) { x = Math.random() * GW; y = -20; }
+    else if (side === 1) { x = GW + 20; y = Math.random() * GH; }
+    else if (side === 2) { x = Math.random() * GW; y = GH + 20; }
+    else { x = -20; y = Math.random() * GH; }
+
+    const rVal = Math.random();
+    let type = "rusher";
+    if (rVal > 0.75) type = "tank";
+    else if (rVal > 0.5) type = "shooter";
+
+    enemies.push({
+      x, y, type,
+      hp: type === "tank" ? 120 : (type === "shooter" ? 50 : 35),
+      maxHp: type === "tank" ? 120 : (type === "shooter" ? 50 : 35),
+      speed: type === "tank" ? 1.5 : (type === "shooter" ? 2.2 : 3.2),
+      r: type === "tank" ? 24 : 16,
+      color: type === "tank" ? "#ffe14d" : (type === "shooter" ? "#a800ff" : "#ff3333"),
+      shootCooldown: 0
+    });
+  }
+
+  function update() {
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    if (state !== "play") return;
+
+    // Oyuncu Hareketi
+    let dx = 0, dy = 0;
+    if (keys["w"] || keys["W"] || keys["ArrowUp"]) dy -= 1;
+    if (keys["s"] || keys["S"] || keys["ArrowDown"]) dy += 1;
+    if (keys["a"] || keys["A"] || keys["ArrowLeft"]) dx -= 1;
+    if (keys["d"] || keys["D"] || keys["ArrowRight"]) dx += 1;
+
+    if (dx !== 0 && dy !== 0) { dx *= 0.7071; dy *= 0.7071; }
+    player.x = Math.max(player.r, Math.min(GW - player.r, player.x + dx * player.speed));
+    player.y = Math.max(player.r, Math.min(GH - player.r, player.y + dy * player.speed));
+
+    // Otomatik / Fare Ateşleme
+    shootTimer++;
+    if (keys["isMouseDown"] && shootTimer >= 10) {
+      shootTimer = 0;
+      const angle = Math.atan2(mousePos.y - player.y, mousePos.x - player.x);
+      bullets.push({
+        x: player.x, y: player.y,
+        vx: Math.cos(angle) * 11, vy: Math.sin(angle) * 11,
+        isEnemy: false, damage: 15, color: "#00ffcc", r: 5
+      });
+      sound(700, "square", 0.04, 0.03);
+    }
+
+    // Düşman Oluşturma
+    spawnTimer++;
+    if (spawnTimer >= 45) {
+      spawnTimer = 0;
+      if (enemies.length < 12) spawnEnemy();
+    }
+
+    // Mermiler
+    bullets.forEach(b => { b.x += b.vx; b.y += b.vy; });
+    bullets = bullets.filter(b => b.x > -30 && b.x < GW + 30 && b.y > -30 && b.y < GH + 30);
+
+    // Düşmanlar
+    enemies.forEach((e, eIdx) => {
+      const angle = Math.atan2(player.y - e.y, player.x - e.x);
+      const dist = Math.hypot(player.x - e.x, player.y - e.y);
+
+      if (e.type !== "shooter" || dist > 200) {
+        e.x += Math.cos(angle) * e.speed;
+        e.y += Math.sin(angle) * e.speed;
+      }
+
+      // Shooter Ateş Etme
+      if (e.type === "shooter") {
+        e.shootCooldown++;
+        if (e.shootCooldown >= 80) {
+          e.shootCooldown = 0;
+          bullets.push({
+            x: e.x, y: e.y,
+            vx: Math.cos(angle) * 6, vy: Math.sin(angle) * 6,
+            isEnemy: true, damage: 10, color: "#a800ff", r: 6
+          });
+        }
+      }
+
+      // Oyuncu Çarpışması
+      if (dist < player.r + e.r) {
+        player.hp -= 0.5;
+        if (player.hp <= 0) die();
+      }
+
+      // Mermi - Düşman Çarpışması
+      bullets.forEach((b, bIdx) => {
+        if (!b.isEnemy) {
+          if (Math.hypot(b.x - e.x, b.y - e.y) < b.r + e.r) {
+            e.hp -= b.damage;
+            bullets.splice(bIdx, 1);
+
+            // Ulti Şarj Etme
+            player.super = Math.min(100, player.super + 5);
+            superBar.style.width = player.super + "%";
+            superTxt.textContent = "SİGMA ULTİ: %" + Math.floor(player.super);
+
+            sound(400, "sine", 0.04, 0.04);
+
+            if (e.hp <= 0) {
+              score += e.type === "tank" ? 50 : 20;
+              scoreEl.textContent = "SKOR: " + score;
+              enemies.splice(eIdx, 1);
+            }
+          }
+        } else {
+          // Düşman mermisi oyuncuya vurdu
+          if (Math.hypot(b.x - player.x, b.y - player.y) < b.r + player.r) {
+            player.hp -= b.damage;
+            bullets.splice(bIdx, 1);
+            sound(200, "sawtooth", 0.06, 0.05);
+            if (player.hp <= 0) die();
+          }
+        }
+      });
+    });
+  }
+
+  function draw() {
+    ctx.fillStyle = "#0b0f19";
+    ctx.fillRect(0, 0, GW, GH);
+
+    // Izgara Desen
+    ctx.strokeStyle = "rgba(0, 255, 204, 0.04)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < GW; x += 40) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, GH); ctx.stroke();
+    }
+    for (let y = 0; y < GH; y += 40) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(GW, y); ctx.stroke();
+    }
+
+    // Parçacıklar
+    particles.forEach(p => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillRect(p.x, p.y, p.size, p.size);
+    });
+    ctx.globalAlpha = 1.0;
+
+    // Düşmanlar
+    enemies.forEach(e => {
+      ctx.fillStyle = e.color;
+      ctx.shadowColor = e.color;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Can Barı
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.fillRect(e.x - 16, e.y - e.r - 8, 32, 4);
+      ctx.fillStyle = "#ff3333";
+      ctx.fillRect(e.x - 16, e.y - e.r - 8, 32 * (e.hp / e.maxHp), 4);
+    });
+
+    // Mermiler
+    bullets.forEach(b => {
+      ctx.fillStyle = b.color;
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Oyuncu (Sigma Fighter)
+    if (state === "play") {
+      ctx.fillStyle = "#00ffcc";
+      ctx.shadowColor = "#00ffcc";
+      ctx.shadowBlur = 15;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Silah Namlusu
+      const angle = Math.atan2(mousePos.y - player.y, mousePos.x - player.x);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(player.x, player.y);
+      ctx.lineTo(player.x + Math.cos(angle) * 26, player.y + Math.sin(angle) * 26);
+      ctx.stroke();
+
+      // Oyuncu Can Barı
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillRect(player.x - 20, player.y - player.r - 12, 40, 5);
+      ctx.fillStyle = "#00ffcc";
+      ctx.fillRect(player.x - 20, player.y - player.r - 12, 40 * (player.hp / player.maxHp), 5);
+    }
+
+    ctx.shadowBlur = 0;
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // Kontroller
+  window.addEventListener("keydown", e => {
+    keys[e.key] = true;
+    if (e.key === " " || e.key === "Spacebar") triggerSuper();
+  });
+  window.addEventListener("keyup", e => keys[e.key] = false);
+
+  function updatePointer(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    mousePos.x = (clientX - rect.left) / scale;
+    mousePos.y = (clientY - rect.top) / scale;
+  }
+
+  window.addEventListener("mousemove", e => updatePointer(e.clientX, e.clientY));
+  window.addEventListener("mousedown", e => {
+    if (e.button === 2) { triggerSuper(); return; }
+    keys["isMouseDown"] = true;
+    updatePointer(e.clientX, e.clientY);
+  });
+  window.addEventListener("mouseup", () => keys["isMouseDown"] = false);
+  window.addEventListener("contextmenu", e => e.preventDefault());
+
+  window.addEventListener("touchstart", e => {
+    keys["isMouseDown"] = true;
+    if (e.touches.length > 0) updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+
+  window.addEventListener("touchmove", e => {
+    if (e.touches.length > 0) updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+
+  window.addEventListener("touchend", () => keys["isMouseDown"] = false);
+
+  superBtn.onclick = triggerSuper;
+  goBtn.onclick = initGame;
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
