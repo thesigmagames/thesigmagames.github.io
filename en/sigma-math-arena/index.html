@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Math Arena</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #05040a; font-family: 'Segoe UI', system-ui, sans-serif; color: #fff; }
+  
+  #bg-glow { position: fixed; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(168, 0, 255, 0.18), rgba(5, 4, 10, 0.95)); z-index: 0; pointer-events: none; }
+  canvas#bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+  
+  /* TOP BUTTONS */
+  .top-btn { position: fixed; top: 16px; z-index: 10; color: #fff; text-decoration: none; opacity: .85; font-weight: 800; font-size: 14px; background: rgba(255,255,255,0.08); border: 1px solid rgba(0,255,204,0.3); padding: 8px 16px; border-radius: 12px; backdrop-filter: blur(8px); transition: all .2s; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .top-btn:hover { opacity: 1; background: rgba(0,255,204,0.2); box-shadow: 0 0 15px rgba(0,255,204,0.4); }
+  #back { left: 16px; }
+  #btn-sound { right: 16px; border-color: rgba(255,0,127,0.4); }
+  #btn-pause-hud { right: 190px; border-color: rgba(255,255,0,0.4); display: none; }
+
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5; padding: 20px; transition: opacity 0.3s; }
+  .screen.hide { display: none !important; }
+
+  /* LOADING & INITIALIZATION SCREEN */
+  #loader-screen { background: #05040a; z-index: 20; cursor: pointer; }
+  .loader-title { font-size: clamp(28px, 6vw, 48px); font-weight: 900; background: linear-gradient(90deg, #a800ff, #00ffcc, #ff007f); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 20px; text-align: center; }
+  .bar-outer { width: 280px; height: 16px; background: rgba(255,255,255,0.1); border-radius: 10px; border: 1px solid rgba(0,255,204,0.4); overflow: hidden; position: relative; }
+  .bar-inner { width: 0%; height: 100%; background: linear-gradient(90deg, #00ffcc, #ff007f); transition: width 0.05s linear; box-shadow: 0 0 15px #00ffcc; }
+  .loader-sub { font-size: 13px; opacity: 0.9; margin-top: 15px; font-family: monospace; letter-spacing: 1px; color: #00ffcc; text-align: center; }
+
+  /* MENU SCREEN */
+  h1.logo { font-size: clamp(32px, 7vw, 54px); font-weight: 900; margin: 0 0 6px; background: linear-gradient(90deg, #a800ff, #ff007f, #00ffcc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 30px rgba(168,0,255,0.5); text-align: center; }
+  .subtitle { color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 18px; text-align: center; font-weight: 600; }
+  .menu-box { background: rgba(15, 12, 28, 0.85); border: 1px solid rgba(168,0,255,0.4); border-radius: 24px; padding: 24px; width: 100%; max-width: 480px; backdrop-filter: blur(12px); box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+  .section-label { font-size: 12px; font-weight: 800; color: #00ffcc; letter-spacing: 1.5px; text-transform: uppercase; margin: 12px 0 8px; }
+  .grid-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
+  .btn-opt { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; color: #fff; padding: 10px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.15s; text-align: center; }
+  .btn-opt.active { background: linear-gradient(135deg, #a800ff, #ff007f); border-color: #00ffcc; box-shadow: 0 0 15px rgba(255,0,127,0.5); transform: scale(1.02); }
+  
+  .btn-start { width: 100%; margin-top: 20px; padding: 16px; border: 0; border-radius: 16px; background: linear-gradient(90deg, #00ffcc, #ff007f); color: #000; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 4px 25px rgba(0,255,204,0.4); transition: transform 0.1s; }
+  .btn-start:active { transform: scale(0.97); }
+
+  /* 1P GAME SCREEN */
+  .hud-1p { position: absolute; top: 20px; left: 0; right: 0; display: flex; justify-content: space-around; font-family: monospace; font-size: 18px; font-weight: 800; z-index: 6; }
+  .card-q { background: rgba(20,15,35,0.85); border: 2px solid #a800ff; border-radius: 20px; padding: 25px 35px; font-size: clamp(34px, 8vw, 58px); font-weight: 900; text-align: center; box-shadow: 0 0 30px rgba(168,0,255,0.4); margin-bottom: 20px; color: #fff; min-width: 280px; position: relative; }
+  .timer-bar-wrap { width: 100%; max-width: 420px; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; margin-bottom: 20px; overflow: hidden; }
+  .timer-bar-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #00ffcc, #ff007f); transition: width 0.1s linear; }
+
+  .opts-1p { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 420px; }
+  .btn-ans { background: rgba(255,255,255,0.06); border: 2px solid rgba(0,255,204,0.3); border-radius: 16px; padding: 18px; font-size: 24px; font-weight: 900; color: #fff; cursor: pointer; transition: all 0.15s; position: relative; font-family: monospace; }
+  .btn-ans:active { transform: scale(0.95); background: rgba(0,255,204,0.2); }
+
+  /* COMBO AND NOTIFICATION EFFECT */
+  .combo-badge { position: absolute; top: -15px; right: -10px; background: #ff007f; color: #fff; font-size: 13px; padding: 4px 10px; border-radius: 20px; font-weight: 900; box-shadow: 0 0 15px #ff007f; display: none; }
+
+  /* 2P VERSUS GAME SCREEN */
+  .p2-container { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
+  .p-side { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px; position: relative; }
+  .p-side.p1 { border-bottom: 2px dashed rgba(255,0,127,0.3); }
+  .p-side.p2 { border-top: 2px dashed rgba(0,255,204,0.3); }
+
+  .p-info { display: flex; justify-content: space-between; width: 100%; max-width: 500px; font-weight: 800; font-size: 16px; margin-bottom: 8px; font-family: monospace; }
+  .p1 .p-info { color: #ff007f; }
+  .p2 .p-info { color: #00ffcc; }
+
+  .q-box-2p { font-size: clamp(24px, 5vw, 42px); font-weight: 900; margin-bottom: 12px; text-shadow: 0 0 15px currentColor; font-family: monospace; }
+  .opts-2p { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; max-width: 500px; }
+  .btn-2p { padding: 14px 6px; font-size: 20px; font-weight: 900; border-radius: 12px; border: 2px solid; background: rgba(0,0,0,0.4); color: #fff; cursor: pointer; font-family: monospace; }
+  .p1 .btn-2p { border-color: #ff007f; }
+  .p2 .btn-2p { border-color: #00ffcc; }
+  .btn-2p:active { transform: scale(0.92); }
+  .key-hint { font-size: 10px; opacity: 0.8; display: block; margin-bottom: 2px; font-family: monospace; color: #00ffcc; }
+
+  /* PAUSE MODAL & RESULT SCREEN */
+  .modal-box { background: rgba(15, 12, 28, 0.95); border: 2px solid #00ffcc; border-radius: 24px; padding: 32px; text-align: center; max-width: 400px; width: 100%; box-shadow: 0 0 50px rgba(0,255,204,0.4); backdrop-filter: blur(15px); }
+  .res-title { font-size: 36px; font-weight: 900; color: #ff007f; margin-bottom: 8px; }
+  .res-score { font-size: 18px; font-weight: 700; margin-bottom: 20px; opacity: 0.9; }
+
+  .pc-mode-info { font-size: 11px; opacity: 0.7; text-align: center; margin-top: 12px; font-family: monospace; color: #00ffcc; }
+
+  /* SCREEN SHAKE EFFECT */
+  .shake { animation: shakeAnim 0.25s ease-in-out; }
+  @keyframes shakeAnim {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-6px, 4px); }
+    50% { transform: translate(6px, -4px); }
+    75% { transform: translate(-4px, -2px); }
+  }
+</style>
+</head>
+<body>
+
+  <a id="back" class="top-btn" href="../">← Menu</a>
+  <button id="btn-pause-hud" class="top-btn">⏸</button>
+  <button id="btn-sound" class="top-btn">🔊 SOUND: ON</button>
+
+  <div id="bg-glow"></div>
+  <canvas id="bg"></canvas>
+
+  <!-- LOADING SCREEN -->
+  <div id="loader-screen" class="screen">
+    <div class="loader-title">SIGMA MATH ARENA</div>
+    <div class="bar-outer"><div id="loader-bar" class="bar-inner"></div></div>
+    <div id="loader-txt" class="loader-sub">TAP / CLICK TO START SYSTEM</div>
+  </div>
+
+  <!-- MAIN MENU -->
+  <div id="menu-screen" class="screen hide">
+    <h1 class="logo">SIGMA MATH ARENA</h1>
+    <div class="subtitle">Dominate the Arena with Your Math Power!</div>
+    <div class="menu-box">
+      
+      <div class="section-label">GAME MODE</div>
+      <div class="grid-opts" id="mode-opts">
+        <div class="btn-opt active" data-val="1p">1 PLAYER<br><small style="font-size:10px;opacity:.7">Endless Record</small></div>
+        <div class="btn-opt" data-val="2p">2 PLAYERS<br><small style="font-size:10px;opacity:.7">VS Duel</small></div>
+      </div>
+
+      <div class="section-label">OPERATION TYPE</div>
+      <div class="grid-opts" id="op-opts">
+        <div class="btn-opt active" data-val="toplama">+ Addition</div>
+        <div class="btn-opt" data-val="cikarma">- Subtraction</div>
+        <div class="btn-opt" data-val="carpma">× Multiplication</div>
+        <div class="btn-opt" data-val="bolme">÷ Division</div>
+        <div class="btn-opt" data-val="karisik">★ Mixed</div>
+      </div>
+
+      <div class="section-label">DIFFICULTY LEVEL</div>
+      <div class="grid-opts" id="diff-opts">
+        <div class="btn-opt active" data-val="easy">EASY<br><small style="font-size:9px;opacity:.7">2P Target: 7</small></div>
+        <div class="btn-opt" data-val="hard">HARD<br><small style="font-size:9px;opacity:.7">2P Target: 15</small></div>
+        <div class="btn-opt" data-val="ultra">ULTRA<br><small style="font-size:9px;opacity:.7">2P Target: 22</small></div>
+      </div>
+
+      <button id="btn-start-game" class="btn-start">START BATTLE</button>
+      <div class="pc-mode-info">PC Keys: 1 Player Mode (1,2,3,4 / A,S,D,F)<br>2 Player Mode: Player 1 = (Q,W,E,R) Player 2 = (U,I,O,P)</div>
+    </div>
+  </div>
+
+  <!-- 1 PLAYER GAME SCREEN -->
+  <div id="game-1p-screen" class="screen hide">
+    <div class="hud-1p">
+      <div style="color:#00ffcc">SCORE: <span id="score-1p">0</span></div>
+      <div style="color:#ff007f">HIGH SCORE: <span id="best-1p">0</span></div>
+    </div>
+    
+    <div id="q-1p" class="card-q">
+      12 + 8 = ?
+      <div id="combo-badge" class="combo-badge">2x COMBO!</div>
+    </div>
+
+    <div class="timer-bar-wrap">
+      <div id="timer-1p" class="timer-bar-fill"></div>
+    </div>
+
+    <div class="opts-1p" id="opts-1p-box"></div>
+    <div class="pc-mode-info" style="margin-top:20px;">Keys: 1, 2, 3, 4 or A, S, D, F | Pause: Spacebar or ESC</div>
+  </div>
+
+  <!-- 2 PLAYER VERSUS GAME SCREEN -->
+  <div id="game-2p-screen" class="screen hide">
+    <div class="p2-container">
+      
+      <!-- PLAYER 1 (Top - Pink) -->
+      <div class="p-side p1">
+        <div class="p-info">
+          <span>P1 (PINK) [Q, W, E, R]</span>
+          <span>SCORE: <span id="p1-score">0</span> / <span class="target-score">7</span></span>
+        </div>
+        <div id="q-2p-p1" class="q-box-2p" style="color:#ff007f">7 × 8 = ?</div>
+        <div class="opts-2p" id="p1-opts-box"></div>
+      </div>
+
+      <!-- COMMON TIMER BAR -->
+      <div style="width:100%; padding: 0 20px;">
+        <div class="timer-bar-wrap" style="margin:0 auto; max-width:500px;">
+          <div id="timer-2p" class="timer-bar-fill"></div>
+        </div>
+      </div>
+
+      <!-- PLAYER 2 (Bottom - Cyan) -->
+      <div class="p-side p2">
+        <div id="q-2p-p2" class="q-box-2p" style="color:#00ffcc">7 × 8 = ?</div>
+        <div class="opts-2p" id="p2-opts-box"></div>
+        <div class="p-info" style="margin-top:8px;">
+          <span>P2 (CYAN) [U, I, O, P]</span>
+          <span>SCORE: <span id="p2-score">0</span> / <span class="target-score">7</span></span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PAUSE SCREEN -->
+  <div id="pause-screen" class="screen hide" style="z-index: 30; background: rgba(5, 4, 10, 0.85);">
+    <div class="modal-box" style="border-color:#ff9900;">
+      <div class="res-title" style="color:#ff9900">GAME PAUSED</div>
+      <div class="res-score">Take a Break...</div>
+      <button id="btn-resume" class="btn-start" style="margin-top:0">RESUME</button>
+      <button id="btn-pause-restart" class="btn-start" style="margin-top:10px; background: linear-gradient(90deg, #a800ff, #ff007f); color:#fff;">RESTART</button>
+      <button id="btn-pause-menu" class="btn-opt" style="width:100%; margin-top:10px; padding:12px;">MAIN MENU</button>
+    </div>
+  </div>
+
+  <!-- RESULT SCREEN -->
+  <div id="result-screen" class="screen hide">
+    <div class="modal-box">
+      <div id="res-title" class="res-title">VICTORY!</div>
+      <div id="res-desc" class="res-score">Score: 0</div>
+      <button id="btn-restart" class="btn-start" style="margin-top:0">PLAY AGAIN</button>
+      <button id="btn-to-menu" class="btn-opt" style="width:100%; margin-top:10px; padding:12px;">MAIN MENU</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // BACKGROUND PARTICLE ARCHITECTURE & BURST EFFECTS
+  const canvas = document.getElementById("bg");
+  const ctx = canvas.getContext("2d");
+  let pts = [];
+  let burstPts = [];
+
+  function resize() {
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+  }
+  addEventListener("resize", resize);
+  resize();
+
+  for(let i=0; i<45; i++) {
+    pts.push({
+      x: Math.random()*innerWidth,
+      y: Math.random()*innerHeight,
+      vx: (Math.random()-0.5)*1.2,
+      vy: (Math.random()-0.5)*1.2,
+      r: Math.random()*3+1,
+      c: Math.random() > 0.5 ? "#00ffcc" : "#ff007f"
+    });
+  }
+
+  function spawnBurst(x, y, color) {
+    for(let i=0; i<25; i++) {
+      let angle = Math.random() * Math.PI * 2;
+      let speed = Math.random() * 6 + 2;
+      burstPts.push({
+        x: x || innerWidth/2,
+        y: y || innerHeight/2,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1.0,
+        r: Math.random() * 4 + 2,
+        c: color || "#00ffcc"
+      });
+    }
+  }
+
+  function renderBG() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Normal Background Particles
+    pts.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if(p.x<0||p.x>canvas.width) p.vx*=-1;
+      if(p.y<0||p.y>canvas.height) p.vy*=-1;
+      ctx.fillStyle = p.c;
+      ctx.shadowColor = p.c; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+    });
+
+    // Correct Answer Burst Effects
+    for (let i = burstPts.length - 1; i >= 0; i--) {
+      let bp = burstPts[i];
+      bp.x += bp.vx; bp.y += bp.vy;
+      bp.life -= 0.03;
+      if (bp.life <= 0) {
+        burstPts.splice(i, 1);
+        continue;
+      }
+      ctx.fillStyle = bp.c;
+      ctx.globalAlpha = bp.life;
+      ctx.shadowColor = bp.c; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(bp.x, bp.y, bp.r, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1.0;
+    }
+
+    ctx.shadowBlur = 0;
+    requestAnimationFrame(renderBG);
+  }
+  requestAnimationFrame(renderBG);
+
+  // WEBAUDIO SYNTHESIZER ENGINE
+  let ac = null;
+  let menuMusicTimer = null;
+  let gameMusicTimer = null;
+  let isMuted = false;
+  let isAudioUnlocked = false;
+
+  function initAudio() {
+    if (!ac) {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (ac.state === "suspended") {
+      ac.resume();
+    }
+    isAudioUnlocked = true;
+  }
+
+  // Browser Audio Unlock Listener
+  function unlockAudioFirstTouch() {
+    initAudio();
+    if (menuMusicTimer === null && gameMusicTimer === null && !game1pScreen.classList.contains("show")) {
+      startMenuMusic();
+    }
+    document.removeEventListener("click", unlockAudioFirstTouch);
+    document.removeEventListener("touchstart", unlockAudioFirstTouch);
+  }
+  document.addEventListener("click", unlockAudioFirstTouch);
+  document.addEventListener("touchstart", unlockAudioFirstTouch);
+
+  function playTone(freq, type = "sine", duration = 0.1, vol = 0.05, filterCutoff = 0) {
+    try {
+      if (!ac || isMuted) return;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+
+      if (filterCutoff > 0) {
+        const f = ac.createBiquadFilter();
+        f.type = "lowpass";
+        f.frequency.value = filterCutoff;
+        o.connect(f);
+        f.connect(g);
+      } else {
+        o.connect(g);
+      }
+
+      g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function playKick() {
+    try {
+      if (!ac || isMuted) return;
+      const osc = ac.createOscillator(), gain = ac.createGain();
+      osc.frequency.setValueAtTime(130, ac.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(0.01, ac.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.12, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.12);
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.start(); osc.stop(ac.currentTime + 0.12);
+    } catch (e) {}
+  }
+
+  function playHiHat() {
+    try {
+      if (!ac || isMuted) return;
+      const osc = ac.createOscillator(), gain = ac.createGain();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(7000, ac.currentTime);
+      gain.gain.setValueAtTime(0.012, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.04);
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.start(); osc.stop(ac.currentTime + 0.04);
+    } catch (e) {}
+  }
+
+  function playSfx(type) {
+    initAudio();
+    if (isMuted) return;
+    if (type === "correct") {
+      playTone(523.25, "sine", 0.08, 0.08);
+      setTimeout(() => playTone(659.25, "sine", 0.08, 0.08), 70);
+      setTimeout(() => playTone(783.99, "sine", 0.14, 0.08), 140);
+    } else if (type === "wrong") {
+      playTone(180, "sawtooth", 0.18, 0.09);
+      setTimeout(() => playTone(110, "sawtooth", 0.25, 0.09), 80);
+    } else if (type === "click") {
+      playTone(850, "triangle", 0.04, 0.03);
+    }
+  }
+
+  function startMenuMusic() {
+    stopMusic();
+    let step = 0;
+    const arp = [
+      220, 261.63, 329.63, 440,     // Am
+      174.61, 220, 261.63, 349.23,  // F
+      130.81, 164.81, 196.00, 261.63, // C
+      196.00, 246.94, 293.66, 392.00  // G
+    ];
+    menuMusicTimer = setInterval(() => {
+      if (!ac || isMuted || isPaused) return;
+      const note = arp[step % arp.length];
+      playTone(note, "sawtooth", 0.2, 0.02, 1200);
+      if (step % 4 === 0) playKick();
+      step++;
+    }, 200);
+  }
+
+  function startGameMusic() {
+    stopMusic();
+    let step = 0;
+    const bass = [110, 110, 220, 110, 130.81, 110, 164.81, 130.81];
+    const lead = [440, 523.25, 659.25, 523.25, 783.99, 659.25, 523.25, 440];
+
+    gameMusicTimer = setInterval(() => {
+      if (!ac || isMuted || isPaused) return;
+      const bNote = bass[step % bass.length];
+      const lNote = lead[step % lead.length];
+
+      playTone(bNote, "sawtooth", 0.09, 0.03, 900);
+      if (step % 2 === 0) playTone(lNote, "square", 0.06, 0.015, 1800);
+
+      if (step % 4 === 0) playKick();
+      if (step % 2 === 1) playHiHat();
+
+      step++;
+    }, 125);
+  }
+
+  function stopMusic() {
+    if (menuMusicTimer) clearInterval(menuMusicTimer);
+    if (gameMusicTimer) clearInterval(gameMusicTimer);
+    menuMusicTimer = null; gameMusicTimer = null;
+  }
+
+  // GAME STATE VARIABLES
+  const SAVE_KEY = "sigma_math_best";
+  let mode = "1p";
+  let op = "toplama";
+  let diff = "easy";
+
+  let score1p = 0;
+  let comboCount = 0;
+  let best1p = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10);
+  let p1Score = 0, p2Score = 0;
+  let targetScore = 7;
+
+  let currentQ = null;
+  let timerInterval = null;
+  let timeLeft = 7.0;
+  let activeP2Round = true;
+  let isPaused = false;
+
+  // DOM ELEMENTS
+  const loaderScreen = document.getElementById("loader-screen");
+  const loaderBar = document.getElementById("loader-bar");
+  const loaderTxt = document.getElementById("loader-txt");
+  const menuScreen = document.getElementById("menu-screen");
+  const game1pScreen = document.getElementById("game-1p-screen");
+  const game2pScreen = document.getElementById("game-2p-screen");
+  const resultScreen = document.getElementById("result-screen");
+  const pauseScreen = document.getElementById("pause-screen");
+  const btnPauseHud = document.getElementById("btn-pause-hud");
+  const btnSound = document.getElementById("btn-sound");
+
+  // SOUND BUTTON CONTROL
+  btnSound.onclick = () => {
+    isMuted = !isMuted;
+    btnSound.textContent = isMuted ? "🔇 SOUND: OFF" : "🔊 SOUND: ON";
+    btnSound.style.borderColor = isMuted ? "#ff0055" : "rgba(255,0,127,0.4)";
+  };
+
+  function setupOptionGroup(groupId, callback) {
+    const parent = document.getElementById(groupId);
+    parent.querySelectorAll(".btn-opt").forEach(btn => {
+      btn.onclick = () => {
+        initAudio();
+        playSfx("click");
+        parent.querySelectorAll(".btn-opt").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        callback(btn.dataset.val);
+      };
+    });
+  }
+
+  setupOptionGroup("mode-opts", val => mode = val);
+  setupOptionGroup("op-opts", val => op = val);
+  setupOptionGroup("diff-opts", val => diff = val);
+
+  function triggerScreenShake() {
+    document.body.classList.add("shake");
+    setTimeout(() => document.body.classList.remove("shake"), 250);
+  }
+
+  function runLoader(onComplete) {
+    loaderScreen.classList.remove("hide");
+    let progress = 0;
+    const msgs = ["LOADING SYSTEM...", "CYBERPUNK AUDIO ENGINE...", "ARENA READY!"];
+    const inv = setInterval(() => {
+      progress += 10;
+      loaderBar.style.width = progress + "%";
+      if (progress > 30) loaderTxt.textContent = msgs[1];
+      if (progress > 70) loaderTxt.textContent = msgs[2];
+      if (progress >= 100) {
+        clearInterval(inv);
+        setTimeout(() => {
+          loaderScreen.classList.add("hide");
+          onComplete();
+        }, 150);
+      }
+    }, 20);
+  }
+
+  // QUESTION GENERATOR
+  function generateQuestion() {
+    let n1, n2, ans, symbol;
+    let max = diff === "easy" ? 12 : (diff === "hard" ? 35 : 80);
+
+    let currentOp = op;
+    if (op === "karisik") {
+      const ops = ["toplama", "cikarma", "carpma", "bolme"];
+      currentOp = ops[Math.floor(Math.random() * ops.length)];
+    }
+
+    if (currentOp === "toplama") {
+      n1 = Math.floor(Math.random() * max) + 1;
+      n2 = Math.floor(Math.random() * max) + 1;
+      ans = n1 + n2; symbol = "+";
+    } else if (currentOp === "cikarma") {
+      n1 = Math.floor(Math.random() * max) + 1;
+      n2 = Math.floor(Math.random() * n1) + 1;
+      ans = n1 - n2; symbol = "-";
+    } else if (currentOp === "carpma") {
+      let mMax = diff === "easy" ? 8 : (diff === "hard" ? 14 : 20);
+      n1 = Math.floor(Math.random() * mMax) + 1;
+      n2 = Math.floor(Math.random() * mMax) + 1;
+      ans = n1 * n2; symbol = "×";
+    } else if (currentOp === "bolme") {
+      let dMax = diff === "easy" ? 6 : (diff === "hard" ? 10 : 15);
+      n2 = Math.floor(Math.random() * dMax) + 1;
+      ans = Math.floor(Math.random() * dMax) + 1;
+      n1 = n2 * ans; symbol = "÷";
+    }
+
+    let opts = [ans];
+    while (opts.length < 4) {
+      let delta = (Math.floor(Math.random() * 5) + 1) * (Math.random() > 0.5 ? 1 : -1);
+      let wrong = ans + delta;
+      if (wrong >= 0 && !opts.includes(wrong)) opts.push(wrong);
+    }
+    opts.sort(() => Math.random() - 0.5);
+
+    return { str: `${n1} ${symbol} ${n2} = ?`, ans, opts };
+  }
+
+  // PAUSE LOGIC
+  function togglePause() {
+    if (game1pScreen.classList.contains("hide") && game2pScreen.classList.contains("hide")) return;
+    
+    isPaused = !isPaused;
+    if (isPaused) {
+      pauseScreen.classList.remove("hide");
+    } else {
+      pauseScreen.classList.add("hide");
+    }
+  }
+
+  btnPauseHud.onclick = togglePause;
+  document.getElementById("btn-resume").onclick = togglePause;
+
+  document.getElementById("btn-pause-restart").onclick = () => {
+    togglePause();
+    if (mode === "1p") {
+      score1p = 0; comboCount = 0;
+      document.getElementById("score-1p").textContent = "0";
+      document.getElementById("combo-badge").style.display = "none";
+      start1PRound();
+    } else {
+      p1Score = 0; p2Score = 0;
+      document.getElementById("p1-score").textContent = "0";
+      document.getElementById("p2-score").textContent = "0";
+      start2PRound();
+    }
+  };
+
+  document.getElementById("btn-pause-menu").onclick = () => {
+    togglePause();
+    game1pScreen.classList.add("hide");
+    game2pScreen.classList.add("hide");
+    btnPauseHud.style.display = "none";
+    menuScreen.classList.remove("hide");
+    startMenuMusic();
+  };
+
+  // 1P MODE
+  function start1PRound() {
+    if (timerInterval) clearInterval(timerInterval);
+    currentQ = generateQuestion();
+    document.getElementById("q-1p").childNodes[0].nodeValue = currentQ.str + " ";
+
+    const box = document.getElementById("opts-1p-box");
+    box.innerHTML = "";
+    const hints = ["1 / A", "2 / S", "3 / D", "4 / F"];
+    currentQ.opts.forEach((o, idx) => {
+      const btn = document.createElement("button");
+      btn.className = "btn-ans";
+      btn.innerHTML = `<span class="key-hint">${hints[idx]}</span>${o}`;
+      btn.onclick = (e) => handle1PAnswer(o, e.clientX, e.clientY);
+      box.appendChild(btn);
+    });
+
+    timeLeft = 7.0;
+    update1PTimerBar();
+    timerInterval = setInterval(() => {
+      if (isPaused) return;
+      timeLeft -= 0.1;
+      update1PTimerBar();
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        playSfx("wrong");
+        triggerScreenShake();
+        end1PGame();
+      }
+    }, 100);
+  }
+
+  function update1PTimerBar() {
+    const fill = document.getElementById("timer-1p");
+    fill.style.width = Math.max(0, (timeLeft / 7.0) * 100) + "%";
+  }
+
+  function handle1PAnswer(selected, clickX, clickY) {
+    if (isPaused) return;
+    if (selected === currentQ.ans) {
+      playSfx("correct");
+      spawnBurst(clickX, clickY, "#00ffcc");
+      
+      comboCount++;
+      let multiplier = comboCount;
+      score1p += 10 * multiplier;
+      
+      const badge = document.getElementById("combo-badge");
+      if (multiplier > 1) {
+        badge.textContent = `${multiplier}x COMBO!`;
+        badge.style.display = "block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      document.getElementById("score-1p").textContent = score1p;
+      if (score1p > best1p) {
+        best1p = score1p;
+        localStorage.setItem(SAVE_KEY, best1p);
+        document.getElementById("best-1p").textContent = best1p;
+      }
+      start1PRound();
+    } else {
+      playSfx("wrong");
+      triggerScreenShake();
+      spawnBurst(clickX, clickY, "#ff0055");
+      clearInterval(timerInterval);
+      end1PGame();
+    }
+  }
+
+  function end1PGame() {
+    btnPauseHud.style.display = "none";
+    game1pScreen.classList.add("hide");
+    resultScreen.classList.remove("hide");
+    document.getElementById("res-title").textContent = "GAME OVER";
+    document.getElementById("res-desc").innerHTML = `Your Score: <b style="color:#00ffcc">${score1p}</b><br>High Score: <b style="color:#ff007f">${best1p}</b>`;
+    stopMusic();
+  }
+
+  // 2P DUEL MODE
+  function start2PRound() {
+    if (timerInterval) clearInterval(timerInterval);
+    activeP2Round = true;
+    currentQ = generateQuestion();
+
+    document.getElementById("q-2p-p1").textContent = currentQ.str;
+    document.getElementById("q-2p-p2").textContent = currentQ.str;
+
+    const p1Box = document.getElementById("p1-opts-box");
+    const p2Box = document.getElementById("p2-opts-box");
+    p1Box.innerHTML = ""; p2Box.innerHTML = "";
+
+    const p1Keys = ["Q", "W", "E", "R"];
+    const p2Keys = ["U", "I", "O", "P"];
+
+    currentQ.opts.forEach((o, i) => {
+      const b1 = document.createElement("button");
+      b1.className = "btn-2p";
+      b1.innerHTML = `<span class="key-hint">${p1Keys[i]}</span>${o}`;
+      b1.onclick = (e) => handle2PAnswer(1, o, e.clientX, e.clientY);
+      p1Box.appendChild(b1);
+
+      const b2 = document.createElement("button");
+      b2.className = "btn-2p";
+      b2.innerHTML = `<span class="key-hint">${p2Keys[i]}</span>${o}`;
+      b2.onclick = (e) => handle2PAnswer(2, o, e.clientX, e.clientY);
+      p2Box.appendChild(b2);
+    });
+
+    timeLeft = 7.0;
+    update2PTimerBar();
+    timerInterval = setInterval(() => {
+      if (isPaused) return;
+      timeLeft -= 0.1;
+      update2PTimerBar();
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        playSfx("wrong");
+        start2PRound();
+      }
+    }, 100);
+  }
+
+  function update2PTimerBar() {
+    const fill = document.getElementById("timer-2p");
+    fill.style.width = Math.max(0, (timeLeft / 7.0) * 100) + "%";
+  }
+
+  // 2P PENALTY MECHANIC: Wrong answer gives a point to the opponent!
+  function handle2PAnswer(playerNum, selected, clickX, clickY) {
+    if (!activeP2Round || isPaused) return;
+
+    activeP2Round = false;
+    clearInterval(timerInterval);
+
+    if (selected === currentQ.ans) {
+      playSfx("correct");
+      spawnBurst(clickX, clickY, playerNum === 1 ? "#ff007f" : "#00ffcc");
+      if (playerNum === 1) p1Score++; else p2Score++;
+    } else {
+      // WRONG ANSWER: Point goes to opponent!
+      playSfx("wrong");
+      triggerScreenShake();
+      spawnBurst(clickX, clickY, "#ff0055");
+      const opponentNum = playerNum === 1 ? 2 : 1;
+      if (opponentNum === 1) p1Score++; else p2Score++;
+    }
+
+    document.getElementById("p1-score").textContent = p1Score;
+    document.getElementById("p2-score").textContent = p2Score;
+
+    if (p1Score >= targetScore || p2Score >= targetScore) {
+      const winner = p1Score >= targetScore ? 1 : 2;
+      end2PGame(winner);
+    } else {
+      setTimeout(start2PRound, 380);
+    }
+  }
+
+  function end2PGame(winnerNum) {
+    btnPauseHud.style.display = "none";
+    game2pScreen.classList.add("hide");
+    resultScreen.classList.remove("hide");
+    const color = winnerNum === 1 ? "#ff007f" : "#00ffcc";
+    document.getElementById("res-title").innerHTML = `<span style="color:${color}">P${winnerNum} WINS!</span>`;
+    document.getElementById("res-desc").textContent = `Final Score: P1 (${p1Score}) - P2 (${p2Score})`;
+    stopMusic();
+  }
+
+  // SHORTCUTS AND PAUSE KEYS
+  addEventListener("keydown", e => {
+    initAudio();
+    const k = e.key.toUpperCase();
+
+    // Pause key set to "SPACEBAR" and "ESC"
+    if (k === "ESCAPE" || e.code === "Space" || k === " ") {
+      e.preventDefault();
+      togglePause();
+      return;
+    }
+
+    if (isPaused) return;
+
+    // 1P Shortcuts
+    if (!game1pScreen.classList.contains("hide") && currentQ) {
+      const keyMap1p = { "1": 0, "A": 0, "2": 1, "S": 1, "3": 2, "D": 2, "4": 3, "F": 3 };
+      if (keyMap1p[k] !== undefined && currentQ.opts[keyMap1p[k]] !== undefined) {
+        handle1PAnswer(currentQ.opts[keyMap1p[k]], innerWidth/2, innerHeight/2);
+      }
+    }
+
+    // 2P Shortcuts (P1: QWER, P2: UIOP)
+    if (!game2pScreen.classList.contains("hide") && currentQ) {
+      const p1Map = { "Q": 0, "W": 1, "E": 2, "R": 3 };
+      const p2Map = { "U": 0, "I": 1, "O": 2, "P": 3 };
+
+      if (p1Map[k] !== undefined && currentQ.opts[p1Map[k]] !== undefined) {
+        handle2PAnswer(1, currentQ.opts[p1Map[k]], innerWidth/2, innerHeight/4);
+      }
+      if (p2Map[k] !== undefined && currentQ.opts[p2Map[k]] !== undefined) {
+        handle2PAnswer(2, currentQ.opts[p2Map[k]], innerWidth/2, (innerHeight/4)*3);
+      }
+    }
+  });
+
+  // BUTTON ACTIONS
+  document.getElementById("btn-start-game").onclick = () => {
+    initAudio();
+    playSfx("click");
+    menuScreen.classList.add("hide");
+
+    targetScore = diff === "easy" ? 7 : (diff === "hard" ? 15 : 22);
+    document.querySelectorAll(".target-score").forEach(el => el.textContent = targetScore);
+
+    runLoader(() => {
+      btnPauseHud.style.display = "flex";
+      startGameMusic();
+      if (mode === "1p") {
+        score1p = 0; comboCount = 0;
+        document.getElementById("score-1p").textContent = "0";
+        document.getElementById("best-1p").textContent = best1p;
+        document.getElementById("combo-badge").style.display = "none";
+        game1pScreen.classList.remove("hide");
+        start1PRound();
+      } else {
+        p1Score = 0; p2Score = 0;
+        document.getElementById("p1-score").textContent = "0";
+        document.getElementById("p2-score").textContent = "0";
+        game2pScreen.classList.remove("hide");
+        start2PRound();
+      }
+    });
+  };
+
+  document.getElementById("btn-restart").onclick = () => {
+    initAudio();
+    resultScreen.classList.add("hide");
+    document.getElementById("btn-start-game").click();
+  };
+
+  document.getElementById("btn-to-menu").onclick = () => {
+    initAudio();
+    resultScreen.classList.add("hide");
+    menuScreen.classList.remove("hide");
+    startMenuMusic();
+  };
+
+  // INITIAL LOADING CLICK TARGET
+  loaderScreen.onclick = () => {
+    initAudio();
+    runLoader(() => {
+      menuScreen.classList.remove("hide");
+      startMenuMusic();
+    });
+  };
+
+})();
+</script>
+</body>
+</html>
