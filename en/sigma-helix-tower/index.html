@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Helix Tower 3D</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #080711; font-family: system-ui, sans-serif; color: #fff; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  #hud { position: fixed; top: 16px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 2; }
+  #score { font-size: 56px; font-weight: 900; text-shadow: 0 4px 16px rgba(0,0,0,0.8); color: #00d4ff; font-family: monospace; }
+  #best { opacity: .8; font-size: 14px; margin-top: 2px; font-weight: 700; letter-spacing: 1px; }
+  #back { position: fixed; top: 16px; left: 16px; z-index: 3; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 10px; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,10,.92); text-align: center; padding: 24px; z-index: 4; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(28px, 6vw, 48px); margin: 0 0 10px; background: linear-gradient(90deg, #00d4ff, #ff3cac); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
+  .sub { opacity: .85; margin: 0 0 24px; line-height: 1.5; font-size: 15px; }
+  button { border: 0; border-radius: 14px; padding: 16px 40px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4); }
+  button:active { transform: scale(0.96); }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <a id="back" href="../">← Menu</a>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best"></div>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA HELIX 3D</h1>
+    <p class="sub">Drag or Use Left/Right Arrow Keys<br>Avoid red zones, drop through the gaps!</p>
+    <button id="go">START GAME</button>
+  </div>
+
+<script>
+(() => {
+  const overlay = document.getElementById("overlay");
+  const goBtn = document.getElementById("go");
+  const scoreEl = document.getElementById("score");
+  const bestEl = document.getElementById("best");
+
+  const SAVE_KEY = "sigma-helix-opt-best";
+  const INNER_R = 1.6, OUTER_R = 5.8, FLOOR_GAP = 8.5;
+  const SECTORS = 8;
+  const ANGLE_STEP = (Math.PI * 2) / SECTORS;
+
+  let state = "menu";
+  let score = 0, best = 0;
+  
+  let scene, camera, renderer, towerGroup, ball;
+  let ballY = 0, ballVy = 0;
+  let floors = [];
+  let ac = null;
+  let isDragging = false, lastX = 0;
+
+  // Single Geometry Sharing for Performance
+  let sharedSectorGeo = null;
+  let safeMat, trapMat, poleMat, ballMat;
+
+  try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
+  bestEl.textContent = best ? ("BEST: " + best) : "";
+
+  function sound(freq, type = "sine", duration = 0.05, vol = 0.04) {
+    try {
+      if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq; g.gain.value = vol;
+      o.connect(g); g.connect(ac.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+      o.stop(ac.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function init3D() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x080711);
+
+    camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
+    
+    // Lightweight WebGL (No shadows, low pixel load)
+    renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    document.body.appendChild(renderer.domElement);
+
+    // Fast Lighting
+    const amb = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(amb);
+
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+    dir.position.set(10, 20, 15);
+    scene.add(dir);
+
+    // Materials
+    safeMat = new THREE.MeshLambertMaterial({ color: 0x00d4ff });
+    trapMat = new THREE.MeshLambertMaterial({ color: 0xff3cac });
+    poleMat = new THREE.MeshLambertMaterial({ color: 0x16132b });
+    ballMat = new THREE.MeshPhongMaterial({ color: 0xffffe0, shininess: 80 });
+
+    // Create Single Slice Sector Geometry (Shared by all floors)
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, OUTER_R, 0, ANGLE_STEP - 0.06, false);
+    shape.absarc(0, 0, INNER_R, ANGLE_STEP - 0.06, 0, true);
+    shape.closePath();
+
+    sharedSectorGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.3, bevelEnabled: false });
+    sharedSectorGeo.rotateX(Math.PI / 2);
+
+    // Tower Group
+    towerGroup = new THREE.Group();
+    scene.add(towerGroup);
+
+    // Main Pole
+    const poleGeo = new THREE.CylinderGeometry(INNER_R, INNER_R, 400, 16);
+    const pole = new THREE.Mesh(poleGeo, poleMat);
+    pole.position.y = -150;
+    towerGroup.add(pole);
+
+    // Ball
+    const ballGeo = new THREE.SphereGeometry(0.65, 16, 16);
+    ball = new THREE.Mesh(ballGeo, ballMat);
+    ball.position.set(0, 0, (INNER_R + OUTER_R) / 2);
+    scene.add(ball);
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  }
+
+  function createFloor(index) {
+    const floorGroup = new THREE.Group();
+    const floorY = -index * FLOOR_GAP;
+    floorGroup.position.y = floorY;
+
+    const types = new Array(SECTORS).fill("safe");
+    const gapCount = index === 0 ? 2 : Math.min(3, 1 + Math.floor(Math.random() * 2));
+    const trapCount = index === 0 ? 0 : Math.min(3, Math.floor(Math.random() * 2));
+
+    let g = 0;
+    while (g < gapCount) {
+      let r = Math.floor(Math.random() * SECTORS);
+      if (types[r] === "safe") { types[r] = "gap"; g++; }
+    }
+    let t = 0;
+    while (t < trapCount) {
+      let r = Math.floor(Math.random() * SECTORS);
+      if (types[r] === "safe") { types[r] = "trap"; t++; }
+    }
+
+    for (let i = 0; i < SECTORS; i++) {
+      if (types[i] === "gap") continue;
+
+      const mesh = new THREE.Mesh(sharedSectorGeo, types[i] === "trap" ? trapMat : safeMat);
+      mesh.rotation.y = i * ANGLE_STEP;
+      floorGroup.add(mesh);
+    }
+
+    towerGroup.add(floorGroup);
+    return { group: floorGroup, y: floorY, types, passed: false };
+  }
+
+  function initGame() {
+    state = "play";
+    score = 0;
+    ballY = 2;
+    ballVy = 0;
+    towerGroup.rotation.y = 0;
+
+    floors.forEach(f => towerGroup.remove(f.group));
+    floors = [];
+
+    for (let i = 0; i < 15; i++) {
+      floors.push(createFloor(i));
+    }
+
+    scoreEl.textContent = "0";
+    overlay.classList.add("hide");
+    sound(520, "sine", 0.08, 0.06);
+  }
+
+  function die() {
+    state = "dead";
+    sound(120, "sawtooth", 0.25, 0.08);
+
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
+    }
+    bestEl.textContent = "BEST: " + best;
+
+    overlay.innerHTML = `<h1>GAME OVER</h1><p class='sub'>Floor: ${score}${score >= best && score > 0 ? "<br>New Record!" : ""}</p><button id='go2'>RETRY</button>`;
+    overlay.classList.remove("hide");
+    document.getElementById("go2").onclick = initGame;
+  }
+
+  function update() {
+    if (state !== "play") return;
+
+    // Lightweight Physics
+    ballVy -= 0.016;
+    ballY += ballVy;
+
+    // Smooth Camera Follow
+    const targetCamY = ballY + 5.5;
+    camera.position.y += (targetCamY - camera.position.y) * 0.2;
+    camera.position.x = 0;
+    camera.position.z = 16;
+    camera.lookAt(0, ballY - 1, 0);
+
+    ball.position.y = ballY;
+
+    // Collision Test
+    const ballRadius = 0.65;
+    floors.forEach(f => {
+      const topY = f.y + 0.15;
+      
+      if (ballVy < 0 && (ballY - ballRadius) <= topY && (ballY - ballVy - ballRadius) >= f.y - 0.4) {
+        // The segment sector hit on the tower
+        let normAngle = (-towerGroup.rotation.y) % (Math.PI * 2);
+        if (normAngle < 0) normAngle += Math.PI * 2;
+        let segIdx = Math.floor(normAngle / ANGLE_STEP) % SECTORS;
+        let type = f.types[segIdx];
+
+        if (type === "safe") {
+          ballY = topY + ballRadius;
+          ballVy = 0.34; // Bounce
+          sound(480, "sine", 0.04, 0.05);
+        } else if (type === "trap") {
+          die();
+        }
+      }
+
+      if (!f.passed && ballY < f.y - 0.5) {
+        f.passed = true;
+        score++;
+        scoreEl.textContent = String(score);
+        sound(750, "triangle", 0.05, 0.04);
+      }
+    });
+
+    // Automatic Floor Addition/Removal (Memory Management)
+    if (floors[floors.length - 1].y > ballY - 50) {
+      floors.push(createFloor(floors.length));
+    }
+  }
+
+  function render() {
+    update();
+    if (renderer && scene && camera) {
+      renderer.render(scene, camera);
+    }
+    requestAnimationFrame(render);
+  }
+
+  // Smooth Touch/Keyboard Controls
+  function rotateTower(dx) {
+    if (state === "play" && towerGroup) {
+      towerGroup.rotation.y += dx * 0.009;
+    }
+  }
+
+  window.addEventListener("pointerdown", e => { isDragging = true; lastX = e.clientX; });
+  window.addEventListener("pointermove", e => {
+    if (isDragging) {
+      rotateTower(e.clientX - lastX);
+      lastX = e.clientX;
+    }
+  });
+  window.addEventListener("pointerup", () => isDragging = false);
+
+  window.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") rotateTower(-22);
+    if (e.key === "ArrowRight") rotateTower(22);
+  });
+
+  goBtn.onclick = () => {
+    if (!scene) init3D();
+    initGame();
+  };
+
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
