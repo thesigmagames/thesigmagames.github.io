@@ -6,9 +6,9 @@
   <title>SIGMA TETRIS · The Sigma Games</title>
   <style>
     :root {
-      --bg: #06050e;
-      --panel: #120e29;
-      --border: #352563;
+      --bg: #05040a;
+      --panel: rgba(18, 14, 36, 0.85);
+      --border: #3b2866;
       --cyan: #00f0ff;
       --pink: #ff007f;
       --yellow: #ffcc00;
@@ -26,8 +26,8 @@
       justify-content: center;
       align-items: center;
       background:
-        radial-gradient(circle at 50% 20%, #221045 0%, transparent 60%),
-        radial-gradient(circle at 80% 80%, #0a1329 0%, transparent 50%),
+        radial-gradient(circle at 50% 15%, #25104e 0%, transparent 55%),
+        radial-gradient(circle at 85% 85%, #091226 0%, transparent 50%),
         var(--bg);
       padding: 10px;
     }
@@ -36,26 +36,26 @@
       display: flex;
       gap: 14px;
       align-items: flex-start;
-      max-width: 900px;
+      max-width: 860px;
       width: 100%;
       justify-content: center;
     }
 
     .side-panel {
-      width: 125px;
+      width: 120px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
 
     .box {
-      background: rgba(18, 14, 41, 0.85);
+      background: var(--panel);
       border: 1px solid var(--border);
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(10px);
       border-radius: 12px;
       padding: 10px;
       text-align: center;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
     }
 
     .box-title {
@@ -68,7 +68,7 @@
     }
 
     .box-value {
-      font-size: 1.2rem;
+      font-size: 1.15rem;
       font-weight: 900;
       color: #fff;
     }
@@ -81,10 +81,10 @@
 
     .stage-container {
       position: relative;
-      border-radius: 18px;
+      border-radius: 16px;
       padding: 8px;
-      background: rgba(20, 15, 45, 0.9);
-      box-shadow: 0 15px 50px rgba(0,0,0,0.8), 0 0 30px rgba(138,43,226,0.25);
+      background: rgba(16, 12, 36, 0.95);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(138,43,226,0.2);
       border: 1px solid var(--border);
     }
 
@@ -94,11 +94,11 @@
       align-items: center;
       width: 100%;
       margin-bottom: 6px;
-      padding: 0 4px;
+      padding: 0 2px;
     }
 
     .title-group h1 {
-      font-size: 1.1rem;
+      font-size: 1.15rem;
       font-weight: 900;
       letter-spacing: 2px;
       background: linear-gradient(90deg, var(--cyan), var(--pink));
@@ -109,15 +109,16 @@
 
     .title-group .subtitle {
       font-size: 0.65rem;
-      font-weight: 700;
+      font-weight: 800;
       color: var(--muted);
-      letter-spacing: 1px;
-      margin-top: 2px;
+      letter-spacing: 1.5px;
+      margin-top: 3px;
+      text-transform: uppercase;
     }
 
     .btn-icon {
       background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.15);
       color: #fff;
       padding: 6px 10px;
       border-radius: 8px;
@@ -125,21 +126,21 @@
       cursor: pointer;
       font-size: 0.75rem;
     }
-    .btn-icon:hover { background: rgba(255,255,255,0.2); }
+    .btn-icon:active { background: rgba(255,255,255,0.25); }
 
     canvas#canvas {
       display: block;
-      border-radius: 12px;
-      background: #030208;
+      border-radius: 10px;
+      background: #030206;
       box-shadow: inset 0 0 20px rgba(0,0,0,0.9);
     }
 
     .overlay {
       position: absolute;
       inset: 8px;
-      border-radius: 12px;
-      background: rgba(5, 3, 14, 0.92);
-      backdrop-filter: blur(10px);
+      border-radius: 10px;
+      background: rgba(4, 2, 12, 0.92);
+      backdrop-filter: blur(8px);
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -155,18 +156,19 @@
       font-size: 1.8rem;
       font-weight: 900;
       letter-spacing: 2px;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
       background: linear-gradient(90deg, var(--cyan), var(--pink));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     .overlay .brand {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       color: var(--muted);
       letter-spacing: 2px;
       margin-bottom: 16px;
-      font-weight: 700;
+      font-weight: 800;
+      text-transform: uppercase;
     }
 
     .overlay p {
@@ -178,7 +180,7 @@
 
     .btn-primary {
       border: 0;
-      padding: 12px 30px;
+      padding: 12px 32px;
       border-radius: 999px;
       font-size: 0.95rem;
       font-weight: 900;
@@ -187,15 +189,15 @@
       box-shadow: 0 4px 20px rgba(0, 240, 255, 0.4);
       cursor: pointer;
     }
-    .btn-primary:active { transform: scale(0.96); }
+    .btn-primary:active { transform: scale(0.95); }
 
     .touch-controls {
       display: none;
       grid-template-columns: repeat(3, 1fr);
       gap: 6px;
       width: 100%;
-      max-width: 320px;
-      margin-top: 10px;
+      max-width: 300px;
+      margin-top: 8px;
     }
 
     .touch-btn {
@@ -205,7 +207,7 @@
       padding: 12px;
       border-radius: 10px;
       font-weight: 900;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       text-align: center;
     }
     .touch-btn:active { background: rgba(255,255,255,0.25); }
@@ -250,7 +252,7 @@
       <div id="overlay" class="overlay">
         <h2 id="overlayTitle">SIGMA TETRIS</h2>
         <div class="brand">The Sigma Games</div>
-        <p id="overlayMsg">Arrow Keys / WASD: Move & Rotate<br>Space: Hard Drop · C: Hold Piece</p>
+        <p id="overlayMsg">Arrows / WASD: Move & Rotate<br>Space: Hard Drop · C: Hold Piece</p>
         <button id="startBtn" class="btn-primary">PLAY NOW</button>
       </div>
     </div>
@@ -307,30 +309,33 @@
       let bestScore = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10);
       bestEl.textContent = bestScore;
 
-      // Web Audio Synth
+      // Web Audio Synth Engine
       let audioCtx = null;
       let muted = false;
 
-      function ensureAudio() {
+      function initAudio() {
         if (!audioCtx) {
-          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-          if (AudioContextClass) audioCtx = new AudioContextClass();
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) audioCtx = new AC();
         }
         if (audioCtx && audioCtx.state === "suspended") {
           audioCtx.resume();
         }
       }
 
-      function playTone(freq, type = "sine", duration = 0.08, startVol = 0.08) {
+      window.addEventListener("pointerdown", initAudio, { once: true });
+      window.addEventListener("keydown", initAudio, { once: true });
+
+      function tone(freq, type = "sine", duration = 0.08, vol = 0.06) {
         if (muted) return;
         try {
-          ensureAudio();
-          if (!audioCtx) return;
+          initAudio();
+          if (!audioCtx || audioCtx.state !== "running") return;
           const osc = audioCtx.createOscillator();
           const gain = audioCtx.createGain();
           osc.type = type;
           osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-          gain.gain.setValueAtTime(startVol, audioCtx.currentTime);
+          gain.gain.setValueAtTime(vol, audioCtx.currentTime);
           gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
           osc.connect(gain);
           gain.connect(audioCtx.destination);
@@ -339,18 +344,18 @@
         } catch (e) {}
       }
 
-      function soundMove() { playTone(300, "sine", 0.04, 0.03); }
-      function soundRotate() { playTone(480, "triangle", 0.06, 0.05); }
-      function soundDrop() { playTone(160, "sawtooth", 0.1, 0.08); }
-      function soundClear(linesCleared) {
-        const freqs = [523, 659, 783, 1046];
-        for (let i = 0; i < linesCleared; i++) {
-          setTimeout(() => playTone(freqs[i] || 1000, "sine", 0.15, 0.08), i * 60);
+      function soundMove() { tone(280, "sine", 0.04, 0.04); }
+      function soundRotate() { tone(450, "triangle", 0.06, 0.05); }
+      function soundDrop() { tone(140, "sawtooth", 0.09, 0.07); }
+      function soundClear(c) {
+        const f = [523, 659, 783, 1046];
+        for (let i = 0; i < c; i++) {
+          setTimeout(() => tone(f[i] || 900, "sine", 0.14, 0.08), i * 50);
         }
       }
       function soundGameOver() {
-        playTone(220, "sawtooth", 0.2, 0.08);
-        setTimeout(() => playTone(130, "sawtooth", 0.3, 0.08), 150);
+        tone(200, "sawtooth", 0.2, 0.08);
+        setTimeout(() => tone(120, "sawtooth", 0.35, 0.08), 140);
       }
 
       const SHAPES = {
@@ -401,24 +406,30 @@
         };
       }
 
-      function collide(targetGrid, piece) {
-        const m = piece.matrix;
+      function valid(piece, targetGrid, offsetX = 0, offsetY = 0, customMatrix = null) {
+        const m = customMatrix || piece.matrix;
         for (let r = 0; r < m.length; r++) {
           for (let c = 0; c < m[r].length; c++) {
             if (m[r][c] !== 0) {
-              const newX = piece.x + c;
-              const newY = piece.y + r;
-              if (newX < 0 || newX >= COLS || newY >= ROWS) return true;
-              if (newY >= 0 && targetGrid[newY][newX] !== 0) return true;
+              const x = piece.x + c + offsetX;
+              const y = piece.y + r + offsetY;
+              if (x < 0 || x >= COLS || y >= ROWS) return false;
+              if (y >= 0 && targetGrid[y][x] !== 0) return false;
             }
           }
         }
-        return false;
+        return true;
       }
 
-      function rotateMatrix(matrix) {
+      function rotate(matrix) {
         const N = matrix.length;
-        return matrix.map((row, i) => row.map((val, j) => matrix[N - 1 - j][i]));
+        const res = Array.from({ length: N }, () => Array(N).fill(0));
+        for (let r = 0; r < N; r++) {
+          for (let c = 0; c < N; c++) {
+            res[c][N - 1 - r] = matrix[r][c];
+          }
+        }
+        return res;
       }
 
       function createParticles(x, y, color) {
@@ -436,13 +447,14 @@
       }
 
       function startGame() {
-        ensureAudio();
+        initAudio();
         grid = createGrid();
         bag = [];
         score = 0;
         lines = 0;
         level = 1;
         dropInterval = 1000;
+        dropCounter = 0;
         holdPiece = null;
         canHold = true;
         particles = [];
@@ -496,7 +508,7 @@
         nextPiece = getNextPieceFromBag();
         canHold = true;
 
-        if (collide(grid, currentPiece)) {
+        if (!valid(currentPiece, grid)) {
           gameOver();
         }
       }
@@ -556,7 +568,7 @@
       function actionHardDrop() {
         if (state !== "play") return;
         let droppedLines = 0;
-        while (!collide(grid, { ...currentPiece, y: currentPiece.y + 1 })) {
+        while (valid(currentPiece, grid, 0, 1)) {
           currentPiece.y++;
           droppedLines++;
         }
@@ -568,21 +580,21 @@
       }
 
       function moveLeft() {
-        if (!collide(grid, { ...currentPiece, x: currentPiece.x - 1 })) {
+        if (valid(currentPiece, grid, -1, 0)) {
           currentPiece.x--;
           soundMove();
         }
       }
 
       function moveRight() {
-        if (!collide(grid, { ...currentPiece, x: currentPiece.x + 1 })) {
+        if (valid(currentPiece, grid, 1, 0)) {
           currentPiece.x++;
           soundMove();
         }
       }
 
       function moveDown() {
-        if (!collide(grid, { ...currentPiece, y: currentPiece.y + 1 })) {
+        if (valid(currentPiece, grid, 0, 1)) {
           currentPiece.y++;
           score += 1;
           updateHUD();
@@ -592,15 +604,14 @@
       }
 
       function rotatePiece() {
-        const rotated = rotateMatrix(currentPiece.matrix);
-        const testPiece = { ...currentPiece, matrix: rotated };
+        const rotated = rotate(currentPiece.matrix);
+        const offsets = [[0,0], [-1,0], [1,0], [0,-1], [-1,-1], [1,-1], [-2,0], [2,0]];
 
-        const offsets = [0, 1, -1, 2, -2];
-        for (let offset of offsets) {
-          testPiece.x = currentPiece.x + offset;
-          if (!collide(grid, testPiece)) {
+        for (let [ox, oy] of offsets) {
+          if (valid(currentPiece, grid, ox, oy, rotated)) {
             currentPiece.matrix = rotated;
-            currentPiece.x = testPiece.x;
+            currentPiece.x += ox;
+            currentPiece.y += oy;
             soundRotate();
             return;
           }
@@ -618,16 +629,25 @@
         if (e.key === "c" || e.key === "C") actionHold();
       });
 
-      document.getElementById("tLeft").onclick = () => { if (state === "play") moveLeft(); };
-      document.getElementById("tRight").onclick = () => { if (state === "play") moveRight(); };
-      document.getElementById("tDown").onclick = () => { if (state === "play") moveDown(); };
-      document.getElementById("tRot").onclick = () => { if (state === "play") rotatePiece(); };
-      document.getElementById("tDrop").onclick = () => { if (state === "play") actionHardDrop(); };
-      document.getElementById("tHold").onclick = () => { if (state === "play") actionHold(); };
+      function bindTouch(id, fn) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("pointerdown", e => {
+          e.preventDefault();
+          if (state === "play") fn();
+        });
+      }
+
+      bindTouch("tLeft", moveLeft);
+      bindTouch("tRight", moveRight);
+      bindTouch("tDown", moveDown);
+      bindTouch("tRot", rotatePiece);
+      bindTouch("tDrop", actionHardDrop);
+      bindTouch("tHold", actionHold);
 
       function getGhostPosition() {
         const ghost = { ...currentPiece };
-        while (!collide(grid, { ...ghost, y: ghost.y + 1 })) {
+        while (valid(ghost, grid, 0, 1)) {
           ghost.y++;
         }
         return ghost;
@@ -673,7 +693,7 @@
           shakeTime--;
         }
 
-        ctx.fillStyle = "#030208";
+        ctx.fillStyle = "#030206";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         ctx.strokeStyle = "rgba(255,255,255,0.03)";
@@ -733,6 +753,7 @@
       }
 
       function update(time = 0) {
+        if (!lastTime) lastTime = time;
         const deltaTime = time - lastTime;
         lastTime = time;
 
