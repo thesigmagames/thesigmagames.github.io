@@ -755,17 +755,20 @@
     stopMusic();
   }
 
-  // KISAYOL VE PAUSE TUŞLARI
-  addEventListener("keydown", e => {
-    initAudio();
-    const k = e.key.toUpperCase();
+// KISAYOL VE PAUSE TUŞLARI
+addEventListener("keydown", e => {
+  initAudio();
+  const k = e.key.toUpperCase();
 
-    if (k === "ESCAPE" || k === "P") {
-      togglePause();
-      return;
-    }
+  // Duraklatma tuşunu "P" yerine "SPACE" (Boşluk) ve "ESC" yaptık
+  if (k === "ESCAPE" || e.code === "Space" || k === " ") {
+    e.preventDefault(); // Sayfanın aşağı kaymasını engeller
+    togglePause();
+    return;
+  }
 
-    if (isPaused) return;
+  if (isPaused) return;
+  // ... (kodun geri kalanı aynı kalıyor)
 
     // 1P Kısayolları
     if (!game1pScreen.classList.contains("hide") && currentQ) {
