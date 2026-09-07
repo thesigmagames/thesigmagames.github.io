@@ -308,18 +308,19 @@
       let bestScore = Number(localStorage.getItem(SAVE_KEY) || 0);
       bestEl.textContent = bestScore;
 
-      // WEB AUDIO API SENSITIVE ENGINE
       let audioCtx = null;
       let muted = false;
 
       function getAudioContext() {
-        if (!audioCtx) {
-          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-          if (AudioContextClass) audioCtx = new AudioContextClass();
-        }
-        if (audioCtx && audioCtx.state === "suspended") {
-          audioCtx.resume();
-        }
+        try {
+          if (!audioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass) audioCtx = new AudioContextClass();
+          }
+          if (audioCtx && audioCtx.state === "suspended") {
+            audioCtx.resume();
+          }
+        } catch (e) {}
         return audioCtx;
       }
 
@@ -389,7 +390,11 @@
 
       const KEYS = Object.keys(PIECES);
 
-      let board = [];
+      function createBoard() {
+        return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+      }
+
+      let board = createBoard();
       let player = null;
       let nextType = null;
       let holdType = null;
@@ -403,10 +408,6 @@
       let dropCounter = 0;
       let lastTime = 0;
       let isPlaying = false;
-
-      function createBoard() {
-        return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-      }
 
       function getNextFromBag() {
         if (bag.length === 0) {
@@ -452,7 +453,7 @@
       }
 
       function playerRotate() {
-        if (!isPlaying) return;
+        if (!isPlaying || !player) return;
         const originalX = player.x;
         const originalMatrix = player.matrix;
         const rotated = rotateMatrix(player.matrix);
@@ -472,7 +473,7 @@
       }
 
       function playerMove(dir) {
-        if (!isPlaying) return;
+        if (!isPlaying || !player) return;
         player.x += dir;
         if (collide(board, player)) {
           player.x -= dir;
@@ -482,7 +483,7 @@
       }
 
       function playerDrop() {
-        if (!isPlaying) return;
+        if (!isPlaying || !player) return false;
         player.y++;
         if (collide(board, player)) {
           player.y--;
@@ -496,7 +497,7 @@
       }
 
       function playerHardDrop() {
-        if (!isPlaying) return;
+        if (!isPlaying || !player) return;
         while (!collide(board, player)) {
           player.y++;
           score += 2;
@@ -510,7 +511,7 @@
       }
 
       function playerHold() {
-        if (!isPlaying || !canHold) return;
+        if (!isPlaying || !canHold || !player) return;
         playSound("move");
         if (!holdType) {
           holdType = player.type;
@@ -621,7 +622,11 @@
       }
 
       function getGhost() {
-        const ghost = { ...player };
+        if (!player) return null;
+        const ghost = {
+          ...player,
+          matrix: player.matrix.map(row => [...row])
+        };
         while (!collide(board, { ...ghost, y: ghost.y + 1 })) {
           ghost.y++;
         }
@@ -670,6 +675,7 @@
         }
 
         for (let r = 0; r < ROWS; r++) {
+          if (!board[r]) continue;
           for (let c = 0; c < COLS; c++) {
             if (board[r][c] !== 0) {
               drawBlock(ctx, c, r, board[r][c]);
@@ -679,13 +685,15 @@
 
         if (isPlaying && player) {
           const ghost = getGhost();
-          const gm = ghost.matrix;
-          for (let r = 0; r < gm.length; r++) {
-            for (let c = 0; c < gm[r].length; c++) {
-              if (gm[r][c] !== 0) {
-                ctx.strokeStyle = player.color;
-                ctx.lineWidth = 1.5;
-                ctx.strokeRect((ghost.x + c) * BLOCK_SIZE + 2, (ghost.y + r) * BLOCK_SIZE + 2, BLOCK_SIZE - 4, BLOCK_SIZE - 4);
+          if (ghost) {
+            const gm = ghost.matrix;
+            for (let r = 0; r < gm.length; r++) {
+              for (let c = 0; c < gm[r].length; c++) {
+                if (gm[r][c] !== 0) {
+                  ctx.strokeStyle = player.color;
+                  ctx.lineWidth = 1.5;
+                  ctx.strokeRect((ghost.x + c) * BLOCK_SIZE + 2, (ghost.y + r) * BLOCK_SIZE + 2, BLOCK_SIZE - 4, BLOCK_SIZE - 4);
+                }
               }
             }
           }
