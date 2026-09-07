@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -23,17 +23,17 @@
 </style>
 </head>
 <body>
-  <a id="back" href="../">← Menü</a>
+  <a id="back" href="../">← Menu</a>
   <canvas id="c"></canvas>
   <div id="hud">
     <div id="score">0</div>
-    <div id="stage">Bölüm 1</div>
+    <div id="stage">Stage 1</div>
     <div id="best"></div>
   </div>
   <div id="overlay">
     <h1>SIGMA KNIFE HIT</h1>
-    <p class="sub">Ekrana Dokun / Bıçağı Fırlat<br>Diğer bıçaklara çarpmadan çarkı temizle!</p>
-    <button id="go">BAŞLA</button>
+    <p class="sub">Tap Screen / Throw Knife<br>Clear the wheel without hitting other knives!</p>
+    <button id="go">START</button>
   </div>
 
 <script>
@@ -48,7 +48,7 @@
 
   const SAVE_KEY = "sigma-knife-best";
   const GW = 400, GH = 640;
-  const TARGET_R = 75; // Çark genişletildi
+  const TARGET_R = 75; // Expanded wheel
   const TARGET_Y = 210;
 
   let W = 0, H = 0, scale = 1, offsetX = 0, offsetY = 0;
@@ -66,7 +66,7 @@
   let flash = 0, ac = null;
 
   try { best = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10) || 0; } catch (e) {}
-  bestEl.textContent = best ? ("Rekor: " + best) : "";
+  bestEl.textContent = best ? ("Best: " + best) : "";
 
   function resize() {
     W = innerWidth; H = innerHeight;
@@ -114,15 +114,15 @@
 
   function startStage() {
     knivesOnTarget = [];
-    // Dengeli bıçak sayısı artışı
+    // Balanced knife count scaling
     remainingKnives = 4 + Math.min(stage, 5);
     targetAngle = 0;
     
-    // Dönüş hızı ve yönü
+    // Rotation speed and direction
     const dir = (stage % 2 === 0) ? -1 : 1;
     rotationSpeed = (0.02 + Math.min(stage, 10) * 0.003) * dir;
 
-    // Üst seviyelerde engel bıçaklar
+    // Obstacle knives on higher stages
     const initialCount = stage > 2 ? Math.min(Math.floor((stage - 1) / 2), 3) : 0;
     for (let i = 0; i < initialCount; i++) {
       knivesOnTarget.push({
@@ -132,7 +132,7 @@
     }
 
     resetKnife();
-    stageEl.textContent = "Bölüm " + stage;
+    stageEl.textContent = "Stage " + stage;
   }
 
   function resetKnife() {
@@ -147,7 +147,7 @@
   function throwKnife() {
     if (state !== "play" || !activeKnife || activeKnife.isFlying) return;
     activeKnife.isFlying = true;
-    activeKnife.vy = -55; // Çok hızlı uçuş (gecikmesiz)
+    activeKnife.vy = -55; // Fast flight speed
     sound(420, "triangle", 0.03, 0.05);
   }
 
@@ -161,9 +161,9 @@
       best = score;
       try { localStorage.setItem(SAVE_KEY, String(best)); } catch (e) {}
     }
-    bestEl.textContent = "Rekor: " + best;
+    bestEl.textContent = "Best: " + best;
 
-    overlay.innerHTML = `<h1>OYUN BİTTİ</h1><p class='sub'>Skor: ${score}<br>Bölüm: ${stage}${score >= best && score > 0 ? "<br>Yeni Rekor!" : ""}</p><button id='go2'>TEKRAR DENE</button>`;
+    overlay.innerHTML = `<h1>GAME OVER</h1><p class='sub'>Score: ${score}<br>Stage: ${stage}${score >= best && score > 0 ? "<br>New Best!" : ""}</p><button id='go2'>RETRY</button>`;
     overlay.classList.remove("hide");
     document.getElementById("go2").onclick = initGame;
   }
@@ -179,19 +179,19 @@
 
     if (state !== "play") return;
 
-    // Hedef Dönüşü
+    // Target Rotation
     targetAngle += rotationSpeed;
 
-    // Uçan Bıçak Fizikleri
+    // Flying Knife Physics
     if (activeKnife && activeKnife.isFlying) {
       activeKnife.y += activeKnife.vy;
 
       if (activeKnife.y <= TARGET_Y + TARGET_R) {
-        // Çarpışma Açısı Hesabı
+        // Collision Angle Calculation
         let hitAngle = (Math.PI / 2 - targetAngle) % (Math.PI * 2);
         if (hitAngle < 0) hitAngle += Math.PI * 2;
 
-        const minAngleDiff = 0.18; // Adil ve hassas tolerans (~10 derece)
+        const minAngleDiff = 0.18; // Precise tolerance (~10 degrees)
         let collided = false;
 
         for (let k of knivesOnTarget) {
@@ -204,7 +204,7 @@
         }
 
         if (collided) {
-          // Bıçağa Çarptı
+          // Hit Knife
           for (let i = 0; i < 12; i++) {
             particles.push({
               x: activeKnife.x, y: activeKnife.y,
@@ -215,7 +215,7 @@
           }
           die();
         } else {
-          // Saplandı
+          // Stuck to Wheel
           knivesOnTarget.push({ angle: hitAngle, color: "#00d4ff" });
           score++;
           remainingKnives--;
@@ -278,7 +278,7 @@
 
     ctx.save();
 
-    // Dönen Hedef Çarkı
+    // Rotating Target Wheel
     ctx.save();
     ctx.translate(GW / 2, TARGET_Y);
     ctx.rotate(targetAngle);
@@ -304,7 +304,7 @@
     ctx.fillStyle = "#ff3cac";
     ctx.fill();
 
-    // Saplanmış Bıçaklar
+    // Stuck Knives
     knivesOnTarget.forEach(k => {
       ctx.save();
       ctx.rotate(k.angle);
@@ -314,17 +314,17 @@
 
     ctx.restore();
 
-    // Kalan Bıçaklar (Sol Alt Gösterge)
+    // Remaining Knives (Bottom Left Indicator)
     for (let i = 0; i < remainingKnives; i++) {
       drawKnife(28 + i * 16, GH - 28, 0, "rgba(0, 212, 255, 0.4)");
     }
 
-    // Aktif Bıçak
+    // Active Knife
     if (activeKnife) {
       drawKnife(activeKnife.x, activeKnife.y, 0, "#00d4ff");
     }
 
-    // Efekt Parçacıkları
+    // Effect Particles
     particles.forEach(p => {
       ctx.beginPath();
       ctx.arc(p.x, p.y, Math.max(0.5, 3 * p.life), 0, Math.PI * 2);
