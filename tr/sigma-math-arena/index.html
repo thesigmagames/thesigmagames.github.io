@@ -629,7 +629,7 @@
       spawnBurst(clickX, clickY, "#00ffcc");
       
       comboCount++;
-      let multiplier = comboCount >= 5 ? 3 : (comboCount >= 3 ? 2 : 1);
+      let multiplier = comboCount; // Çarpan artık combo sayısı ile birebir sırayla artar
       score1p += 10 * multiplier;
       
       const badge = document.getElementById("combo-badge");
