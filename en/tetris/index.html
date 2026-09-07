@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
@@ -243,7 +243,7 @@
           <h1>SIGMA TETRIS</h1>
           <div class="subtitle">The Sigma Games</div>
         </div>
-        <button id="muteBtn" class="btn-sound">🔊 SES AÇIK</button>
+        <button id="muteBtn" class="btn-sound">🔊 SOUND</button>
       </div>
 
       <canvas id="canvas" width="300" height="600"></canvas>
@@ -251,8 +251,8 @@
       <div id="overlay" class="overlay">
         <h2 id="overlayTitle">SIGMA TETRIS</h2>
         <div class="brand">The Sigma Games</div>
-        <p id="overlayMsg">Yön Tuşları / WASD: Hareket & Döndürme<br>Space: Hızlı Düşüş · C: Parça Sakla (Hold)</p>
-        <button id="startBtn" class="btn-primary">OYUNA BAŞLA</button>
+        <p id="overlayMsg">Arrows / WASD: Move & Rotate<br>Space: Hard Drop · C: Hold Piece</p>
+        <button id="startBtn" class="btn-primary">PLAY NOW</button>
       </div>
     </div>
 
@@ -272,13 +272,13 @@
     </div>
   </div>
 
-  <div class="touch-controls">
+<div class="touch-controls">
     <div class="touch-btn" id="tHold">HOLD</div>
-    <div class="touch-btn" id="tRot">↻ DÖNDÜR</div>
-    <div class="touch-btn" id="tDrop">⚡ DÜŞÜR</div>
-    <div class="touch-btn" id="tLeft">◄ SOL</div>
-    <div class="touch-btn" id="tDown">▼ AŞAĞI</div>
-    <div class="touch-btn" id="tRight">SAĞ ►</div>
+    <div class="touch-btn" id="tRot">↻ ROT</div>
+    <div class="touch-btn" id="tDrop">⚡ DROP</div>
+    <div class="touch-btn" id="tLeft">◄ LEFT</div>
+    <div class="touch-btn" id="tDown">▼ DOWN</div>
+    <div class="touch-btn" id="tRight">RIGHT ►</div>
   </div>
 
   <script>
@@ -616,8 +616,8 @@
         }
 
         overlayTitle.textContent = "GAME OVER";
-        overlayMsg.innerHTML = `Skorun: <b>${score}</b><br>Seviye: <b>${level}</b>`;
-        startBtn.textContent = "TEKRAR OYNA";
+        overlayMsg.innerHTML = `Final Score: <b>${score}</b><br>Level: <b>${level}</b>`;
+        startBtn.textContent = "TRY AGAIN";
         overlay.classList.remove("hide");
       }
 
@@ -756,7 +756,7 @@
       startBtn.onclick = () => startGame();
       muteBtn.onclick = () => {
         muted = !muted;
-        muteBtn.textContent = muted ? "🔇 SES KAPALI" : "🔊 SES AÇIK";
+        muteBtn.textContent = muted ? "🔇 MUTED" : "🔊 SOUND";
       };
 
       requestAnimationFrame(loop);
