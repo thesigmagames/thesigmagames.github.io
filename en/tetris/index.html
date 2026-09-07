@@ -1,18 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>SIGMA TETRIS · The Sigma Games</title>
   <style>
     :root {
-      --bg: #05040a;
-      --panel: rgba(18, 14, 36, 0.85);
+      --bg: #06050d;
+      --panel: rgba(18, 14, 38, 0.9);
       --border: #3b2866;
       --cyan: #00f0ff;
       --pink: #ff007f;
-      --yellow: #ffcc00;
-      --purple: #8a2be2;
       --text: #ffffff;
       --muted: #8e85bc;
     }
@@ -34,7 +32,7 @@
 
     .app {
       display: flex;
-      gap: 14px;
+      gap: 12px;
       align-items: flex-start;
       max-width: 860px;
       width: 100%;
@@ -116,17 +114,17 @@
       text-transform: uppercase;
     }
 
-    .btn-icon {
+    .btn-sound {
       background: rgba(255,255,255,0.08);
       border: 1px solid rgba(255,255,255,0.15);
       color: #fff;
-      padding: 6px 10px;
+      padding: 5px 9px;
       border-radius: 8px;
       font-weight: 800;
       cursor: pointer;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
     }
-    .btn-icon:active { background: rgba(255,255,255,0.25); }
+    .btn-sound:active { background: rgba(255,255,255,0.25); }
 
     canvas#canvas {
       display: block;
@@ -139,7 +137,7 @@
       position: absolute;
       inset: 8px;
       border-radius: 10px;
-      background: rgba(4, 2, 12, 0.92);
+      background: rgba(4, 2, 12, 0.93);
       backdrop-filter: blur(8px);
       display: flex;
       flex-direction: column;
@@ -209,6 +207,7 @@
       font-weight: 900;
       font-size: 0.85rem;
       text-align: center;
+      cursor: pointer;
     }
     .touch-btn:active { background: rgba(255,255,255,0.25); }
 
@@ -244,7 +243,7 @@
           <h1>SIGMA TETRIS</h1>
           <div class="subtitle">The Sigma Games</div>
         </div>
-        <button id="muteBtn" class="btn-icon">🔊 SOUND</button>
+        <button id="muteBtn" class="btn-sound">🔊 SES AÇIK</button>
       </div>
 
       <canvas id="canvas" width="300" height="600"></canvas>
@@ -252,8 +251,8 @@
       <div id="overlay" class="overlay">
         <h2 id="overlayTitle">SIGMA TETRIS</h2>
         <div class="brand">The Sigma Games</div>
-        <p id="overlayMsg">Arrows / WASD: Move & Rotate<br>Space: Hard Drop · C: Hold Piece</p>
-        <button id="startBtn" class="btn-primary">PLAY NOW</button>
+        <p id="overlayMsg">Yön Tuşları / WASD: Hareket & Döndürme<br>Space: Hızlı Düşüş · C: Parça Sakla (Hold)</p>
+        <button id="startBtn" class="btn-primary">OYUNA BAŞLA</button>
       </div>
     </div>
 
@@ -275,11 +274,11 @@
 
   <div class="touch-controls">
     <div class="touch-btn" id="tHold">HOLD</div>
-    <div class="touch-btn" id="tRot">↻ ROT</div>
-    <div class="touch-btn" id="tDrop">⚡ DROP</div>
-    <div class="touch-btn" id="tLeft">◄ LEFT</div>
-    <div class="touch-btn" id="tDown">▼ DOWN</div>
-    <div class="touch-btn" id="tRight">RIGHT ►</div>
+    <div class="touch-btn" id="tRot">↻ DÖNDÜR</div>
+    <div class="touch-btn" id="tDrop">⚡ DÜŞÜR</div>
+    <div class="touch-btn" id="tLeft">◄ SOL</div>
+    <div class="touch-btn" id="tDown">▼ AŞAĞI</div>
+    <div class="touch-btn" id="tRight">SAĞ ►</div>
   </div>
 
   <script>
@@ -305,60 +304,80 @@
       const startBtn = document.getElementById("startBtn");
       const muteBtn = document.getElementById("muteBtn");
 
-      const SAVE_KEY = "sigma_tetris_best_score";
-      let bestScore = parseInt(localStorage.getItem(SAVE_KEY) || "0", 10);
+      const SAVE_KEY = "sigma_tetris_best";
+      let bestScore = Number(localStorage.getItem(SAVE_KEY) || 0);
       bestEl.textContent = bestScore;
 
-      // Web Audio Synth Engine
+      // WEB AUDIO API SENSITIVE ENGINE
       let audioCtx = null;
       let muted = false;
 
-      function initAudio() {
+      function getAudioContext() {
         if (!audioCtx) {
-          const AC = window.AudioContext || window.webkitAudioContext;
-          if (AC) audioCtx = new AC();
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) audioCtx = new AudioContextClass();
         }
         if (audioCtx && audioCtx.state === "suspended") {
           audioCtx.resume();
         }
+        return audioCtx;
       }
 
-      window.addEventListener("pointerdown", initAudio, { once: true });
-      window.addEventListener("keydown", initAudio, { once: true });
-
-      function tone(freq, type = "sine", duration = 0.08, vol = 0.06) {
+      function playSound(type) {
         if (muted) return;
         try {
-          initAudio();
-          if (!audioCtx || audioCtx.state !== "running") return;
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.type = type;
-          osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-          gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+          const ac = getAudioContext();
+          if (!ac) return;
+
+          const osc = ac.createOscillator();
+          const gain = ac.createGain();
           osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.start();
-          osc.stop(audioCtx.currentTime + duration);
+          gain.connect(ac.destination);
+
+          const now = ac.currentTime;
+
+          if (type === "move") {
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(260, now);
+            gain.gain.setValueAtTime(0.04, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            osc.start(now);
+            osc.stop(now + 0.05);
+          } else if (type === "rotate") {
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(400, now);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+            osc.start(now);
+            osc.stop(now + 0.06);
+          } else if (type === "drop") {
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(150, now);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+            osc.start(now);
+            osc.stop(now + 0.08);
+          } else if (type === "clear") {
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(523.25, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+          } else if (type === "gameover") {
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(80, now + 0.3);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+          }
         } catch (e) {}
       }
 
-      function soundMove() { tone(280, "sine", 0.04, 0.04); }
-      function soundRotate() { tone(450, "triangle", 0.06, 0.05); }
-      function soundDrop() { tone(140, "sawtooth", 0.09, 0.07); }
-      function soundClear(c) {
-        const f = [523, 659, 783, 1046];
-        for (let i = 0; i < c; i++) {
-          setTimeout(() => tone(f[i] || 900, "sine", 0.14, 0.08), i * 50);
-        }
-      }
-      function soundGameOver() {
-        tone(200, "sawtooth", 0.2, 0.08);
-        setTimeout(() => tone(120, "sawtooth", 0.35, 0.08), 140);
-      }
-
-      const SHAPES = {
+      const PIECES = {
         I: { matrix: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], color: "#00f0ff" },
         J: { matrix: [[1,0,0],[1,1,1],[0,0,0]], color: "#0055ff" },
         L: { matrix: [[0,0,1],[1,1,1],[0,0,0]], color: "#ff7700" },
@@ -368,60 +387,60 @@
         Z: { matrix: [[1,1,0],[0,1,1],[0,0,0]], color: "#ff0055" }
       };
 
-      const SHAPE_KEYS = Object.keys(SHAPES);
+      const KEYS = Object.keys(PIECES);
 
-      let grid = [];
-      let currentPiece = null;
-      let nextPiece = null;
-      let holdPiece = null;
+      let board = [];
+      let player = null;
+      let nextType = null;
+      let holdType = null;
       let canHold = true;
       let bag = [];
 
       let score = 0;
       let lines = 0;
       let level = 1;
-      let state = "menu";
-      let dropCounter = 0;
       let dropInterval = 1000;
+      let dropCounter = 0;
       let lastTime = 0;
+      let isPlaying = false;
 
-      let particles = [];
-      let shakeTime = 0;
-
-      function createGrid() {
+      function createBoard() {
         return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
       }
 
-      function getNextPieceFromBag() {
+      function getNextFromBag() {
         if (bag.length === 0) {
-          bag = [...SHAPE_KEYS].sort(() => Math.random() - 0.5);
+          bag = [...KEYS].sort(() => Math.random() - 0.5);
         }
-        const key = bag.pop();
+        return bag.pop();
+      }
+
+      function createPiece(type) {
         return {
-          key,
-          matrix: SHAPES[key].matrix.map(row => [...row]),
-          color: SHAPES[key].color,
-          x: Math.floor(COLS / 2) - Math.ceil(SHAPES[key].matrix[0].length / 2),
+          type,
+          matrix: PIECES[type].matrix.map(row => [...row]),
+          color: PIECES[type].color,
+          x: Math.floor((COLS - PIECES[type].matrix[0].length) / 2),
           y: 0
         };
       }
 
-      function valid(piece, targetGrid, offsetX = 0, offsetY = 0, customMatrix = null) {
-        const m = customMatrix || piece.matrix;
+      function collide(targetBoard, piece) {
+        const m = piece.matrix;
         for (let r = 0; r < m.length; r++) {
           for (let c = 0; c < m[r].length; c++) {
             if (m[r][c] !== 0) {
-              const x = piece.x + c + offsetX;
-              const y = piece.y + r + offsetY;
-              if (x < 0 || x >= COLS || y >= ROWS) return false;
-              if (y >= 0 && targetGrid[y][x] !== 0) return false;
+              const newX = piece.x + c;
+              const newY = piece.y + r;
+              if (newX < 0 || newX >= COLS || newY >= ROWS) return true;
+              if (newY >= 0 && targetBoard[newY] && targetBoard[newY][newX] !== 0) return true;
             }
           }
         }
-        return true;
+        return false;
       }
 
-      function rotate(matrix) {
+      function rotateMatrix(matrix) {
         const N = matrix.length;
         const res = Array.from({ length: N }, () => Array(N).fill(0));
         for (let r = 0; r < N; r++) {
@@ -432,56 +451,128 @@
         return res;
       }
 
-      function createParticles(x, y, color) {
-        for (let i = 0; i < 6; i++) {
-          particles.push({
-            x: x * BLOCK_SIZE + BLOCK_SIZE / 2,
-            y: y * BLOCK_SIZE + BLOCK_SIZE / 2,
-            vx: (Math.random() - 0.5) * 6,
-            vy: (Math.random() - 0.5) * 6 - 1,
-            size: Math.random() * 4 + 2,
-            color,
-            alpha: 1
-          });
+      function playerRotate() {
+        if (!isPlaying) return;
+        const originalX = player.x;
+        const originalMatrix = player.matrix;
+        const rotated = rotateMatrix(player.matrix);
+        player.matrix = rotated;
+
+        const kicks = [0, 1, -1, 2, -2];
+        for (let k of kicks) {
+          player.x = originalX + k;
+          if (!collide(board, player)) {
+            playSound("rotate");
+            return;
+          }
+        }
+
+        player.x = originalX;
+        player.matrix = originalMatrix;
+      }
+
+      function playerMove(dir) {
+        if (!isPlaying) return;
+        player.x += dir;
+        if (collide(board, player)) {
+          player.x -= dir;
+        } else {
+          playSound("move");
         }
       }
 
-      function startGame() {
-        initAudio();
-        grid = createGrid();
-        bag = [];
-        score = 0;
-        lines = 0;
-        level = 1;
-        dropInterval = 1000;
+      function playerDrop() {
+        if (!isPlaying) return;
+        player.y++;
+        if (collide(board, player)) {
+          player.y--;
+          merge();
+          resetPlayer();
+          arenaSweep();
+          return false;
+        }
         dropCounter = 0;
-        holdPiece = null;
-        canHold = true;
-        particles = [];
-
-        currentPiece = getNextPieceFromBag();
-        nextPiece = getNextPieceFromBag();
-
-        updateHUD();
-        overlay.classList.add("hide");
-        state = "play";
-        lastTime = performance.now();
+        return true;
       }
 
-      function gameOver() {
-        state = "gameover";
-        soundGameOver();
+      function playerHardDrop() {
+        if (!isPlaying) return;
+        while (!collide(board, player)) {
+          player.y++;
+          score += 2;
+        }
+        player.y--;
+        playSound("drop");
+        merge();
+        resetPlayer();
+        arenaSweep();
+        updateHUD();
+      }
 
-        if (score > bestScore) {
-          bestScore = score;
-          localStorage.setItem(SAVE_KEY, String(bestScore));
-          bestEl.textContent = bestScore;
+      function playerHold() {
+        if (!isPlaying || !canHold) return;
+        playSound("move");
+        if (!holdType) {
+          holdType = player.type;
+          player = createPiece(nextType);
+          nextType = getNextFromBag();
+        } else {
+          const temp = player.type;
+          player = createPiece(holdType);
+          holdType = temp;
+        }
+        canHold = false;
+        drawMini(holdCtx, holdType);
+        drawMini(nextCtx, nextType);
+      }
+
+      function merge() {
+        const m = player.matrix;
+        for (let r = 0; r < m.length; r++) {
+          for (let c = 0; c < m[r].length; c++) {
+            if (m[r][c] !== 0) {
+              if (player.y + r >= 0) {
+                board[player.y + r][player.x + c] = player.color;
+              }
+            }
+          }
+        }
+      }
+
+      function arenaSweep() {
+        let cleared = 0;
+        outer: for (let r = ROWS - 1; r >= 0; r--) {
+          for (let c = 0; c < COLS; c++) {
+            if (board[r][c] === 0) continue outer;
+          }
+          const row = board.splice(r, 1)[0].fill(0);
+          board.unshift(row);
+          r++;
+          cleared++;
         }
 
-        overlayTitle.textContent = "GAME OVER";
-        overlayMsg.innerHTML = `Final Score: <b>${score}</b><br>Level: <b>${level}</b>`;
-        startBtn.textContent = "TRY AGAIN";
-        overlay.classList.remove("hide");
+        if (cleared > 0) {
+          playSound("clear");
+          const lineScores = [0, 100, 300, 500, 800];
+          score += (lineScores[cleared] || 800) * level;
+          lines += cleared;
+          level = Math.floor(lines / 10) + 1;
+          dropInterval = Math.max(100, 1000 - (level - 1) * 85);
+          updateHUD();
+        }
+      }
+
+      function resetPlayer() {
+        player = createPiece(nextType);
+        nextType = getNextFromBag();
+        canHold = true;
+
+        drawMini(nextCtx, nextType);
+        drawMini(holdCtx, holdType);
+
+        if (collide(board, player)) {
+          gameOver();
+        }
       }
 
       function updateHUD() {
@@ -490,164 +581,48 @@
         levelEl.textContent = level;
       }
 
-      function lockPiece() {
-        const m = currentPiece.matrix;
-        for (let r = 0; r < m.length; r++) {
-          for (let c = 0; c < m[r].length; c++) {
-            if (m[r][c] !== 0) {
-              const gy = currentPiece.y + r;
-              const gx = currentPiece.x + c;
-              if (gy >= 0) grid[gy][gx] = currentPiece.color;
-            }
-          }
-        }
-
-        checkLines();
-
-        currentPiece = nextPiece;
-        nextPiece = getNextPieceFromBag();
+      function startGame() {
+        getAudioContext();
+        board = createBoard();
+        bag = [];
+        score = 0;
+        lines = 0;
+        level = 1;
+        dropInterval = 1000;
+        dropCounter = 0;
+        holdType = null;
         canHold = true;
 
-        if (!valid(currentPiece, grid)) {
-          gameOver();
-        }
-      }
+        nextType = getNextFromBag();
+        player = createPiece(getNextFromBag());
 
-      function checkLines() {
-        let cleared = 0;
-        for (let r = ROWS - 1; r >= 0; r--) {
-          if (grid[r].every(cell => cell !== 0)) {
-            for (let c = 0; c < COLS; c++) {
-              createParticles(c, r, grid[r][c]);
-            }
-            grid.splice(r, 1);
-            grid.unshift(Array(COLS).fill(0));
-            cleared++;
-            r++;
-          }
-        }
-
-        if (cleared > 0) {
-          lines += cleared;
-          const lineScores = [0, 100, 300, 500, 800];
-          score += (lineScores[cleared] || 800) * level;
-
-          level = Math.floor(lines / 10) + 1;
-          dropInterval = Math.max(100, 1000 - (level - 1) * 85);
-
-          soundClear(cleared);
-          shakeTime = cleared === 4 ? 10 : 4;
-          updateHUD();
-        }
-      }
-
-      function actionHold() {
-        if (!canHold || state !== "play") return;
-
-        if (!holdPiece) {
-          holdPiece = { key: currentPiece.key, color: currentPiece.color };
-          currentPiece = nextPiece;
-          nextPiece = getNextPieceFromBag();
-        } else {
-          const tempKey = currentPiece.key;
-          const k = holdPiece.key;
-          currentPiece = {
-            key: k,
-            matrix: SHAPES[k].matrix.map(row => [...row]),
-            color: SHAPES[k].color,
-            x: Math.floor(COLS / 2) - Math.ceil(SHAPES[k].matrix[0].length / 2),
-            y: 0
-          };
-          holdPiece = { key: tempKey, color: SHAPES[tempKey].color };
-        }
-
-        canHold = false;
-        soundMove();
-      }
-
-      function actionHardDrop() {
-        if (state !== "play") return;
-        let droppedLines = 0;
-        while (valid(currentPiece, grid, 0, 1)) {
-          currentPiece.y++;
-          droppedLines++;
-        }
-        score += droppedLines * 2;
         updateHUD();
-        soundDrop();
-        shakeTime = 3;
-        lockPiece();
+        drawMini(nextCtx, nextType);
+        drawMini(holdCtx, holdType);
+
+        overlay.classList.add("hide");
+        isPlaying = true;
+        lastTime = performance.now();
       }
 
-      function moveLeft() {
-        if (valid(currentPiece, grid, -1, 0)) {
-          currentPiece.x--;
-          soundMove();
+      function gameOver() {
+        isPlaying = false;
+        playSound("gameover");
+        if (score > bestScore) {
+          bestScore = score;
+          localStorage.setItem(SAVE_KEY, String(bestScore));
+          bestEl.textContent = bestScore;
         }
+
+        overlayTitle.textContent = "GAME OVER";
+        overlayMsg.innerHTML = `Skorun: <b>${score}</b><br>Seviye: <b>${level}</b>`;
+        startBtn.textContent = "TEKRAR OYNA";
+        overlay.classList.remove("hide");
       }
 
-      function moveRight() {
-        if (valid(currentPiece, grid, 1, 0)) {
-          currentPiece.x++;
-          soundMove();
-        }
-      }
-
-      function moveDown() {
-        if (valid(currentPiece, grid, 0, 1)) {
-          currentPiece.y++;
-          score += 1;
-          updateHUD();
-          return true;
-        }
-        return false;
-      }
-
-      function rotatePiece() {
-        const rotated = rotate(currentPiece.matrix);
-        const offsets = [[0,0], [-1,0], [1,0], [0,-1], [-1,-1], [1,-1], [-2,0], [2,0]];
-
-        for (let [ox, oy] of offsets) {
-          if (valid(currentPiece, grid, ox, oy, rotated)) {
-            currentPiece.matrix = rotated;
-            currentPiece.x += ox;
-            currentPiece.y += oy;
-            soundRotate();
-            return;
-          }
-        }
-      }
-
-      addEventListener("keydown", e => {
-        if (state !== "play") return;
-
-        if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") moveLeft();
-        if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") moveRight();
-        if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") moveDown();
-        if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") rotatePiece();
-        if (e.key === " ") { e.preventDefault(); actionHardDrop(); }
-        if (e.key === "c" || e.key === "C") actionHold();
-      });
-
-      function bindTouch(id, fn) {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener("pointerdown", e => {
-          e.preventDefault();
-          if (state === "play") fn();
-        });
-      }
-
-      bindTouch("tLeft", moveLeft);
-      bindTouch("tRight", moveRight);
-      bindTouch("tDown", moveDown);
-      bindTouch("tRot", rotatePiece);
-      bindTouch("tDrop", actionHardDrop);
-      bindTouch("tHold", actionHold);
-
-      function getGhostPosition() {
-        const ghost = { ...currentPiece };
-        while (valid(ghost, grid, 0, 1)) {
+      function getGhost() {
+        const ghost = { ...player };
+        while (!collide(board, { ...ghost, y: ghost.y + 1 })) {
           ghost.y++;
         }
         return ghost;
@@ -657,18 +632,18 @@
         targetCtx.fillStyle = color;
         targetCtx.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
 
-        targetCtx.fillStyle = "rgba(255,255,255,0.22)";
+        targetCtx.fillStyle = "rgba(255,255,255,0.2)";
         targetCtx.fillRect(x * size + 1, y * size + 1, size - 2, 3);
-        targetCtx.fillStyle = "rgba(0,0,0,0.35)";
+        targetCtx.fillStyle = "rgba(0,0,0,0.3)";
         targetCtx.fillRect(x * size + 1, (y + 1) * size - 4, size - 2, 3);
       }
 
-      function drawMiniPreview(targetCtx, pieceKey) {
+      function drawMini(targetCtx, type) {
         targetCtx.clearRect(0, 0, 80, 80);
-        if (!pieceKey) return;
+        if (!type) return;
 
-        const m = SHAPES[pieceKey].matrix;
-        const color = SHAPES[pieceKey].color;
+        const m = PIECES[type].matrix;
+        const color = PIECES[type].color;
         const size = 16;
         const offsetX = (80 - m[0].length * size) / 2;
         const offsetY = (80 - m.length * size) / 2;
@@ -684,20 +659,10 @@
       }
 
       function draw() {
-        ctx.save();
-
-        if (shakeTime > 0) {
-          const dx = (Math.random() - 0.5) * shakeTime;
-          const dy = (Math.random() - 0.5) * shakeTime;
-          ctx.translate(dx, dy);
-          shakeTime--;
-        }
-
         ctx.fillStyle = "#030206";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         ctx.strokeStyle = "rgba(255,255,255,0.03)";
-        ctx.lineWidth = 1;
         for (let r = 0; r < ROWS; r++) {
           for (let c = 0; c < COLS; c++) {
             ctx.strokeRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
@@ -706,78 +671,87 @@
 
         for (let r = 0; r < ROWS; r++) {
           for (let c = 0; c < COLS; c++) {
-            if (grid[r][c] !== 0) {
-              drawBlock(ctx, c, r, grid[r][c]);
+            if (board[r][c] !== 0) {
+              drawBlock(ctx, c, r, board[r][c]);
             }
           }
         }
 
-        if (state === "play" && currentPiece) {
-          const ghost = getGhostPosition();
+        if (isPlaying && player) {
+          const ghost = getGhost();
           const gm = ghost.matrix;
           for (let r = 0; r < gm.length; r++) {
             for (let c = 0; c < gm[r].length; c++) {
               if (gm[r][c] !== 0) {
-                ctx.strokeStyle = currentPiece.color;
+                ctx.strokeStyle = player.color;
                 ctx.lineWidth = 1.5;
                 ctx.strokeRect((ghost.x + c) * BLOCK_SIZE + 2, (ghost.y + r) * BLOCK_SIZE + 2, BLOCK_SIZE - 4, BLOCK_SIZE - 4);
               }
             }
           }
 
-          const m = currentPiece.matrix;
+          const m = player.matrix;
           for (let r = 0; r < m.length; r++) {
             for (let c = 0; c < m[r].length; c++) {
               if (m[r][c] !== 0) {
-                drawBlock(ctx, currentPiece.x + c, currentPiece.y + r, currentPiece.color);
+                drawBlock(ctx, player.x + c, player.y + r, player.color);
               }
             }
           }
         }
-
-        particles.forEach((p, idx) => {
-          p.x += p.vx;
-          p.y += p.vy;
-          p.alpha -= 0.025;
-          ctx.fillStyle = p.color;
-          ctx.globalAlpha = Math.max(0, p.alpha);
-          ctx.fillRect(p.x, p.y, p.size, p.size);
-          if (p.alpha <= 0) particles.splice(idx, 1);
-        });
-        ctx.globalAlpha = 1;
-
-        ctx.restore();
-
-        drawMiniPreview(nextCtx, nextPiece ? nextPiece.key : null);
-        drawMiniPreview(holdCtx, holdPiece ? holdPiece.key : null);
       }
 
-      function update(time = 0) {
-        if (!lastTime) lastTime = time;
-        const deltaTime = time - lastTime;
+      function loop(time = 0) {
+        const deltaTime = Math.min(time - lastTime, 100);
         lastTime = time;
 
-        if (state === "play") {
+        if (isPlaying) {
           dropCounter += deltaTime;
           if (dropCounter > dropInterval) {
-            if (!moveDown()) {
-              lockPiece();
-            }
-            dropCounter = 0;
+            playerDrop();
           }
         }
 
         draw();
-        requestAnimationFrame(update);
+        requestAnimationFrame(loop);
       }
+
+      addEventListener("keydown", e => {
+        getAudioContext();
+        if (!isPlaying) return;
+
+        if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") { playerMove(-1); }
+        if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") { playerMove(1); }
+        if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") { playerDrop(); score += 1; updateHUD(); }
+        if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") { playerRotate(); }
+        if (e.key === " ") { e.preventDefault(); playerHardDrop(); }
+        if (e.key === "c" || e.key === "C") { playerHold(); }
+      });
+
+      function bindTouch(id, fn) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("pointerdown", e => {
+          e.preventDefault();
+          getAudioContext();
+          if (isPlaying) fn();
+        });
+      }
+
+      bindTouch("tLeft", () => playerMove(-1));
+      bindTouch("tRight", () => playerMove(1));
+      bindTouch("tDown", () => { playerDrop(); score += 1; updateHUD(); });
+      bindTouch("tRot", playerRotate);
+      bindTouch("tDrop", playerHardDrop);
+      bindTouch("tHold", playerHold);
 
       startBtn.onclick = () => startGame();
       muteBtn.onclick = () => {
         muted = !muted;
-        muteBtn.textContent = muted ? "🔇 MUTED" : "🔊 SOUND";
+        muteBtn.textContent = muted ? "🔇 SES KAPALI" : "🔊 SES AÇIK";
       };
 
-      requestAnimationFrame(update);
+      requestAnimationFrame(loop);
     })();
   </script>
 </body>
