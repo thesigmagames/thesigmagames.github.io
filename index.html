@@ -2,40 +2,110 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>THE SIGMA GAMES | OYUNLAR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE SIGMA GAMES</title>
     <style>
-        body { background: #0a0a0a; color: #00FF9D; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .sigmaarena-butonu { 
-            display: inline-block; 
-            padding: 20px 40px; 
-            border: 2px solid #00FF9D; 
-            color: #00FF9D; 
-            text-decoration: none; 
-            font-size: 1.5em; 
-            margin: 20px; 
-            transition: 0.3s;
+        :root {
+            --bg-color: #0a0a0a;
+            --card-bg: #121212;
+            --accent-color: #00FF9D;
+            --accent-glow: rgba(0, 255, 157, 0.3);
+            --text-color: #ffffff;
         }
-        .ping_pong-butonu:hover { background: #00FF9D; color: #0a0a0a; }
-        body { background: #0a0a0a; color: #00FF9D; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .ping_pong-butonu { 
-            display: inline-block; 
-            padding: 20px 40px; 
-            border: 2px solid #00FF9D; 
-            color: #00FF9D; 
-            text-decoration: none; 
-            font-size: 1.5em; 
-            margin: 20px; 
-            transition: 0.3s;
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
-        .ping_pong-butonu:hover { background: #00FF9D; color: #0a0a0a; }
+
+        body { 
+            background: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            text-align: center; 
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        h1 {
+            font-size: 3rem;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-bottom: 40px;
+            text-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            justify-content: center;
+            padding: 10px;
+        }
+
+        .game-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: var(--card-bg);
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .game-btn:hover { 
+            background: var(--accent-color); 
+            color: var(--bg-color);
+            box-shadow: 0 0 20px var(--accent-glow);
+            transform: translateY(-5px);
+        }
+
+        .footer-nav {
+            margin-top: 50px;
+        }
+
+        .back-btn {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-size: 1.1rem;
+            border-bottom: 1px dashed var(--accent-color);
+            padding-bottom: 4px;
+            transition: opacity 0.2s;
+        }
+
+        .back-btn:hover {
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
-    <h1>THE SIGMA GAMES</h1>
-    
-    <!-- Sigma Arena Butonu -->
-    <a href="en/" class="sigmaarena-butonu">ENGLISH</a>
-    <a href="tr/" class="ping_pong-butonu">TÜRKÇE</a>
-    
+
+    <div class="container">
+        <h1>THE SIGMA GAMES</h1>
+        
+        <div class="game-grid">
+            <a href="en/" class="game-btn">ENGLISH(EN)</a>
+            <a href="tr/" class="game-btn">TÜRKÇE(TR)</a>
+        </div>
+    </div>
 </body>
 </html>
