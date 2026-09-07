@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sigma Clicker</title>
+  <style>
+    :root {
+      --bg: #070712;
+      --card: #14122a;
+      --accent: #8b6cff;
+      --pink: #ff4fd8;
+      --gold: #ffd76a;
+      --text: #f4f1ff;
+      --muted: #9b93c2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, Segoe UI, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #3a1d6e 0%, transparent 42%), var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .wrap { width: min(520px, 100%); margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+    h1 { font-size: 1.15rem; letter-spacing: .06em; }
+    h1 span { color: var(--pink); }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .icon-btn, .danger, .buy, .tab, .play {
+      border: 0; border-radius: 10px; padding: 8px 10px;
+      background: #221c40; color: var(--text); font-weight: 800; cursor: pointer;
+    }
+    .danger { background: #5a1a3a; }
+    .news {
+      background: #1a1633; border: 1px solid #3b3166; border-radius: 12px;
+      padding: 8px 12px; color: var(--muted); font-size: .85rem; margin-top: 14px; text-align: center;
+    }
+    .scorebox { text-align: center; margin: 10px 0 14px; }
+    #score { font-size: 2.2rem; font-weight: 900; }
+    .meta { color: var(--muted); margin-top: 4px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .click-wrap { display: grid; place-items: center; margin: 12px 0 16px; position: relative; }
+    .click-btn {
+      width: 160px; height: 160px; border-radius: 50%;
+      border: 0; cursor: pointer; font-weight: 900; font-size: 1.2rem; color: #fff;
+      background: linear-gradient(135deg, var(--accent), var(--pink));
+      box-shadow: 0 12px 30px rgba(139,108,255,.35);
+    }
+    .click-btn.gold { background: linear-gradient(135deg, #ffd76a, #ff9f1c); color: #3a2500; }
+    .click-btn.rainbow { background: conic-gradient(#ff4fd8, #8b6cff, #4fd2ff, #6dffb0, #ffd76a, #ff4fd8); }
+    .pop { position: absolute; pointer-events: none; font-weight: 900; animation: up .7s ease forwards; }
+    @keyframes up { to { transform: translateY(-50px); opacity: 0; } }
+    .xp { background: #221c40; border-radius: 999px; height: 10px; overflow: hidden; margin: 6px 0; }
+    #xpBar { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--pink)); }
+    .tabs { display: flex; gap: 6px; margin: 12px 0; flex-wrap: wrap; }
+    .tab.on { background: linear-gradient(135deg, var(--accent), var(--pink)); }
+    .panel, .list { display: grid; gap: 8px; }
+    .item, .ach {
+      background: var(--card); border: 1px solid #3b3166; border-radius: 14px;
+      padding: 12px; display: flex; justify-content: space-between; gap: 10px; align-items: center;
+    }
+    .item h3, .ach h3 { font-size: .95rem; }
+    .item p, .ach p, .tiny { color: var(--muted); font-size: .8rem; }
+    .buy:disabled { opacity: .45; cursor: not-allowed; }
+    .locked { opacity: .55; }
+    .badge { font-size: 1.3rem; }
+    #buff { min-height: 1.2em; color: var(--gold); font-weight: 800; text-align: center; }
+    .popup {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+      background: #22183f; border: 1px solid var(--accent); border-radius: 14px;
+      padding: 12px 16px; opacity: 0; pointer-events: none; transition: .25s; z-index: 100;
+    }
+    .popup.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .top-msg {
+      position: fixed; left: 0; right: 0; top: 0;
+      display: none; justify-content: center; z-index: 50; padding: 12px;
+    }
+    .top-msg.show { display: flex; animation: drop .25s ease; }
+    .top-msg-box {
+      width: min(420px, 100%); background: #22183f; border: 1px solid #8b6cff;
+      border-radius: 16px; padding: 14px 16px; box-shadow: 0 16px 40px rgba(0,0,0,.45);
+    }
+    .top-msg-box p { color: var(--muted); margin: 8px 0 12px; }
+    .top-msg-row { display: flex; gap: 8px; }
+    @keyframes drop { from { transform: translateY(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>SIGMA <span>CLICKER</span></h1>
+      <div class="row">
+        <button class="icon-btn" id="muteBtn">🔊 Sound</button>
+        <button class="icon-btn" id="resetBtn">🗑 Reset</button>
+      </div>
+    </header>
+
+    <div class="scorebox">
+      <div id="score">0</div>
+      <div class="meta">
+        <span id="cps">0 / sec</span>
+        <span id="level">Level 1</span>
+        <span id="prest">Chaos x1.00</span>
+      </div>
+      <div id="buff"></div>
+      <div class="xp"><div id="xpBar"></div></div>
+      <div class="tiny" id="xpText">XP 0 / 50</div>
+    </div>
+
+    <div class="click-wrap">
+      <button class="click-btn" id="clickBtn">CLICK</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab on" data-tab="up">Upgrades</button>
+      <button class="tab" data-tab="market">Shop</button>
+      <button class="tab" data-tab="prestige">Prestige</button>
+      <button class="tab" data-tab="ach">Achievements</button>
+    </div>
+    <div class="panel" id="panel"></div>
+
+    <div class="news" id="news">Loading...</div>
+  </div>
+
+  <div class="popup" id="popup"></div>
+  <div class="top-msg" id="topMsg">
+    <div class="top-msg-box">
+      <b>Reset all data?</b>
+      <p>Score, upgrades, level, and prestige will be wiped. This cannot be undone.</p>
+      <div class="top-msg-row">
+        <button class="danger" id="resetYes">Yes, reset</button>
+        <button class="icon-btn" id="resetNo">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+    const SAVE = "sitwmi-clicker-ultra";
+    const OLD = "sitwmi-clicker";
+    window.__resetting = false;
+
+    const newsLines = [
+      "Ghost is still screaming BOOOO.",
+      "main became default. The universe relaxed.",
+      "None was not deleted. None got promoted.",
+      "You started with 0 points. Now you're a pro.",
+      "GitHub Pages: 'fine, fine, opening now'.",
+      "Doing great. CPS increased.",
+      "Bro, keep clicking instead of reading this!"
+    ];
+
+    const upgrades = [
+      { id: "finger", name: "Extra Finger", desc: "+1 click power. Yep, another one.", base: 15, power: 1, type: "click" },
+      { id: "bot", name: "Auto Bot", desc: "+1 / sec. Works sometimes.", base: 60, power: 1, type: "auto" },
+      { id: "cafe", name: "Chaos Cafe", desc: "+6 / sec. Tea isn't free.", base: 280, power: 6, type: "auto" },
+      { id: "factory", name: "Sigma Factory", desc: "+25 / sec. Zero workplace safety.", base: 1400, power: 25, type: "auto" },
+      { id: "ghost", name: "Ghost", desc: "+80 / sec. Eats POINTS.", base: 7500, power: 80, type: "auto" },
+      { id: "branch", name: "Ultra Sigma Factory", desc: "+220 / sec. Produces workers.", base: 28000, power: 220, type: "auto" },
+      { id: "pages", name: "Pages Beam", desc: "+700 / sec. Deploys in 3 minutes.", base: 120000, power: 700, type: "auto" },
+      { id: "none", name: "Satellite Eraser 9000", desc: "+2500 / sec. Pulling from satellite.", base: 650000, power: 2500, type: "auto" },
+      { id: "rocket", name: "Chaos Rocket", desc: "+9000 / sec. Flies without fuel.", base: 3200000, power: 9000, type: "auto" }
+    ];
+
+    const market = [
+      { id: "goldBtn", name: "Gold Button", desc: "Click button looks rich.", cost: 2500, type: "cosmetic" },
+      { id: "rainbow", name: "Rainbow Crisis", desc: "Flashy colors, cool look.", cost: 8000, type: "cosmetic" },
+      { id: "luck", name: "Lucky Click", desc: "8% chance for 12x click.", cost: 15000, type: "perm" },
+      { id: "crit", name: "Critical Hit", desc: "12% chance for 4x click.", cost: 22000, type: "perm" },
+      { id: "prod", name: "Chaos Multiplier", desc: "+20% to all production.", cost: 50000, type: "perm" },
+      { id: "xpBoost", name: "ULTRA XP", desc: "+30% Level XP.", cost: 18000, type: "perm" },
+      { id: "frenzy", name: "10s Frenzy Click", desc: "7x click power for 10 seconds.", cost: 4000, type: "consumable" }
+    ];
+
+    const achievements = [
+      { id: "first", icon: "👆", name: "First Click", desc: "Click for the first time", check: s => s.clicks >= 1 },
+      { id: "c50", icon: "🖐️", name: "Warming Up", desc: "50 clicks", check: s => s.clicks >= 50 },
+      { id: "c500", icon: "💥", name: "Click Monster", desc: "500 clicks", check: s => s.clicks >= 500 },
+      { id: "c5k", icon: "🌋", name: "Finger Melted", desc: "5,000 clicks", check: s => s.clicks >= 5000 },
+      { id: "s100", icon: "💯", name: "In the Pocket", desc: "100 points", check: s => s.best >= 100 },
+      { id: "s1k", icon: "💰", name: "Grand", desc: "1,000 points", check: s => s.best >= 1000 },
+      { id: "s10k", icon: "🏦", name: "Rich", desc: "10,000 points", check: s => s.best >= 10000 },
+      { id: "s100k", icon: "💎", name: "Legend", desc: "100,000 points", check: s => s.best >= 100000 },
+      { id: "s1m", icon: "👑", name: "Sigma King", desc: "1,000,000 points", check: s => s.best >= 1e6 },
+      { id: "s10m", icon: "🌌", name: "Chaos Emperor", desc: "10,000,000 points", check: s => s.best >= 1e7 },
+      { id: "buy1", icon: "🛒", name: "First Purchase", desc: "Buy 1 upgrade", check: s => totalOwned(s) >= 1 },
+      { id: "buy10", icon: "📦", name: "Collector", desc: "10 upgrades", check: s => totalOwned(s) >= 10 },
+      { id: "buy50", icon: "🏭", name: "Industrial Era", desc: "50 upgrades", check: s => totalOwned(s) >= 50 },
+      { id: "bot", icon: "🤖", name: "Automation", desc: "Buy Auto Bot", check: s => (s.owned.bot || 0) >= 1 },
+      { id: "ghost", icon: "👻", name: "Ghost Hunter", desc: "Buy Ghost", check: s => (s.owned.ghost || 0) >= 1 },
+      { id: "none", icon: "🧹", name: "Erased Satellite", desc: "Buy Satellite Eraser", check: s => (s.owned.none || 0) >= 1 },
+      { id: "rocket", icon: "🚀", name: "To Space", desc: "Buy Chaos Rocket", check: s => (s.owned.rocket || 0) >= 1 },
+      { id: "lv5", icon: "⭐", name: "Level 5", desc: "Reach level 5", check: s => s.level >= 5 },
+      { id: "lv10", icon: "🌟", name: "Level 10", desc: "Reach level 10", check: s => s.level >= 10 },
+      { id: "lv25", icon: "💫", name: "Level 25", desc: "Reach level 25", check: s => s.level >= 25 },
+      { id: "cps50", icon: "⏱️", name: "Fast Money", desc: "50 / sec", check: s => cpsOf(s) >= 50 },
+      { id: "cps500", icon: "🌪️", name: "Money Storm", desc: "500 / sec", check: s => cpsOf(s) >= 500 },
+      { id: "cps5k", icon: "⚡", name: "Chaos Current", desc: "5,000 / sec", check: s => cpsOf(s) >= 5000 },
+      { id: "market1", icon: "🎪", name: "Shop Customer", desc: "Buy 1 item from shop", check: s => s.bought.length >= 1 },
+      { id: "market4", icon: "🛍️", name: "Shopaholic", desc: "Buy 4 shop items", check: s => s.bought.length >= 4 },
+      { id: "frenzy", icon: "😵", name: "Frenzy Mode", desc: "Use Frenzy Click", check: s => s.usedFrenzy },
+      { id: "p1", icon: "♻️", name: "Rich from Scratch", desc: "Perform 1 prestige", check: s => s.prestiges >= 1 },
+      { id: "p3", icon: "🔮", name: "Chaos Loop", desc: "Perform 3 prestiges", check: s => s.prestiges >= 3 },
+      { id: "p10", icon: "♾️", name: "Infinite Restart", desc: "Perform 10 prestiges", check: s => s.prestiges >= 10 },
+      { id: "crystal5", icon: "💠", name: "Crystal Collection", desc: "Have 5 chaos crystals", check: s => s.crystals >= 5 }
+    ];
+
+    const defaults = {
+      score: 0, best: 0, clickPower: 1, clicks: 0, owned: {}, unlocked: [],
+      xp: 0, level: 1, crystals: 0, prestiges: 0, bought: [], muted: false,
+      usedFrenzy: false
+    };
+
+    function load() {
+      let raw = {};
+      try { raw = JSON.parse(localStorage.getItem(SAVE) || localStorage.getItem(OLD) || "{}") || {}; }
+      catch(e) { raw = {}; }
+      return Object.assign({}, defaults, raw, {
+        owned: raw.owned || {},
+        unlocked: raw.unlocked || [],
+        bought: raw.bought || []
+      });
+    }
+    let state = load();
+    let tab = "up";
+    let frenzyUntil = 0;
+    let audioCtx = null;
+
+    const $ = id => document.getElementById(id);
+    const scoreEl = $("score"), cpsEl = $("cps"), levelEl = $("level"), prestEl = $("prest");
+    const buffEl = $("buff"), xpBar = $("xpBar"), xpText = $("xpText"), panel = $("panel");
+    const popupEl = $("popup"), newsEl = $("news"), clickBtn = $("clickBtn"), muteBtn = $("muteBtn");
+
+    function totalOwned(s) { return Object.values(s.owned || {}).reduce((a,b)=>a+b,0); }
+    function costOf(u) { return Math.floor(u.base * Math.pow(1.17, state.owned[u.id] || 0)); }
+    function xpNeed(lv) { return Math.floor(50 * Math.pow(lv, 1.35)); }
+    function has(id) { return state.bought.includes(id); }
+    function prestigeMult(s = state) { return 1 + s.crystals * 0.08; }
+    function marketMult(s = state) { return (s.bought || []).includes("prod") ? 1.2 : 1; }
+    function frenzyOn() { return Date.now() < frenzyUntil; }
+    function clickMult() {
+      let m = prestigeMult() * marketMult() * (1 + (state.level - 1) * 0.02);
+      if (frenzyOn()) m *= 7;
+      return m;
+    }
+    function cpsOf(s = state) {
+      const base = upgrades.filter(u => u.type === "auto")
+        .reduce((sum, u) => sum + ((s.owned[u.id] || 0) * u.power), 0);
+      const prod = (s.bought || []).includes("prod") ? 1.2 : 1;
+      return base * (1 + s.crystals * 0.08) * prod * (1 + (s.level - 1) * 0.02);
+    }
+    function fmt(n) {
+      n = Math.floor(n);
+      if (n >= 1e12) return (n/1e12).toFixed(2) + " T";
+      if (n >= 1e9) return (n/1e9).toFixed(2) + " B";
+      if (n >= 1e6) return (n/1e6).toFixed(2) + " M";
+      if (n >= 1e4) return (n/1e3).toFixed(1) + " K";
+      return n.toLocaleString("en-US");
+    }
+    function save() {
+      if (window.__resetting) return;
+      localStorage.setItem(SAVE, JSON.stringify(state));
+    }
+
+    function ensureAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+    }
+    function beep(freq, dur, type="square", vol=0.06) {
+      if (state.muted) return;
+      ensureAudio();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.value = vol;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+      o.stop(audioCtx.currentTime + dur);
+    }
+    function sfx(kind) {
+      if (kind === "click") beep(420 + Math.random()*80, .05, "square", .04);
+      if (kind === "buy") { beep(520,.08,"triangle",.07); setTimeout(()=>beep(720,.1,"triangle",.07),70); }
+      if (kind === "bad") beep(120,.12,"sawtooth",.05);
+      if (kind === "ach") { beep(523,.1,"sine",.07); setTimeout(()=>beep(659,.1,"sine",.07),90); setTimeout(()=>beep(784,.18,"sine",.07),180); }
+      if (kind === "level") { beep(400,.08,"square",.06); setTimeout(()=>beep(600,.08,"square",.06),80); setTimeout(()=>beep(800,.16,"square",.06),160); }
+      if (kind === "prestige") { beep(200,.2,"sawtooth",.08); setTimeout(()=>beep(400,.2,"triangle",.08),180); setTimeout(()=>beep(800,.3,"sine",.08),360); }
+    }
+
+    function popup(html) {
+      popupEl.innerHTML = html;
+      popupEl.classList.add("show");
+      setTimeout(() => popupEl.classList.remove("show"), 2200);
+    }
+    function addXP(n) {
+      if (has("xpBoost")) n *= 1.3;
+      state.xp += n;
+      let need = xpNeed(state.level);
+      let leveled = false;
+      while (state.xp >= need) {
+        state.xp -= need;
+        state.level++;
+        need = xpNeed(state.level);
+        leveled = true;
+      }
+      if (leveled) {
+        sfx("level");
+        popup(`<b>Level ${state.level}!</b><br>Chaos has grown.`);
+      }
+    }
+    function checkAch() {
+      achievements.forEach(a => {
+        if (!state.unlocked.includes(a.id) && a.check(state)) {
+          state.unlocked.push(a.id);
+          sfx("ach");
+          popup(`<b>Achievement!</b><br>${a.icon} ${a.name}`);
+        }
+      });
+    }
+    function crystalsFrom(score) { return Math.floor(Math.sqrt(score / 50000)); }
+
+    function doClick(x, y) {
+      let power = state.clickPower * clickMult();
+      let tag = "";
+      if (has("luck") && Math.random() < .08) { power *= 12; tag = " LUCKY!"; }
+      else if (has("crit") && Math.random() < .12) { power *= 4; tag = " CRITICAL!"; }
+      state.score += power;
+      state.best = Math.max(state.best, state.score);
+      state.clicks++;
+      addXP(1);
+      sfx("click");
+      floatText("+" + fmt(power) + tag, x, y);
+      tick();
+    }
+
+    function floatText(text, x, y) {
+      const el = document.createElement("div");
+      el.className = "pop";
+      el.textContent = text;
+      const r = clickBtn.getBoundingClientRect();
+      el.style.left = (x ? x - r.left : 70) + "px";
+      el.style.top = (y ? y - r.top : 70) + "px";
+      el.style.color = text.includes("LUCKY") ? "#ffd76a" : text.includes("CRITICAL") ? "#ff4fd8" : "#fff";
+      clickBtn.parentElement.appendChild(el);
+      setTimeout(() => el.remove(), 700);
+    }
+
+    function buyUpgrade(id) {
+      const u = upgrades.find(x => x.id === id);
+      const cost = costOf(u);
+      if (state.score < cost) return sfx("bad");
+      state.score -= cost;
+      state.owned[u.id] = (state.owned[u.id] || 0) + 1;
+      if (u.type === "click") state.clickPower += u.power;
+      addXP(3);
+      sfx("buy");
+      tick();
+    }
+
+    function buyMarket(id) {
+      const m = market.find(x => x.id === id);
+      if (state.score < m.cost) return sfx("bad");
+      if (m.type !== "consumable" && has(m.id)) return;
+      state.score -= m.cost;
+      if (m.type === "consumable") {
+        frenzyUntil = Date.now() + 10000;
+        state.usedFrenzy = true;
+      } else {
+        state.bought.push(m.id);
+      }
+      sfx("buy");
+      tick();
+    }
+
+    function prestige() {
+      const gain = crystalsFrom(state.score);
+      if (gain < 1) return;
+      if (!confirm(`Perform Prestige?\n+${gain} Chaos Crystal(s)\nScore and upgrades will reset.\nAchievements, shop items, and crystals remain.`)) return;
+      state.crystals += gain;
+      state.prestiges++;
+      state.score = 0;
+      state.clickPower = 1;
+      state.owned = {};
+      state.xp = 0;
+      sfx("prestige");
+      popup(`<b>PRESTIGE!</b><br>+${gain} crystal(s). Chaos multiplier x${prestigeMult().toFixed(2)}`);
+      tick();
+    }
+
+    function renderPanel() {
+      if (tab === "up") {
+        panel.innerHTML = `<div class="list">${upgrades.map(u => {
+          const owned = state.owned[u.id] || 0;
+          const cost = costOf(u);
+          return `<div class="item"><div><h3>${u.name} (${owned})</h3><p>${u.desc}</p></div>
+            <button class="buy" data-up="${u.id}" ${state.score>=cost?"":"disabled"}>${fmt(cost)}</button></div>`;
+        }).join("")}</div>`;
+      }
+      if (tab === "market") {
+        panel.innerHTML = `<div class="list">${market.map(m => {
+          const owned = m.type !== "consumable" && has(m.id);
+          return `<div class="item"><div><h3>${m.name}</h3><p>${m.desc}</p></div>
+            <button class="buy" data-m="${m.id}" ${owned||state.score<m.cost?"disabled":""}>${owned?"OWNED":fmt(m.cost)}</button></div>`;
+        }).join("")}</div>`;
+      }
+      if (tab === "prestige") {
+        const gain = crystalsFrom(state.score);
+        panel.innerHTML = `
+          <p>Chaos crystals: <b>${state.crystals}</b> · Prestige count: <b>${state.prestiges}</b></p>
+          <p class="tiny" style="margin:10px 0 14px">Each crystal grants a permanent +8% production. Prestige resets score and upgrades. Earn crystals starting from 50,000 points.</p>
+          <p>Crystals earned on prestige: <b>${gain}</b></p>
+          <div style="margin-top:12px"><button class="danger" id="prestigeBtn" ${gain<1?"disabled":""}>PRESTIGE NOW</button></div>`;
+      }
+      if (tab === "ach") {
+        panel.innerHTML = `<p class="tiny" style="margin-bottom:10px">${state.unlocked.length}/${achievements.length} unlocked</p>
+          <div class="list">${achievements.map(a => {
+            const on = state.unlocked.includes(a.id);
+            return `<div class="ach ${on?"unlocked":"locked"}"><div><h3>${a.name}</h3><p>${on?a.desc:"???"}</p></div>
+              <div class="badge">${on?a.icon:"🔒"}</div></div>`;
+          }).join("")}</div>`;
+      }
+    }
+
+    function render() {
+      scoreEl.textContent = fmt(state.score);
+      cpsEl.textContent = fmt(cpsOf()) + " / sec";
+      levelEl.textContent = "Level " + state.level;
+      prestEl.textContent = "Chaos x" + (prestigeMult() * marketMult() * (1 + (state.level-1)*0.02)).toFixed(2);
+      const need = xpNeed(state.level);
+      xpBar.style.width = Math.min(100, (state.xp / need) * 100) + "%";
+      xpText.textContent = `XP ${Math.floor(state.xp)} / ${need}`;
+      buffEl.textContent = frenzyOn() ? "FRENZY x7" : "";
+      muteBtn.textContent = state.muted ? "🔇 Sound Off" : "🔊 Sound";
+      clickBtn.className = "click-btn" + (has("rainbow") ? " rainbow" : has("goldBtn") ? " gold" : "");
+      renderPanel();
+    }
+
+    function tick() {
+      if (window.__resetting) return;
+      checkAch();
+      render();
+      save();
+    }
+
+    clickBtn.addEventListener("click", e => doClick(e.clientX, e.clientY));
+    muteBtn.addEventListener("click", () => { state.muted = !state.muted; ensureAudio(); tick(); });
+
+    document.getElementById("resetBtn").onclick = () => {
+      document.getElementById("topMsg").classList.add("show");
+    };
+    document.getElementById("resetNo").onclick = () => {
+      document.getElementById("topMsg").classList.remove("show");
+    };
+    document.getElementById("resetYes").onclick = () => {
+      window.__resetting = true;
+      localStorage.removeItem(SAVE);
+      localStorage.removeItem(OLD);
+      location.reload();
+    };
+
+    document.querySelectorAll(".tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        tab = btn.dataset.tab;
+        document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t === btn));
+        render();
+      });
+    });
+    panel.addEventListener("click", e => {
+      const up = e.target.closest("[data-up]");
+      const m = e.target.closest("[data-m]");
+      if (up) buyUpgrade(up.dataset.up);
+      if (m) buyMarket(m.dataset.m);
+      if (e.target.id === "prestigeBtn") prestige();
+    });
+
+    setInterval(() => {
+      if (window.__resetting) return;
+      const gain = cpsOf() / 10;
+      if (gain > 0) {
+        state.score += gain;
+        state.best = Math.max(state.best, state.score);
+        addXP(0.05);
+      }
+      if (frenzyOn()) buffEl.textContent = "FRENZY x7";
+      else if (buffEl.textContent) buffEl.textContent = "";
+      checkAch();
+      if (tab !== "ach") {
+        scoreEl.textContent = fmt(state.score);
+        cpsEl.textContent = fmt(cpsOf()) + " / sec";
+        const need = xpNeed(state.level);
+        xpBar.style.width = Math.min(100, (state.xp / need) * 100) + "%";
+        xpText.textContent = `XP ${Math.floor(state.xp)} / ${need}`;
+      } else render();
+      save();
+    }, 100);
+
+    setInterval(() => {
+      newsEl.textContent = newsLines[Math.floor(Math.random() * newsLines.length)];
+    }, 5000);
+
+    newsEl.textContent = newsLines[0];
+    tick();
+</script>
+</body>
+</html>
