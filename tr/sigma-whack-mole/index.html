@@ -490,8 +490,8 @@
         else if (rand > 0.60) type = 'gold';
 
         // Speed increases as time decreases
-        const speedFactor = Math.max(0.55, timeLeft / 30);
-        const time = randomTime(700 * speedFactor, 1100 * speedFactor);
+        const speedFactor = Math.max(0.67, timeLeft / 30);
+        const time = randomTime(750 * speedFactor, 1120 * speedFactor);
 
         const hole = randomHole(holes);
         const mole = hole.querySelector('.mole');
