@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Sigma Bear Adventure</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #07060c; font-family: system-ui, sans-serif; color: #fff; }
+  canvas#c { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  #back { position: fixed; top: 16px; left: 14px; z-index: 6; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; }
+  #hud { position: fixed; top: 12px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 5; }
+  #hp { font-size: 20px; letter-spacing: 3px; }
+  #stats { font-size: 18px; font-weight: 800; text-shadow: 0 4px 16px #000; margin-top: 4px; }
+  #toast { min-height: 22px; color: #ffe14d; font-weight: 700; margin-top: 6px; text-shadow: 0 2px 10px #000; }
+  #muteBtn { position: fixed; top: 12px; right: 12px; z-index: 6; border: 0; border-radius: 10px; padding: 8px 12px; background: #fff2; color: #fff; font-weight: 700; cursor: pointer; }
+  #mini { position: fixed; right: 12px; bottom: 12px; width: 120px; height: 120px; border-radius: 12px; opacity: .85; z-index: 5; pointer-events: none; border: 1px solid #fff3; background: #0008; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,12,.78); text-align: center; padding: 24px; z-index: 8; }
+  #overlay.hide { display: none; }
+  h1 { font-size: clamp(28px, 7vw, 54px); margin: 0; letter-spacing: 3px; }
+  .tag { color: #00d4ff; font-weight: 800; letter-spacing: 6px; margin: 6px 0 14px; }
+  .sub { opacity: .8; line-height: 1.55; margin: 0 0 22px; max-width: 520px; }
+  button.cta { border: 0; border-radius: 14px; padding: 14px 32px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; }
+  #mobile { display: none; position: fixed; inset: 0; z-index: 7; pointer-events: none; }
+  #stick, #jbtn, #sbtn, #abtn { pointer-events: auto; position: absolute; }
+  #stick { left: 22px; bottom: 28px; width: 118px; height: 118px; border-radius: 50%; background: #fff2; border: 2px solid #fff4; }
+  #knob { position: absolute; left: 39px; top: 39px; width: 40px; height: 40px; border-radius: 50%; background: #fff; }
+  #jbtn, #sbtn, #abtn { right: 22px; width: 70px; height: 70px; border-radius: 50%; border: 0; color: #fff; font-weight: 800; background: #ff3caccc; }
+  #jbtn { bottom: 28px; }
+  #abtn { right: 100px; bottom: 28px; background: #ffe14dcc; color: #000; font-size: 11px; }
+  #sbtn { right: 22px; bottom: 108px; width: 58px; height: 58px; background: #00d4ffcc; font-size: 11px; }
+  @media (pointer: coarse) { #mobile { display: block; } #mini { bottom: 180px; } }
+</style>
+</head>
+<body>
+  <a id="back" href="#">← Menü</a>
+  <button id="muteBtn">🔊 Ses</button>
+  <canvas id="c"></canvas>
+  <canvas id="mini" width="120" height="120"></canvas>
+  <div id="hud">
+    <div id="hp">❤️❤️❤️</div>
+    <div id="stats">Bal 0/8 · Altın 0 · Skor 0</div>
+    <div id="toast">8 bal topla, kapıyı aç, Sigma Arıyı yen!</div>
+  </div>
+  <div id="mobile">
+    <div id="stick"><div id="knob"></div></div>
+    <button id="sbtn">KOŞ</button>
+    <button id="abtn">SALDIRI</button>
+    <button id="jbtn">ZİPLA</button>
+  </div>
+  <div id="overlay">
+    <h1>SIGMA BEAR</h1>
+    <div class="tag">ULTRA ADVENTURE</div>
+    <p class="sub">WASD / Oklar: Hareket · SPACE: Zıpla (2x Çift Zıplama)<br>E: Döner Saldırı · S (Havada): Yere Çakılma (Ground Pound)<br>SHIFT: Koş · Fare Sürükle: Kamera · P: Duraklat · M: Ses<br>Buz kaydırır, lav yakar, trambolin fırlatır!</p>
+    <button class="cta" id="go">MACERA BAŞLASIN</button>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script>
+(() => {
+  if (typeof THREE === "undefined") {
+    document.getElementById("overlay").innerHTML = "<h1>3D YÜKLENEMEDİ</h1><p class='sub'>Three.js yüklenemedi. İnterneti kontrol edin.</p>";
+    return;
+  }
+  const canvas = document.getElementById("c");
+  const overlay = document.getElementById("overlay");
+  const hpEl = document.getElementById("hp");
+  const statsEl = document.getElementById("stats");
+  const toastEl = document.getElementById("toast");
+  const muteBtn = document.getElementById("muteBtn");
+  const mini = document.getElementById("mini");
+  const mctx = mini.getContext("2d");
+  const stick = document.getElementById("stick");
+  const knob = document.getElementById("knob");
+  const NEED = 8, SAVE = "sigma-bear-best";
+
+  let W = innerWidth, H = innerHeight, state = "menu", muted = false;
+  let px = 0, py = 1.2, pz = 10, vx = 0, vy = 0, vz = 0;
+  let camYaw = 0, camPitch = 0.2, hp = 3, honey = 0, coins = 0, score = 0, best = 0;
+  let grounded = false, jumps = 2, coyote = 0, jumpBuf = 0, inv = 0, toastT = 0;
+  let standOn = null, ice = false, facing = 0, bob = 0, squash = 1, shake = 0;
+  let cp = { x: 0, y: 1.2, z: 10 }, busy = false, tWorld = 0;
+  let joyX = 0, joyY = 0, sprintHold = false, dragging = false, lastMX = 0, lastMY = 0;
+  let isGroundPounding = false, isSpinning = 0;
+  const keys = {}, mats = {}, colliders = [], movers = [], items = [], bees = [], parts = [], cps = [], crates = [];
+  let bear, boss, gateC, starMesh, ac = null, musI = 0, musT = 0;
+  const achievements = new Set();
+
+  try { best = parseInt(localStorage.getItem(SAVE) || "0", 10) || 0; } catch (e) {}
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
+  renderer.setSize(W, H);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x74c7ff);
+  scene.fog = new THREE.FogExp2(0x74c7ff, 0.008);
+  const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 400);
+  scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x3a2412, 0.75));
+  const sun = new THREE.DirectionalLight(0xfff3d2, 1.0);
+  sun.position.set(50, 90, 30);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -90, right: 90, top: 90, bottom: -90, far: 260 });
+  scene.add(sun);
+
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    camera.aspect = W / H; camera.updateProjectionMatrix();
+    renderer.setSize(W, H);
+  }
+  addEventListener("resize", resize);
+
+  function M(c) { return mats[c] || (mats[c] = new THREE.MeshLambertMaterial({ color: c })); }
+
+  // --- 1. SES VE MÜZİK SİSTEMİ (WEB AUDIO SYNTHESIZER) ---
+  function beep(f, d, v = 0.1, type = "sine") {
+    if (muted) return;
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    try {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = f;
+      g.gain.setValueAtTime(v, ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + d);
+      o.connect(g); g.connect(ac.destination);
+      o.start(); o.stop(ac.currentTime + d);
+    } catch(e){}
+  }
+
+  function playMusicStep() {
+    if (muted || state !== "play") return;
+    musT++;
+    if (musT % 14 === 0) {
+      const notes = [261.63, 329.63, 392.00, 523.25, 440.00, 349.23, 392.00, 293.66];
+      const note = notes[(musI++) % notes.length];
+      beep(note, 0.12, 0.025, "triangle");
+      if (musI % 2 === 0) beep(note * 0.5, 0.18, 0.035, "sawtooth");
+    }
+  }
+
+  function showToast(text, duration = 3) {
+    toastEl.textContent = text;
+    toastT = duration;
+  }
+
+  function grantAchievement(id, title) {
+    if (!achievements.has(id)) {
+      achievements.add(id);
+      showToast(`🏆 BAŞARIM KAZANILDIK: ${title}!`, 4);
+      beep(880, 0.1, 0.2); setTimeout(() => beep(1320, 0.3, 0.2), 100);
+    }
+  }
+
+  // --- 2. MODEL TASARIMLARI (SIGMA BEAR & OBJE SİSTEMİ) ---
+  function createSigmaBear() {
+    const group = new THREE.Group();
+    // Gövde
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 16), M(0x8B4513));
+    body.position.y = 0.7; body.castShadow = true; group.add(body);
+    // Kafa
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), M(0x8B4513));
+    head.position.set(0, 1.4, 0); head.castShadow = true; group.add(head);
+    // Ağız/Burun
+    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.25, 0.3), M(0xD2B48C));
+    snout.position.set(0, 1.35, 0.4); group.add(snout);
+    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.1), M(0x111111));
+    nose.position.set(0, 1.42, 0.56); group.add(nose);
+    // Kulaklar
+    const earL = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), M(0x8B4513));
+    earL.position.set(-0.35, 1.8, 0); group.add(earL);
+    const earR = earL.clone(); earR.position.x = 0.35; group.add(earR);
+    // SIGMA GÖZLÜK
+    const glasses = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.15, 0.1), M(0x050505));
+    glasses.position.set(0, 1.48, 0.42); group.add(glasses);
+    // KIRMIZI PELERİN
+    const cape = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.05), M(0xff0033));
+    cape.position.set(0, 0.8, -0.5); cape.rotation.x = 0.2; group.add(cape);
+    // Bacaklar & Kolları Canlandırma Pivotları
+    group.limbs = [];
+    [-0.3, 0.3].forEach(x => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.5), M(0x5c2e0b));
+      leg.position.set(x, 0.25, 0); group.add(leg); group.limbs.push(leg);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.5), M(0x8B4513));
+      arm.position.set(x * 1.8, 0.8, 0); group.add(arm); group.limbs.push(arm);
+    });
+    scene.add(group);
+    return group;
+  }
+
+  function createBee(x, y, z) {
+    const g = new THREE.Group();
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 12), M(0xffcc00));
+    b.scale.set(1, 1, 1.4); g.add(b);
+    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.41, 0.3), M(0x111111));
+    stripe.rotation.x = Math.PI / 2; g.add(stripe);
+    const w1 = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.3), M(0xffffff));
+    w1.position.set(0.4, 0.3, 0); g.add(w1);
+    const w2 = w1.clone(); w2.position.x = -0.4; g.add(w2);
+    g.position.set(x, y, z);
+    g.origin = { x, y, z };
+    g.wings = [w1, w2]; g.hp = 1;
+    scene.add(g); bees.push(g);
+  }
+
+  function createBoss(x, y, z) {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(1.6, 16, 16), M(0xffaa00));
+    body.scale.set(1, 1, 1.5); body.castShadow = true; g.add(body);
+    const crown = new THREE.Mesh(new THREE.ConeGeometry(0.8, 0.8, 5), M(0xffd700));
+    crown.position.set(0, 1.8, 0); g.add(crown);
+    g.position.set(x, y, z); g.hp = 5; g.maxHp = 5; g.targetY = y;
+    scene.add(g); boss = g;
+  }
+
+  function createCrate(x, y, z) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), M(0xb5651d));
+    mesh.position.set(x, y + 0.75, z); mesh.castShadow = true; mesh.receiveShadow = true;
+    mesh.isCrate = true; scene.add(mesh); crates.push(mesh); colliders.push(mesh);
+  }
+
+  // --- 3. DÜNYA VE BÖLÜM TASARIMI ---
+  function buildWorld() {
+    // Ana Zemin (Çim)
+    const g = new THREE.Mesh(new THREE.BoxGeometry(160, 4, 160), M(0x4CAF50));
+    g.position.set(0, -2, 0); g.receiveShadow = true; scene.add(g); colliders.push(g);
+
+    // Başlangıç Platformları & Ağaçlar
+    for(let i=0; i<15; i++) {
+      const tx = (Math.random()-0.5)*120, tz = (Math.random()-0.5)*120;
+      if (Math.hypot(tx, tz) < 15) continue;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 4), M(0x5c2e0b));
+      trunk.position.set(tx, 2, tz); scene.add(trunk); colliders.push(trunk);
+      const leaves = new THREE.Mesh(new THREE.ConeGeometry(2.5, 5, 8), M(0x2E7D32));
+      leaves.position.set(tx, 5.5, tz); scene.add(leaves);
+    }
+
+    // BUZ BÖLGESİ
+    const iceP = new THREE.Mesh(new THREE.BoxGeometry(30, 2, 30), M(0x80deea));
+    iceP.position.set(-35, 1, -20); iceP.isIce = true; iceP.receiveShadow = true;
+    scene.add(iceP); colliders.push(iceP);
+
+    // LAV BÖLGESİ
+    const lavaP = new THREE.Mesh(new THREE.BoxGeometry(30, 1, 30), M(0xff3d00));
+    lavaP.position.set(35, 0.1, -20); lavaP.isLava = true; scene.add(lavaP);
+
+    // TRAMBOLİNLER (BOUNCE PADS)
+    const tramp = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 0.4, 16), M(0xff007f));
+    tramp.position.set(0, 0.2, -15); tramp.isTrampoline = true;
+    scene.add(tramp); colliders.push(tramp);
+
+    // HAREKETLİ PLATFORMLAR
+    const m1 = new THREE.Mesh(new THREE.BoxGeometry(6, 1, 6), M(0x9c27b0));
+    m1.position.set(-10, 4, -35); scene.add(m1); colliders.push(m1); movers.push({ m: m1, axis: 'x', range: 12, speed: 2, origin: -10 });
+
+    // BAL KANATLAR / TOPLANABİLİRLER
+    for(let i=0; i<NEED; i++) {
+      const angle = (i / NEED) * Math.PI * 2;
+      const h = new THREE.Mesh(new THREE.OctahedronGeometry(0.6), M(0xffb300));
+      h.position.set(Math.cos(angle)*35, 2.5 + (i%3), Math.sin(angle)*35);
+      h.isHoney = true; scene.add(h); items.push(h);
+    }
+
+    // ALTINLAR
+    for(let i=0; i<20; i++) {
+      const c = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.1, 12), M(0xffd700));
+      c.rotation.x = Math.PI/2; c.position.set((Math.random()-0.5)*80, 2, (Math.random()-0.5)*80);
+      c.isCoin = true; scene.add(c); items.push(c);
+    }
+
+    // KUTULAR & DÜŞMAN ARILAR
+    createCrate(-5, 0, 5); createCrate(-5, 1.5, 5); createCrate(5, 0, 5);
+    createBee(-15, 3, -10); createBee(15, 3, -10); createBee(0, 3, -30);
+
+    // CHECKPOINT FLAGS
+    const flag = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4), M(0xcccccc));
+    flag.position.set(0, 2, -40); scene.add(flag); cps.push({ x: 0, y: 1.2, z: -40, mesh: flag });
+
+    // KAPI VE BOSS ARENASI
+    gateC = new THREE.Mesh(new THREE.BoxGeometry(10, 8, 1), M(0x333333));
+    gateC.position.set(0, 4, -60); scene.add(gateC); colliders.push(gateC);
+
+    // BOSS ARENA ZEMİNİ
+    const bossFloor = new THREE.Mesh(new THREE.CylinderGeometry(20, 20, 2, 32), M(0x424242));
+    bossFloor.position.set(0, -1, -85); scene.add(bossFloor); colliders.push(bossFloor);
+    createBoss(0, 5, -85);
+
+    // ZAFER YILDIZI
+    starMesh = new THREE.Mesh(new THREE.OctahedronGeometry(1.2), M(0xffff00));
+    starMesh.position.set(0, -20, -85); scene.add(starMesh);
+  }
+
+  // --- 4. PARTİKÜL SİSTEMİ ---
+  function spawnParticles(x, y, z, color, count = 12) {
+    for(let i=0; i<count; i++) {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.15), M(color));
+      p.position.set(x, y, z);
+      p.vx = (Math.random()-0.5)*8; p.vy = Math.random()*8; p.vz = (Math.random()-0.5)*8;
+      p.life = 0.5 + Math.random()*0.3; scene.add(p); parts.push(p);
+    }
+  }
+
+  function updateParticles(dt) {
+    for(let i=parts.length-1; i>=0; i--) {
+      const p = parts[i]; p.life -= dt;
+      p.position.x += p.vx*dt; p.position.y += p.vy*dt; p.position.z += p.vz*dt;
+      p.vy -= 18*dt;
+      if (p.life <= 0) { scene.remove(p); parts.splice(i, 1); }
+    }
+  }
+
+  // --- 5. KONTROLLER (PC & MOBİL) ---
+  addEventListener("keydown", e => {
+    keys[e.code] = true;
+    if (e.code === "Space") triggerJump();
+    if (e.code === "KeyE") triggerAttack();
+    if (e.code === "KeyS" && !grounded) triggerGroundPound();
+    if (e.code === "KeyP") state = state === "play" ? "pause" : "play";
+    if (e.code === "KeyM") { muted = !muted; muteBtn.textContent = muted ? "🔇 Sessiz" : "🔊 Ses"; }
+  });
+  addEventListener("keyup", e => keys[e.code] = false);
+
+  addEventListener("pointerdown", e => {
+    if (e.target.tagName === "CANVAS") { dragging = true; lastMX = e.clientX; lastMY = e.clientY; }
+  });
+  addEventListener("pointermove", e => {
+    if (dragging) {
+      camYaw -= (e.clientX - lastMX) * 0.005;
+      camPitch = Math.max(-0.2, Math.min(0.8, camPitch + (e.clientY - lastMY) * 0.004));
+      lastMX = e.clientX; lastMY = e.clientY;
+    }
+  });
+  addEventListener("pointerup", () => dragging = false);
+
+  // Mobil Dokunmatik Joystick
+  stick.addEventListener("touchstart", e => e.stopPropagation());
+  stick.addEventListener("touchmove", e => {
+    e.preventDefault(); const t = e.touches[0], r = stick.getBoundingClientRect();
+    const dx = t.clientX - (r.left + 59), dy = t.clientY - (r.top + 59);
+    const len = Math.hypot(dx, dy), maxR = 40;
+    joyX = (dx / (len || 1)) * Math.min(len, maxR) / maxR;
+    joyY = (dy / (len || 1)) * Math.min(len, maxR) / maxR;
+    knob.style.transform = `translate(${joyX*30}px, ${joyY*30}px)`;
+  });
+  const resetJoy = () => { joyX = 0; joyY = 0; knob.style.transform = "none"; };
+  stick.addEventListener("touchend", resetJoy); stick.addEventListener("touchcancel", resetJoy);
+
+  document.getElementById("jbtn").onclick = () => triggerJump();
+  document.getElementById("abtn").onclick = () => triggerAttack();
+  document.getElementById("sbtn").ontouchstart = () => sprintHold = true;
+  document.getElementById("sbtn").ontouchend = () => sprintHold = false;
+  muteBtn.onclick = () => { muted = !muted; muteBtn.textContent = muted ? "🔇 Sessiz" : "🔊 Ses"; };
+
+  function triggerJump() {
+    if (jumps > 0) {
+      vy = 12; jumps--; grounded = false; squash = 1.4;
+      beep(jumps === 1 ? 400 : 600, 0.15, 0.15);
+      spawnParticles(px, py-0.5, pz, 0xffffff, 6);
+      if (jumps === 0) grantAchievement("double_jump", "Hava Akrobatı");
+    }
+  }
+
+  function triggerAttack() {
+    if (isSpinning <= 0) {
+      isSpinning = 0.4; beep(300, 0.2, 0.2, "sawtooth");
+      grantAchievement("spin", "Sigma Kasırgası");
+    }
+  }
+
+  function triggerGroundPound() {
+    if (!grounded && !isGroundPounding) {
+      isGroundPounding = true; vy = -30;
+      beep(150, 0.3, 0.3, "square");
+      grantAchievement("pound", "Süper Balyoz");
+    }
+  }
+
+  // --- 6. FİZİK VE OYUN MANTIĞI ---
+  function updatePlayer(dt) {
+    if (inv > 0) inv -= dt;
+    if (isSpinning > 0) { isSpinning -= dt; bear.rotation.y += 25 * dt; }
+
+    // Girdi Analizi
+    let inputX = joyX, inputY = joyY;
+    if (keys["KeyA"] || keys["ArrowLeft"]) inputX = -1;
+    if (keys["KeyD"] || keys["ArrowRight"]) inputX = 1;
+    if (keys["KeyW"] || keys["ArrowUp"]) inputY = -1;
+    if (keys["KeyS"] || keys["ArrowDown"]) inputY = 1;
+
+    const speed = (keys["ShiftLeft"] || sprintHold ? 16 : 10) * (ice ? 1.2 : 1.0);
+    const moveLen = Math.hypot(inputX, inputY);
+
+    if (moveLen > 0.1) {
+      const angle = Math.atan2(inputX, -inputY) + camYaw;
+      const targetVx = Math.sin(angle) * speed;
+      const targetVz = Math.cos(angle) * speed;
+      const accel = ice ? 3 : 25;
+      vx += (targetVx - vx) * accel * dt;
+      vz += (targetVz - vz) * accel * dt;
+      facing = angle;
+    } else {
+      const fric = ice ? 1.5 : 20;
+      vx += (0 - vx) * fric * dt;
+      vz += (0 - vz) * fric * dt;
+    }
+
+    vy -= 32 * dt; // Yürütme yerçekimi
+    px += vx * dt; py += vy * dt; pz += vz * dt;
+
+    // Düşme Kontrolü
+    if (py < -15) {
+      hp--; inv = 1.5; shake = 0.5;
+      beep(100, 0.4, 0.3);
+      px = cp.x; py = cp.y + 2; pz = cp.z; vx = vy = vz = 0;
+      showToast("Checkpointe Dönüldü!");
+      if (hp <= 0) restartGame();
+    }
+
+    // Zemin Çarpışma Tespiti
+    grounded = false; ice = false;
+    colliders.forEach(c => {
+      const box = new THREE.Box3().setFromObject(c);
+      const playerBox = new THREE.Box3(new THREE.Vector3(px-0.5, py-0.7, pz-0.5), new THREE.Vector3(px+0.5, py+0.7, pz+0.5));
+
+      if (box.intersectsBox(playerBox)) {
+        if (c.isTrampoline) {
+          vy = 24; jumps = 2; beep(800, 0.25, 0.25);
+          spawnParticles(px, py, pz, 0xff007f, 15);
+          showToast("MÜKEMMEL TRAMBOLİN FIRLATMASI!");
+          return;
+        }
+        if (c.isCrate && (isGroundPounding || isSpinning > 0)) {
+          scene.remove(c); colliders.splice(colliders.indexOf(c), 1);
+          crates.splice(crates.indexOf(c), 1);
+          spawnParticles(c.position.x, c.position.y, c.position.z, 0xb5651d, 20);
+          beep(200, 0.2, 0.3); coins += 3; score += 150;
+          return;
+        }
+        // Normal Basma
+        if (vy < 0 && py > box.max.y - 0.4) {
+          py = box.max.y + 0.7; vy = 0; grounded = true; jumps = 2;
+          if (c.isIce) ice = true;
+          if (isGroundPounding) {
+            isGroundPounding = false; shake = 0.4;
+            spawnParticles(px, py-0.5, pz, 0xffffff, 25);
+            beep(120, 0.3, 0.4, "square");
+          }
+        }
+      }
+    });
+
+    // Hareketli Platformlar
+    movers.forEach(m => {
+      m.m.position[m.axis] = m.origin + Math.sin(tWorld * m.speed) * m.range;
+    });
+
+    // Toplanabilir Eşyalar
+    items.forEach((item, idx) => {
+      item.rotation.y += 2 * dt;
+      if (Math.hypot(px - item.position.x, py - item.position.y, pz - item.position.z) < 1.4) {
+        scene.remove(item); items.splice(idx, 1);
+        if (item.isHoney) {
+          honey++; score += 500; beep(900, 0.2, 0.2);
+          showToast(`Bal Toplandı! (${honey}/${NEED})`);
+          if (honey >= NEED) {
+            scene.remove(gateC); colliders.splice(colliders.indexOf(gateC), 1);
+            showToast("BÖLÜM KAPISI AÇILDI! BOSS ARENASINA GİT!");
+            grantAchievement("gate_open", "Sigma Kapı Kırıcı");
+          }
+        } else if (item.isCoin) {
+          coins++; score += 100; beep(1200, 0.1, 0.15);
+        }
+      }
+    });
+
+    // Checkpoint Kontrolü
+    cps.forEach(c => {
+      if (Math.hypot(px - c.x, pz - c.z) < 2.5) {
+        if (cp !== c) { cp = c; beep(1000, 0.3, 0.2); showToast("CHECKPOINT KAYDEDİLDİ!"); }
+      }
+    });
+
+    // Arı Düşman Yapay Zekası
+    bees.forEach((bee, idx) => {
+      bee.position.y = bee.origin.y + Math.sin(tWorld * 3) * 0.5;
+      bee.wings[0].rotation.z = Math.sin(tWorld * 20) * 0.5;
+      bee.wings[1].rotation.z = -Math.sin(tWorld * 20) * 0.5;
+
+      const dist = Math.hypot(px - bee.position.x, py - bee.position.y, pz - bee.position.z);
+      if (dist < 1.5) {
+        if (vy < 0 || isSpinning > 0 || isGroundPounding) {
+          scene.remove(bee); bees.splice(idx, 1);
+          spawnParticles(bee.position.x, bee.position.y, bee.position.z, 0xffcc00, 15);
+          vy = 12; score += 300; beep(500, 0.2, 0.2);
+          showToast("Arı Eza İle Yokedildi!");
+        } else if (inv <= 0) {
+          hp--; inv = 1.2; shake = 0.3; vy = 8;
+          beep(150, 0.3, 0.3); showToast("Hasar Aldın!");
+          if (hp <= 0) restartGame();
+        }
+      }
+    });
+
+    // Boss Mantığı
+    if (boss && boss.hp > 0) {
+      boss.position.y = 4 + Math.sin(tWorld * 2) * 1.5;
+      const bDist = Math.hypot(px - boss.position.x, py - boss.position.y, pz - boss.position.z);
+      if (bDist < 2.8) {
+        if ((vy < 0 && py > boss.position.y + 0.5) || isSpinning > 0 || isGroundPounding) {
+          boss.hp--; vy = 14; inv = 0.8; shake = 0.6;
+          spawnParticles(boss.position.x, boss.position.y, boss.position.z, 0xff0000, 30);
+          beep(200, 0.4, 0.4, "sawtooth");
+          showToast(`SIGMA BOSS HASAR ALDI! Kalan Can: ${boss.hp}`);
+          if (boss.hp <= 0) {
+            scene.remove(boss);
+            starMesh.position.set(0, 3, -85);
+            showToast("KAZANDIN! SIGMA YILDIZINI AL!");
+            grantAchievement("boss_slayer", "Kraliçe Katili Sigma");
+          }
+        } else if (inv <= 0) {
+          hp--; inv = 1.2; shake = 0.4; vy = 10;
+          beep(100, 0.3, 0.3); showToast("Boss Darbesi!");
+          if (hp <= 0) restartGame();
+        }
+      }
+    }
+
+    // Zafer Yıldızı
+    if (starMesh && Math.hypot(px - starMesh.position.x, py - starMesh.position.y, pz - starMesh.position.z) < 2) {
+      state = "win";
+      overlay.classList.remove("hide");
+      overlay.innerHTML = `<h1>ZAFER!</h1><p class='sub'>Tüm engelleri aştın, tam bir SIGMA oldun!<br>Skorun: ${score} · Toplanan Altın: ${coins}</p><button class='cta' onclick='location.reload()'>YENİDEN OYNA</button>`;
+    }
+
+    // Model Görsel Güncelleme
+    bear.position.set(px, py - 0.7, pz);
+    if (moveLen > 0.1 && isSpinning <= 0) bear.rotation.y = facing;
+
+    // Yürüme Animasyonları
+    bob += Math.hypot(vx, vz) * dt * 2;
+    if (bear.limbs) {
+      bear.limbs[0].rotation.x = Math.sin(bob * 5) * 0.6;
+      bear.limbs[1].rotation.x = -Math.sin(bob * 5) * 0.6;
+      bear.limbs[2].rotation.x = -Math.sin(bob * 5) * 0.6;
+      bear.limbs[3].rotation.x = Math.sin(bob * 5) * 0.6;
+    }
+  }
+
+  function restartGame() {
+    hp = 3; px = cp.x; py = cp.y + 1; pz = cp.z; vx = vy = vz = 0;
+    showToast("Canın Bitti! Checkpoint'ten Başlanıyor...");
+  }
+
+  // --- 7. MİNİ MAP Mimarisi ---
+  function renderMinimap() {
+    mctx.clearRect(0, 0, 120, 120);
+    mctx.fillStyle = "#111"; mctx.fillRect(0, 0, 120, 120);
+    const cx = 60, cy = 60, scale = 0.8;
+
+    // Bal Lokasyonları
+    mctx.fillStyle = "#ffb300";
+    items.forEach(i => {
+      if (i.isHoney) {
+        const mx = cx + (i.position.x - px) * scale;
+        const my = cy + (i.position.z - pz) * scale;
+        mctx.beginPath(); mctx.arc(mx, my, 3, 0, Math.PI*2); mctx.fill();
+      }
+    });
+
+    // Oyuncu Pozisyonu
+    mctx.fillStyle = "#00d4ff";
+    mctx.beginPath(); mctx.arc(cx, cy, 5, 0, Math.PI*2); mctx.fill();
+  }
+
+  // --- 8. ANA OYUN DÖNGÜSÜ ---
+  let lastT = performance.now();
+  function animate(now) {
+    requestAnimationFrame(animate);
+    const dt = Math.min((now - lastT) / 1000, 0.1);
+    lastT = now;
+
+    if (state === "play") {
+      tWorld += dt;
+      updatePlayer(dt);
+      updateParticles(dt);
+      playMusicStep();
+      renderMinimap();
+
+      if (toastT > 0) {
+        toastT -= dt;
+        if (toastT <= 0) toastEl.textContent = "";
+      }
+
+      // HUD Güncelleme
+      hpEl.textContent = "❤️".repeat(Math.max(0, hp));
+      statsEl.textContent = `Bal ${honey}/${NEED} · Altın ${coins} · Skor ${score}`;
+
+      // Kamera Takibi & Ekran Sallanması (Camera Shake)
+      if (shake > 0) shake -= dt * 2;
+      const shakeX = (Math.random()-0.5)*Math.max(0, shake);
+      const shakeY = (Math.random()-0.5)*Math.max(0, shake);
+
+      const cd = 12;
+      camera.position.x = px + Math.sin(camYaw) * cd * Math.cos(camPitch) + shakeX;
+      camera.position.y = py + Math.sin(camPitch) * cd + 2 + shakeY;
+      camera.position.z = pz + Math.cos(camYaw) * cd * Math.cos(camPitch);
+      camera.lookAt(px, py + 1.2, pz);
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  // --- 9. BAŞLATMA ---
+  bear = createSigmaBear();
+  buildWorld();
+
+  document.getElementById("go").onclick = () => {
+    overlay.classList.add("hide");
+    state = "play";
+    if (ac && ac.state === "suspended") ac.resume();
+  };
+
+  requestAnimationFrame(animate);
+})();
+  </script>
+</body>
+</html>
