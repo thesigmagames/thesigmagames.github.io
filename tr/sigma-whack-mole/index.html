@@ -152,7 +152,7 @@
       position: absolute;
       bottom: 0;
       transform: translateY(100%);
-      transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       z-index: 2;
       display: flex;
       flex-direction: column;
@@ -356,11 +356,11 @@
       <!-- Overlay Screen -->
       <div id="overlay" class="overlay">
         <h1 id="overlayTitle">SIGMA WHACK-A-MOLE</h1>      
-        <div class="subtitle">(Köstebek Vurmaca)<b>The Sigma Games</div>
+        <div class="subtitle">(Köstebek Vurmaca)<br>The Sigma Games</div>
         <p id="overlayMsg">
           <b>⚡ Normal (Cyan):</b> +10 Puan<br>
           <b>👑 Golden (Sarı):</b> +30 Puan<br>
-          <b>💣 Bomba (Red):</b> Puanın -20 Azalır & Kombon Sıfırlanır
+          <b>💣 Bomba (Kırmızı):</b> Puanın -20 Azalır & Kombon Sıfırlanır
         </p>
         <button id="startBtn" class="btn-main">OYUNU BAŞLAT</button>
       </div>
@@ -469,8 +469,8 @@
 
       function createMoleMarkup(type) {
         let label = "SIGMA";
-        if (type === "gold") label = "GOLD";
-        if (type === "bomb") label = "BOMB";
+        if (type === "gold") label = "ALTIN";
+        if (type === "bomb") label = "BOMBA";
 
         return `
           <div class="mole-body">
@@ -486,12 +486,12 @@
         // Mole Type Probabilities: Standard 75%, Gold 15%, Bomb 10%
         const rand = Math.random();
         let type = 'standard';
-        if (rand > 0.85) type = 'bomb';
-        else if (rand > 0.70) type = 'gold';
+        if (rand > 0.75) type = 'bomb';
+        else if (rand > 0.60) type = 'gold';
 
         // Speed increases as time decreases
-        const speedFactor = Math.max(0.4, timeLeft / 30);
-        const time = randomTime(500 * speedFactor, 900 * speedFactor);
+        const speedFactor = Math.max(0.55, timeLeft / 30);
+        const time = randomTime(700 * speedFactor, 1100 * speedFactor);
 
         const hole = randomHole(holes);
         const mole = hole.querySelector('.mole');
