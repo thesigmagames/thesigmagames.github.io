@@ -152,7 +152,7 @@
       position: absolute;
       bottom: 0;
       transform: translateY(100%);
-      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       z-index: 2;
       display: flex;
       flex-direction: column;
@@ -490,8 +490,8 @@
         else if (rand > 0.70) type = 'gold';
 
         // Speed increases as time decreases
-        const speedFactor = Math.max(0.5, timeLeft / 30);
-        const time = randomTime(600 * speedFactor, 1100 * speedFactor);
+        const speedFactor = Math.max(0.55, timeLeft / 30);
+        const time = randomTime(700 * speedFactor, 1100 * speedFactor);
 
         const hole = randomHole(holes);
         const mole = hole.querySelector('.mole');
