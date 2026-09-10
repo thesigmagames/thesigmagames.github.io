@@ -34,7 +34,7 @@
     .danger { background: #5a1a3a; }
     .news {
       background: #1a1633; border: 1px solid #3b3166; border-radius: 12px;
-      padding: 8px 12px; color: var(--muted); font-size: .85rem; margin-bottom: 12px;
+      padding: 8px 12px; color: var(--muted); font-size: .85rem; margin-top: 16px;
     }
     .scorebox { text-align: center; margin: 10px 0 14px; }
     #score { font-size: 2.2rem; font-weight: 900; }
@@ -95,8 +95,6 @@
       </div>
     </header>
 
-    <div class="news" id="news">Yükleniyor...</div>
-
     <div class="scorebox">
       <div id="score">0</div>
       <div class="meta">
@@ -120,6 +118,9 @@
       <button class="tab" data-tab="ach">Başarım</button>
     </div>
     <div class="panel" id="panel"></div>
+
+    <!-- Haber Bandı En Alta Taşındı -->
+    <div class="news" id="news">Yükleniyor...</div>
   </div>
 
   <div class="popup" id="popup"></div>
@@ -133,6 +134,7 @@
       </div>
     </div>
   </div>
+
 <script>
     const SAVE = "sitwmi-clicker-ultra";
     const OLD = "sitwmi-clicker";
@@ -499,6 +501,5 @@
     newsEl.textContent = newsLines[0];
     tick();
 </script>
-</style>
 </body>
 </html>
