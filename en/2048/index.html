@@ -2,39 +2,900 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIGMA 2048</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0f19">
+    <title>SİGMA 2048 - Lion Masterpiece Edition</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="en2048icon.png">
+    <!-- Fontlar -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* === THE SIGMA GAMES - MASTERPIECE ENGINE V4 === */
+        :root {
+            --bg-color: #0b0f19;
+            --panel-bg: rgba(30, 41, 59, 0.75);
+            --neon-blue: #00f5d4;
+            --neon-purple: #7209b7;
+            --neon-pink: #f72585;
+            --neon-yellow: #ffee32;
+            --text-main: #f8fafc;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Rajdhani', sans-serif;
+            min-height: 100vh;
+            display: flex; justify-content: center; align-items: flex-start;
+            padding-top: 4vh; padding-bottom: 5vh;
+            overflow-x: hidden; overflow-y: auto; 
+            perspective: 1000px;
+        }
+        
+        /* Arka Planda Uçuşan Renkli Işık Topları */
+        #orb-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -2; pointer-events: none; overflow: hidden; }
+        .bg-orb {
+            position: absolute; border-radius: 50%; filter: blur(30px); opacity: 0.35;
+            animation: orbFloat linear infinite;
+        }
+        @keyframes orbFloat {
+            0% { transform: translateY(110vh) scale(0.8); opacity: 0; }
+            15% { opacity: 0.5; }
+            85% { opacity: 0.5; }
+            100% { transform: translateY(-30vh) scale(1.4); opacity: 0; }
+        }
+
+        /* Ana Konteyner */
+        .sigma-container {
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
+            padding: 20px; width: 100%; max-width: 540px; z-index: 1;
+            transition: filter 0.4s ease;
+        }
+        .blurred { filter: blur(15px); pointer-events: none; }
+
+        /* Başlık, Neon Parlama ve Skor */
+        .sigma-header { width: 100%; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .sigma-brand { display: flex; flex-direction: column; }
+        .sigma-badge { font-size: 0.75rem; color: var(--neon-blue); letter-spacing: 2px; font-weight: 700; }
+        
+        /* HYPER NEON SİGMA 2048 YAZISI */
+        .sigma-title { 
+            font-family: 'Orbitron', sans-serif; font-size: 2.6rem; font-weight: 900;
+            background: linear-gradient(135deg, #00f5d4, #f72585, #ffee32, #4895ef);
+            background-size: 300% auto;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            letter-spacing: 2px;
+            animation: shineText 4s linear infinite, pulseGlow 1.8s infinite alternate;
+        }
+        @keyframes shineText { to { background-position: 300% center; } }
+        @keyframes pulseGlow { 
+            0% { filter: drop-shadow(0 0 8px rgba(0,245,212,0.6)); }
+            100% { filter: drop-shadow(0 0 22px rgba(247,37,133,0.9)); }
+        }
+        
+        .sigma-score-board { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+        .sigma-score-card {
+            background: var(--panel-bg); border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 6px 12px; border-radius: 12px; text-align: center; min-width: 80px;
+            backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        .sigma-score-card.highlight { border-color: rgba(0, 245, 212, 0.4); box-shadow: 0 0 15px rgba(0, 245, 212, 0.2); }
+        .sigma-score-card.timer { border-color: rgba(247, 37, 133, 0.4); }
+        
+        .card-label { font-size: 0.7rem; color: #94a3b8; font-weight: 700; letter-spacing: 1px; display: block; }
+        .card-value { font-size: 1.3rem; font-weight: 800; color: #fff; font-family: 'Orbitron', sans-serif; }
+        .timer-value { font-size: 1.15rem; color: var(--neon-pink); }
+        
+        .score-anim { animation: scorePop 0.3s ease-out; color: var(--neon-blue) !important; }
+        @keyframes scorePop { 50% { transform: scale(1.3); } }
+
+        /* Kontroller */
+        .sigma-controls-bar { width: 100%; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+        .sigma-btn {
+            flex: 1; background: var(--panel-bg); color: #fff; border: 1px solid rgba(255,255,255,0.1);
+            padding: 10px; border-radius: 10px; font-family: 'Rajdhani', sans-serif; font-size: 0.95rem;
+            font-weight: 700; cursor: pointer; transition: all 0.2s ease;
+            display: flex; align-items: center; justify-content: center; gap: 4px; backdrop-filter: blur(5px);
+        }
+        .sigma-btn:hover, .sigma-btn:focus-visible {
+            background: var(--neon-blue); color: #000; box-shadow: 0 0 15px rgba(0,245,212,0.5); transform: translateY(-2px); outline: none;
+        }
+        .sigma-btn.danger:hover, .sigma-btn.danger:focus-visible {
+            background: var(--neon-pink); color: #fff; box-shadow: 0 0 15px rgba(247,37,133,0.5);
+        }
+        .sigma-btn.disabled { opacity: 0.4; pointer-events: none; background: #222; color: #666; border-color: #111; }
+
+        /* Canvas Sahnesi */
+        .sigma-stage-wrapper {
+            position: relative; border-radius: 16px; padding: 12px;
+            background: rgba(15, 23, 42, 0.85); border: 2px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 0 30px rgba(0,0,0,0.5);
+            touch-action: none;
+        }
+        #sigma-canvas { display: block; border-radius: 8px; cursor: crosshair; }
+
+        /* Floating Combo Yazar Metni */
+        .combo-popup {
+            position: absolute; font-family: 'Orbitron', sans-serif; font-weight: 900;
+            color: var(--neon-yellow); text-shadow: 0 0 10px var(--neon-yellow), 0 0 20px #ff0055;
+            pointer-events: none; animation: comboFloat 0.8s ease-out forwards; z-index: 10;
+        }
+        @keyframes comboFloat {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(0.6); }
+            50% { transform: translate(-50%, -80%) scale(1.3); }
+            100% { opacity: 0; transform: translate(-50%, -120%) scale(1); }
+        }
+
+        /* Modallar */
+        .sigma-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 15, 25, 0.92); backdrop-filter: blur(15px);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.4s ease, transform 0.4s ease;
+            z-index: 100; transform: scale(1.05);
+        }
+        .sigma-modal.active { opacity: 1; pointer-events: auto; transform: scale(1); }
+        .modal-content { text-align: center; max-width: 400px; padding: 30px; }
+        .modal-content h2 { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; margin-bottom: 10px; }
+        .modal-content p { font-size: 1.1rem; color: #cbd5e1; margin-bottom: 15px; }
+        
+        .cyan-text { color: var(--neon-blue); text-shadow: 0 0 15px rgba(0,245,212,0.5); }
+        .red-text { color: var(--neon-pink); text-shadow: 0 0 15px rgba(247,37,133,0.5); }
+        
+        .time-report { background: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; border: 1px solid var(--neon-blue); font-family: 'Orbitron'; font-size: 1.2rem; margin-bottom: 20px;}
+
+        .device-buttons { display: flex; flex-direction: column; gap: 15px; }
+        .device-btn {
+            background: linear-gradient(90deg, #1e293b, #0f172a); border: 2px solid var(--neon-blue); color: #fff;
+            padding: 15px 30px; border-radius: 12px; font-size: 1.2rem; font-weight: 700;
+            cursor: pointer; transition: 0.3s; box-shadow: 0 0 20px rgba(0,245,212,0.2); font-family: 'Orbitron', sans-serif;
+        }
+        .device-btn:hover { background: var(--neon-blue); color: #000; transform: scale(1.05); box-shadow: 0 0 30px rgba(0,245,212,0.6); }
+
+        .action-btn {
+            background: var(--neon-blue); color: #000; border: none; padding: 15px 40px; border-radius: 12px;
+            font-size: 1.2rem; font-weight: 800; cursor: pointer; transition: 0.3s; box-shadow: 0 0 20px rgba(0,245,212,0.4);
+            font-family: 'Orbitron', sans-serif; margin-top: 10px;
+        }
+        .action-btn.red { background: var(--neon-pink); color: #fff; box-shadow: 0 0 20px rgba(247,37,133,0.4); }
+        .action-btn:hover { transform: scale(1.1); }
+
+        .sigma-guide { text-align: center; margin-top: 10px; font-size: 0.9rem; color: #64748b; }
+        .device-mode-badge { display: inline-block; padding: 4px 10px; background: rgba(0,245,212,0.1); color: var(--neon-blue); border-radius: 20px; font-weight: bold; margin-bottom: 5px;}
+
+        @media (max-width: 480px) {
+            .sigma-title { font-size: 1.8rem; }
+            .card-value { font-size: 1.05rem; }
+            .sigma-btn { font-size: 0.8rem; padding: 8px 3px; }
+            .sigma-score-card { min-width: 65px; padding: 5px 6px; }
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>⚡ SIGMA 2048 ⚡</h1>
-        
-        <div class="game-info">
-            <p>← → ↑ ↓ or WASD - Move</p>
-            <p>Combine tiles to reach 2048!</p>
-        </div>
-        
-        <div class="stats">
-            <div class="stat-box">
-                <div class="label">SCORE</div>
-                <div class="value" id="score">0</div>
-            </div>
-            <div class="stat-box">
-                <div class="label">BEST</div>
-                <div class="value" id="best">0</div>
+
+    <div id="orb-container"></div>
+
+    <!-- CİHAZ SEÇİM EKRANI -->
+    <div id="sigma-device-modal" class="sigma-modal active">
+        <div class="modal-content">
+            <h2 class="cyan-text">SİGMA 2048</h2>
+            <p>Welcome to the Legendary Synthwave Edition! Select Your Device:</p>
+            <div class="device-buttons">
+                <button class="device-btn" onclick="initEngine('Mobile')">📱 MOBILE (Touch)</button>
+                <button class="device-btn" onclick="initEngine('PC')">💻 PC (Keyboard)</button>
+                <button class="device-btn" onclick="initEngine('TV')">📺 SMART TV (Remote)</button>
             </div>
         </div>
-        
-        <div id="gameBoard" class="game-board"></div>
-        
-        <button id="startBtn" class="btn">NEW GAME</button>
-        <button id="undoBtn" class="btn">UNDO</button>
-        
-        <br><br>
-        <a href="../" class="back-link">← Back</a>
     </div>
-    
-    <script src="game.js"></script>
+
+    <!-- DURAKLATILDI EKRANI -->
+    <div id="sigma-pause-modal" class="sigma-modal">
+        <div class="modal-content">
+            <h2 class="cyan-text">PAUSED</h2>
+            <p>Game is on hold.</p>
+            <button class="action-btn" onclick="gameEngine.togglePause()">RESUME</button>
+        </div>
+    </div>
+
+    <!-- OYUN BİTTİ EKRANI -->
+    <div id="sigma-gameover-modal" class="sigma-modal">
+        <div class="modal-content">
+            <h2 class="red-text">GAME OVER</h2>
+            <p>No moves left! Your score has been saved.</p>
+            <div class="time-report">⏳ Survival Time: <span id="go-time-display" class="cyan-text">00:00:00</span></div>
+            <button class="action-btn red" onclick="gameEngine.restart()">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <!-- ANA ARAYÜZ -->
+    <main class="sigma-container blurred" id="main-ui">
+        <header class="sigma-header">
+            <div class="sigma-brand">
+                <span class="sigma-badge">THE SIGMA GAMES</span>
+                <h1 class="sigma-title">SİGMA 2048</h1>
+            </div>
+            <div class="sigma-score-board">
+                <div class="sigma-score-card timer">
+                    <span class="card-label">TIME</span>
+                    <span class="card-value timer-value" id="ui-time">00:00:00</span>
+                </div>
+                <div class="sigma-score-card highlight">
+                    <span class="card-label">BEST</span>
+                    <span class="card-value" id="ui-best">0</span>
+                </div>
+                <div class="sigma-score-card">
+                    <span class="card-label">SCORE</span>
+                    <span class="card-value" id="ui-score">0</span>
+                </div>
+            </div>
+        </header>
+
+        <nav class="sigma-controls-bar">
+            <button class="sigma-btn" onclick="gameEngine.restart()">🔄 Restart</button>
+            <button class="sigma-btn" onclick="gameEngine.undo()" id="btn-undo">↩️ Undo (5)</button>
+            <button class="sigma-btn" onclick="audioEngine.toggleSFX()" id="btn-sfx">🔊 SFX: ON</button>
+            <button class="sigma-btn" onclick="audioEngine.toggleMusic()" id="btn-music">🎵 Beat: ON</button>
+            <button class="sigma-btn danger" onclick="gameEngine.togglePause()">⏸️ Pause</button>
+        </nav>
+
+        <section class="sigma-stage-wrapper" id="canvas-wrapper">
+            <canvas id="sigma-canvas"></canvas>
+        </section>
+
+        <footer class="sigma-guide">
+            <div class="device-mode-badge" id="ui-device-mode">MODE: WAITING...</div>
+            <p id="ui-controls-hint">Loading controls...</p>
+        </footer>
+    </main>
+
+    <script>
+        /**
+         * THE SIGMA GAMES - SİGMA 2048 LION EDITION (V4 FULL ENGLISH)
+         */
+
+        function generateBackgroundOrbs() {
+            const container = document.getElementById('orb-container');
+            const colors = ['#00f5d4', '#7209b7', '#f72585', '#4895ef', '#ffee32'];
+            for(let i=0; i<14; i++) {
+                let orb = document.createElement('div');
+                orb.className = 'bg-orb';
+                orb.style.background = colors[i % colors.length];
+                let size = Math.random() * 90 + 40;
+                orb.style.width = size + 'px'; orb.style.height = size + 'px';
+                orb.style.left = Math.random() * 100 + 'vw';
+                orb.style.animationDuration = (Math.random() * 12 + 8) + 's';
+                orb.style.animationDelay = (Math.random() * 8) + 's';
+                container.appendChild(orb);
+            }
+        }
+        generateBackgroundOrbs();
+
+        class SigmaAudio {
+            constructor() {
+                this.ctx = null;
+                this.sfxEnabled = true;
+                this.musicEnabled = true;
+                this.musicPlaying = false;
+                this.beatStep = 0;
+                this.beatInterval = null;
+            }
+
+            initContext() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            }
+
+            playKick() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.frequency.setValueAtTime(140, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            playHiHat() {
+                if (!this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * 0.04;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 7000;
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
+
+                noise.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                noise.start();
+            }
+
+            playSnare() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const oscGain = this.ctx.createGain();
+                osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.1);
+                oscGain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                oscGain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(oscGain); oscGain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.1);
+                this.playHiHat();
+            }
+
+            playSynthNote(freq, duration = 0.2) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 1200;
+
+                osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + duration);
+            }
+
+            startMusic() {
+                if (!this.musicEnabled) return;
+                this.initContext();
+                this.musicPlaying = true;
+                const bassNotes = [65.41, 65.41, 73.42, 82.41, 65.41, 98.00, 82.41, 73.42];
+
+                this.beatInterval = setInterval(() => {
+                    if (!this.musicPlaying) return;
+                    const step = this.beatStep % 16;
+                    if (step === 0 || step === 8 || step === 10) this.playKick();
+                    if (step === 4 || step === 12) this.playSnare();
+                    if (step % 2 === 0) this.playHiHat();
+                    if (step % 2 === 0) {
+                        const note = bassNotes[(step / 2) % bassNotes.length];
+                        this.playSynthNote(note, 0.15);
+                    }
+                    this.beatStep++;
+                }, 120);
+            }
+
+            stopMusic() {
+                this.musicPlaying = false;
+                clearInterval(this.beatInterval);
+            }
+
+            toggleMusic() {
+                this.musicEnabled = !this.musicEnabled;
+                document.getElementById('btn-music').innerText = this.musicEnabled ? '🎵 Beat: ON' : '🎵 Beat: OFF';
+                if (this.musicEnabled && !this.musicPlaying) this.startMusic();
+                else this.stopMusic();
+            }
+
+            toggleSFX() {
+                this.sfxEnabled = !this.sfxEnabled;
+                document.getElementById('btn-sfx').innerText = this.sfxEnabled ? '🔊 SFX: ON' : '🔇 SFX: OFF';
+            }
+
+            playMove() {
+                if (!this.sfxEnabled) return; this.initContext();
+                const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(250, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(500, this.ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.08);
+            }
+
+            playMerge(val) {
+                if (!this.sfxEnabled) return; this.initContext();
+                const baseFreq = 220 * Math.pow(2, (Math.log2(val) - 1) / 4);
+                [baseFreq, baseFreq * 1.25, baseFreq * 1.5].forEach(f => {
+                    const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(f, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(); osc.stop(this.ctx.currentTime + 0.25);
+                });
+                if (val >= 64) this.playKick();
+            }
+
+            playGameOver() {
+                if (!this.sfxEnabled) return; this.initContext();
+                [300, 250, 200, 150, 100].forEach((f, i) => {
+                    setTimeout(() => this.playSynthNote(f, 0.2), i * 120);
+                });
+            }
+        }
+
+        class Shockwave {
+            constructor(x, y, color) {
+                this.x = x; this.y = y; this.color = color;
+                this.radius = 10; this.maxRadius = 55; this.alpha = 0.8;
+            }
+            update() { this.radius += 3.5; this.alpha -= 0.04; }
+            draw(ctx) {
+                if (this.alpha <= 0) return;
+                ctx.save(); ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.strokeStyle = this.color; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y; this.color = color;
+                const angle = Math.random() * Math.PI * 2; const speed = Math.random() * 6 + 2;
+                this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+                this.radius = Math.random() * 4 + 2; this.alpha = 1; this.decay = Math.random() * 0.03 + 0.02;
+            }
+            update() { this.x += this.vx; this.y += this.vy; this.alpha -= this.decay; }
+            draw(ctx) {
+                ctx.save(); ctx.globalAlpha = Math.max(0, this.alpha); ctx.fillStyle = this.color;
+                ctx.shadowColor = this.color; ctx.shadowBlur = 10;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+            }
+        }
+
+        class SigmaGame {
+            constructor() {
+                this.canvas = document.getElementById('sigma-canvas');
+                this.ctx = this.canvas.getContext('2d', { alpha: false });
+                this.gridSize = 4; this.gap = 12; this.padding = 12;
+                
+                this.particles = [];
+                this.shockwaves = [];
+                this.tiles = [];
+                this.tileIdCounter = 0;
+                this.grid = [];
+                this.history = [];
+                
+                this.score = 0;
+                this.bestScore = parseInt(localStorage.getItem('sigma2048_rekor')) || 0;
+                this.comboCount = 0;
+                
+                this.timeElapsed = 0;
+                this.timerInterval = null;
+                this.maxUndo = 5;
+                this.undoLeft = this.maxUndo;
+
+                this.isGameOver = false; this.isPaused = false; this.shake = 0;
+                
+                this.colors = {
+                    2: { bg: '#1e293b', text: '#94a3b8' }, 4: { bg: '#334155', text: '#cbd5e1' },
+                    8: { bg: '#0ea5e9', text: '#ffffff' }, 16: { bg: '#3b82f6', text: '#ffffff' },
+                    32: { bg: '#6366f1', text: '#ffffff' }, 64: { bg: '#8b5cf6', text: '#ffffff' },
+                    128: { bg: '#d946ef', text: '#ffffff' }, 256: { bg: '#ec4899', text: '#ffffff' },
+                    512: { bg: '#f43f5e', text: '#ffffff' }, 1024: { bg: '#f59e0b', text: '#ffffff' },
+                    2048: { bg: '#00f5d4', text: '#0b0f19' }, 4096: { bg: '#ff0055', text: '#ffffff' }
+                };
+
+                this.bindInputs();
+            }
+
+            startEngine(deviceType) {
+                document.getElementById('ui-device-mode').innerText = `MODE: SİGMA ${deviceType.toUpperCase()}`;
+                const hints = {
+                    'Mobile': 'Swipe on the screen to move tiles.',
+                    'PC': 'Use W-A-S-D or Arrow Keys on your keyboard.',
+                    'TV': 'Use Remote Arrow Keys and OK button.'
+                };
+                document.getElementById('ui-controls-hint').innerText = hints[deviceType];
+
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                this.restart();
+                this.loop();
+            }
+
+            resizeCanvas() {
+                const maxW = Math.min(window.innerWidth - 30, 500);
+                const size = maxW;
+                const dpr = window.devicePixelRatio || 1;
+                this.canvas.width = size * dpr; this.canvas.height = size * dpr;
+                this.canvas.style.width = size + 'px'; this.canvas.style.height = size + 'px';
+                this.ctx.scale(dpr, dpr);
+                this.canvasSize = size;
+                this.tileSize = (size - (this.padding * 2) - (this.gap * (this.gridSize - 1))) / this.gridSize;
+                
+                this.tiles.forEach(t => {
+                    let p = this.getPos(t.r, t.c);
+                    t.x = p.x; t.y = p.y; t.tx = p.x; t.ty = p.y;
+                });
+            }
+
+            formatTime(seconds) {
+                const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+                const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+                const s = (seconds % 60).toString().padStart(2, '0');
+                return `${h}:${m}:${s}`;
+            }
+
+            startTimer() {
+                clearInterval(this.timerInterval);
+                this.timerInterval = setInterval(() => {
+                    if (!this.isPaused && !this.isGameOver) {
+                        this.timeElapsed++;
+                        document.getElementById('ui-time').innerText = this.formatTime(this.timeElapsed);
+                    }
+                }, 1000);
+            }
+
+            restart() {
+                this.grid = Array(this.gridSize).fill().map(() => Array(this.gridSize).fill(null));
+                this.tiles = []; this.particles = []; this.shockwaves = []; this.history = [];
+                this.score = 0; this.comboCount = 0; this.isGameOver = false; this.isPaused = false;
+                
+                this.timeElapsed = 0;
+                document.getElementById('ui-time').innerText = "00:00:00";
+                this.startTimer();
+
+                this.undoLeft = this.maxUndo;
+                this.updateUndoUI();
+
+                document.getElementById('sigma-gameover-modal').classList.remove('active');
+                this.addTile(); this.addTile();
+                this.updateUI();
+            }
+
+            togglePause() {
+                if(this.isGameOver) return;
+                this.isPaused = !this.isPaused;
+                document.getElementById('sigma-pause-modal').classList.toggle('active', this.isPaused);
+                if (this.isPaused) audioEngine.stopMusic();
+                else if (audioEngine.musicEnabled) audioEngine.startMusic();
+            }
+
+            getPos(r, c) { 
+                return { 
+                    x: this.padding + c * (this.tileSize + this.gap), 
+                    y: this.padding + r * (this.tileSize + this.gap) 
+                }; 
+            }
+
+            addTile() {
+                let empty = [];
+                for(let r=0; r<this.gridSize; r++) 
+                    for(let c=0; c<this.gridSize; c++) 
+                        if(!this.grid[r][c]) empty.push({r,c});
+                
+                if(empty.length > 0) {
+                    let {r, c} = empty[Math.floor(Math.random() * empty.length)];
+                    let val = Math.random() < 0.9 ? 2 : 4;
+                    let pos = this.getPos(r, c);
+                    
+                    let tile = {
+                        id: ++this.tileIdCounter, val, r, c,
+                        x: pos.x, y: pos.y, tx: pos.x, ty: pos.y,
+                        scale: 0, tScale: 1, deleteFlag: false
+                    };
+                    
+                    this.grid[r][c] = tile;
+                    this.tiles.push(tile);
+                }
+            }
+
+            move(dir) {
+                if (this.isPaused || this.isGameOver) return;
+
+                let moved = false;
+                let scoreGained = 0;
+                let maxMerged = 0;
+
+                let gridState = this.grid.map(row => row.map(t => t ? {val: t.val} : null));
+                this.history.push({ gridState, score: this.score });
+                if(this.history.length > 5) this.history.shift();
+
+                let vector = { r: 0, c: 0 };
+                if (dir === 'UP') vector.r = -1;
+                else if (dir === 'DOWN') vector.r = 1;
+                else if (dir === 'LEFT') vector.c = -1;
+                else if (dir === 'RIGHT') vector.c = 1;
+
+                let rOrder = dir === 'DOWN' ? [3,2,1,0] : [0,1,2,3];
+                let cOrder = dir === 'RIGHT' ? [3,2,1,0] : [0,1,2,3];
+
+                this.tiles.forEach(t => t.merged = false);
+
+                rOrder.forEach(r => {
+                    cOrder.forEach(c => {
+                        let tile = this.grid[r][c];
+                        if (tile) {
+                            let nextR = r, nextC = c;
+
+                            while (true) {
+                                let testR = nextR + vector.r;
+                                let testC = nextC + vector.c;
+
+                                if (testR < 0 || testR >= 4 || testC < 0 || testC >= 4) break;
+
+                                let targetTile = this.grid[testR][testC];
+                                if (!targetTile) {
+                                    nextR = testR; nextC = testC;
+                                } else if (targetTile.val === tile.val && !targetTile.merged) {
+                                    nextR = testR; nextC = testC;
+                                    break;
+                                } else {
+                                    break;
+                                }
+                            }
+
+                            if (nextR !== r || nextC !== c) {
+                                moved = true;
+                                let targetTile = this.grid[nextR][nextC];
+
+                                this.grid[r][c] = null;
+
+                                if (targetTile && targetTile.val === tile.val) {
+                                    let mergedVal = tile.val * 2;
+                                    scoreGained += mergedVal;
+                                    if (mergedVal > maxMerged) maxMerged = mergedVal;
+
+                                    tile.tx = this.getPos(nextR, nextC).x;
+                                    tile.ty = this.getPos(nextR, nextC).y;
+                                    tile.deleteFlag = true;
+                                    targetTile.deleteFlag = true;
+
+                                    let newTile = {
+                                        id: ++this.tileIdCounter, val: mergedVal, r: nextR, c: nextC,
+                                        x: this.getPos(nextR, nextC).x, y: this.getPos(nextR, nextC).y,
+                                        tx: this.getPos(nextR, nextC).x, ty: this.getPos(nextR, nextC).y,
+                                        scale: 1.2, tScale: 1, merged: true
+                                    };
+
+                                    this.grid[nextR][nextC] = newTile;
+                                    this.tiles.push(newTile);
+
+                                    let pos = this.getPos(nextR, nextC);
+                                    let color = this.colors[mergedVal] ? this.colors[mergedVal].bg : '#fff';
+                                    
+                                    this.shockwaves.push(new Shockwave(pos.x + this.tileSize/2, pos.y + this.tileSize/2, color));
+                                    for(let p=0; p<12; p++) this.particles.push(new Particle(pos.x + this.tileSize/2, pos.y + this.tileSize/2, color));
+
+                                } else {
+                                    tile.r = nextR; tile.c = nextC;
+                                    let pos = this.getPos(nextR, nextC);
+                                    tile.tx = pos.x; tile.ty = pos.y;
+                                    this.grid[nextR][nextC] = tile;
+                                }
+                            }
+                        }
+                    });
+                });
+
+                if (moved) {
+                    if (maxMerged > 0) {
+                        this.comboCount++;
+                        let bonusScore = scoreGained * (this.comboCount > 1 ? this.comboCount : 1);
+                        this.score += bonusScore;
+                        
+                        audioEngine.playMerge(maxMerged);
+                        if(maxMerged >= 64) this.shake = Math.min(maxMerged / 32, 10);
+                        
+                        if(this.comboCount >= 2) this.showComboText(`${this.comboCount}x COMBO!`);
+                    } else {
+                        this.comboCount = 0;
+                        this.score += scoreGained;
+                        audioEngine.playMove();
+                    }
+
+                    if (this.score > this.bestScore) {
+                        this.bestScore = this.score;
+                        localStorage.setItem('sigma2048_rekor', this.bestScore);
+                    }
+
+                    this.addTile();
+                    this.updateUI(scoreGained > 0);
+
+                    if(this.checkOver()) {
+                        this.isGameOver = true; clearInterval(this.timerInterval);
+                        document.getElementById('go-time-display').innerText = this.formatTime(this.timeElapsed);
+                        audioEngine.playGameOver(); audioEngine.stopMusic();
+                        setTimeout(() => document.getElementById('sigma-gameover-modal').classList.add('active'), 800);
+                    }
+                } else {
+                    this.history.pop();
+                }
+            }
+
+            showComboText(text) {
+                const wrapper = document.getElementById('canvas-wrapper');
+                const el = document.createElement('div');
+                el.className = 'combo-popup';
+                el.innerText = text;
+                el.style.left = '50%'; el.style.top = '40%';
+                wrapper.appendChild(el);
+                setTimeout(() => el.remove(), 800);
+            }
+
+            updateUndoUI() {
+                const btn = document.getElementById('btn-undo');
+                btn.innerText = `↩️ Undo (${this.undoLeft})`;
+                if(this.undoLeft <= 0) btn.classList.add('disabled');
+                else btn.classList.remove('disabled');
+            }
+
+            undo() {
+                if (this.undoLeft <= 0 || this.history.length === 0 || this.isGameOver || this.isPaused) return;
+                
+                this.undoLeft--;
+                this.updateUndoUI();
+
+                const prev = this.history.pop();
+                this.grid = Array(this.gridSize).fill().map(() => Array(this.gridSize).fill(null));
+                this.tiles = [];
+
+                for(let r=0; r<4; r++) {
+                    for(let c=0; c<4; c++) {
+                        if(prev.gridState[r][c]) {
+                            let pos = this.getPos(r, c);
+                            let tile = {
+                                id: ++this.tileIdCounter, val: prev.gridState[r][c].val,
+                                r, c, x: pos.x, y: pos.y, tx: pos.x, ty: pos.y,
+                                scale: 1, tScale: 1
+                            };
+                            this.grid[r][c] = tile;
+                            this.tiles.push(tile);
+                        }
+                    }
+                }
+                this.score = prev.score;
+                this.updateUI();
+            }
+
+            checkOver() {
+                for(let r=0; r<this.gridSize; r++)
+                    for(let c=0; c<this.gridSize; c++) {
+                        if(!this.grid[r][c]) return false;
+                        let val = this.grid[r][c].val;
+                        if(c<3 && this.grid[r][c+1] && this.grid[r][c+1].val === val) return false;
+                        if(r<3 && this.grid[r+1][c] && this.grid[r+1][c].val === val) return false;
+                    }
+                return true;
+            }
+
+            updateUI(scored = false) {
+                const sEl = document.getElementById('ui-score');
+                sEl.innerText = this.score; document.getElementById('ui-best').innerText = this.bestScore;
+                if(scored) { sEl.classList.remove('score-anim'); void sEl.offsetWidth; sEl.classList.add('score-anim'); }
+            }
+
+            bindInputs() {
+                window.addEventListener('keydown', (e) => {
+                    const code = e.keyCode;
+                    if(code===38 || e.key==='w'|| e.key==='W') { e.preventDefault(); this.move('UP'); }
+                    else if(code===40 || e.key==='s'|| e.key==='S') { e.preventDefault(); this.move('DOWN'); }
+                    else if(code===37 || e.key==='a'|| e.key==='A') { e.preventDefault(); this.move('LEFT'); }
+                    else if(code===39 || e.key==='d'|| e.key==='D') { e.preventDefault(); this.move('RIGHT'); }
+                    else if(code===13 || code===29443 || e.key==='Enter') {
+                        e.preventDefault(); if(this.isGameOver) this.restart(); else this.togglePause();
+                    }
+                    else if(code===27 || code===10009 || code===461 || e.key==='Escape' || e.key==='Back') { e.preventDefault(); this.togglePause(); }
+                });
+
+                this.canvas.addEventListener('wheel', (e) => { e.preventDefault(); }, { passive: false });
+
+                let tsX = 0, tsY = 0;
+                this.canvas.addEventListener('touchstart', (e) => { 
+                    tsX = e.touches[0].clientX; tsY = e.touches[0].clientY; 
+                }, {passive:false});
+                
+                this.canvas.addEventListener('touchmove', (e) => e.preventDefault(), {passive:false});
+                
+                this.canvas.addEventListener('touchend', (e) => {
+                    if(!tsX || !tsY) return;
+                    let dx = e.changedTouches[0].clientX - tsX;
+                    let dy = e.changedTouches[0].clientY - tsY;
+                    if(Math.max(Math.abs(dx), Math.abs(dy)) > 25) {
+                        if(Math.abs(dx) > Math.abs(dy)) this.move(dx > 0 ? 'RIGHT' : 'LEFT');
+                        else this.move(dy > 0 ? 'DOWN' : 'UP');
+                    }
+                    tsX = 0; tsY = 0;
+                }, {passive:false});
+            }
+
+            drawRoundedRect(x, y, w, h, r) {
+                this.ctx.beginPath(); this.ctx.moveTo(x+r, y); this.ctx.lineTo(x+w-r, y);
+                this.ctx.quadraticCurveTo(x+w, y, x+w, y+r); this.ctx.lineTo(x+w, y+h-r);
+                this.ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h); this.ctx.lineTo(x+r, y+h);
+                this.ctx.quadraticCurveTo(x, y+h, x, y+h-r); this.ctx.lineTo(x, y+r);
+                this.ctx.quadraticCurveTo(x, y, x+r, y); this.ctx.closePath(); this.ctx.fill();
+            }
+
+            loop() {
+                requestAnimationFrame(() => this.loop());
+                if(this.isPaused) return;
+
+                this.tiles.forEach(t => {
+                    t.x += (t.tx - t.x) * 0.35;
+                    t.y += (t.ty - t.y) * 0.35;
+                    t.scale += (t.tScale - t.scale) * 0.25;
+
+                    if (t.deleteFlag && Math.abs(t.x - t.tx) < 1 && Math.abs(t.y - t.ty) < 1) {
+                        t.readyToDelete = true;
+                    }
+                });
+
+                this.tiles = this.tiles.filter(t => !t.readyToDelete);
+
+                this.particles.forEach(p => p.update());
+                this.particles = this.particles.filter(p => p.alpha > 0);
+
+                this.shockwaves.forEach(sw => sw.update());
+                this.shockwaves = this.shockwaves.filter(sw => sw.alpha > 0);
+
+                if(this.shake > 0) this.shake -= 0.5;
+
+                this.ctx.save();
+                this.ctx.fillStyle = '#0b0f19'; this.ctx.fillRect(0, 0, this.canvasSize, this.canvasSize);
+
+                if(this.shake > 0) this.ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+
+                this.ctx.fillStyle = '#1e293b';
+                for(let r=0; r<this.gridSize; r++) {
+                    for(let c=0; c<this.gridSize; c++) {
+                        let p = this.getPos(r, c); this.drawRoundedRect(p.x, p.y, this.tileSize, this.tileSize, 12);
+                    }
+                }
+
+                this.tiles.forEach(t => {
+                    let col = this.colors[t.val] || { bg: '#222', text: '#fff' };
+                    let cx = t.x + this.tileSize/2, cy = t.y + this.tileSize/2;
+                    
+                    this.ctx.save();
+                    this.ctx.translate(cx, cy); this.ctx.scale(t.scale, t.scale); this.ctx.translate(-cx, -cy);
+                    
+                    this.ctx.fillStyle = col.bg;
+                    if(t.val >= 128) { this.ctx.shadowColor = col.bg; this.ctx.shadowBlur = 15; }
+                    this.drawRoundedRect(t.x, t.y, this.tileSize, this.tileSize, 12);
+                    this.ctx.shadowBlur = 0; 
+                    
+                    this.ctx.fillStyle = col.text;
+                    this.ctx.font = `900 ${t.val > 512 ? this.tileSize*0.35 : this.tileSize*0.45}px 'Orbitron'`;
+                    this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle';
+                    this.ctx.fillText(t.val, cx, cy + 2);
+                    
+                    this.ctx.restore();
+                });
+
+                this.shockwaves.forEach(sw => sw.draw(this.ctx));
+                this.particles.forEach(p => p.draw(this.ctx));
+                this.ctx.restore();
+            }
+        }
+
+        const audioEngine = new SigmaAudio(); 
+        const gameEngine = new SigmaGame();
+
+        function initEngine(deviceType) {
+            document.getElementById('sigma-device-modal').classList.remove('active');
+            document.getElementById('main-ui').classList.remove('blurred');
+            
+            audioEngine.initContext(); audioEngine.startMusic();
+            gameEngine.startEngine(deviceType);
+        }
+    </script>
 </body>
 </html>
