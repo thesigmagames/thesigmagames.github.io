@@ -3,624 +3,711 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Sigma Bear Adventure</title>
+<title>Ultra Sigma Bear 2D</title>
 <style>
-  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #07060c; font-family: system-ui, sans-serif; color: #fff; }
-  canvas#c { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
-  #back { position: fixed; top: 16px; left: 14px; z-index: 6; color: #fff; text-decoration: none; opacity: .8; font-weight: 700; font-size: 14px; }
-  #hud { position: fixed; top: 12px; left: 0; right: 0; text-align: center; pointer-events: none; z-index: 5; }
-  #hp { font-size: 20px; letter-spacing: 3px; }
-  #stats { font-size: 18px; font-weight: 800; text-shadow: 0 4px 16px #000; margin-top: 4px; }
-  #toast { min-height: 22px; color: #ffe14d; font-weight: 700; margin-top: 6px; text-shadow: 0 2px 10px #000; }
-  #muteBtn { position: fixed; top: 12px; right: 12px; z-index: 6; border: 0; border-radius: 10px; padding: 8px 12px; background: #fff2; color: #fff; font-weight: 700; cursor: pointer; }
-  #mini { position: fixed; right: 12px; bottom: 12px; width: 120px; height: 120px; border-radius: 12px; opacity: .85; z-index: 5; pointer-events: none; border: 1px solid #fff3; background: #0008; }
-  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,4,12,.78); text-align: center; padding: 24px; z-index: 8; }
-  #overlay.hide { display: none; }
-  h1 { font-size: clamp(28px, 7vw, 54px); margin: 0; letter-spacing: 3px; }
-  .tag { color: #00d4ff; font-weight: 800; letter-spacing: 6px; margin: 6px 0 14px; }
-  .sub { opacity: .8; line-height: 1.55; margin: 0 0 22px; max-width: 520px; }
-  button.cta { border: 0; border-radius: 14px; padding: 14px 32px; font-size: 18px; font-weight: 800; cursor: pointer; background: linear-gradient(90deg, #00d4ff, #ff3cac); color: #fff; }
-  #mobile { display: none; position: fixed; inset: 0; z-index: 7; pointer-events: none; }
-  #stick, #jbtn, #sbtn, #abtn { pointer-events: auto; position: absolute; }
-  #stick { left: 22px; bottom: 28px; width: 118px; height: 118px; border-radius: 50%; background: #fff2; border: 2px solid #fff4; }
-  #knob { position: absolute; left: 39px; top: 39px; width: 40px; height: 40px; border-radius: 50%; background: #fff; }
-  #jbtn, #sbtn, #abtn { right: 22px; width: 70px; height: 70px; border-radius: 50%; border: 0; color: #fff; font-weight: 800; background: #ff3caccc; }
-  #jbtn { bottom: 28px; }
-  #abtn { right: 100px; bottom: 28px; background: #ffe14dcc; color: #000; font-size: 11px; }
-  #sbtn { right: 22px; bottom: 108px; width: 58px; height: 58px; background: #00d4ffcc; font-size: 11px; }
-  @media (pointer: coarse) { #mobile { display: block; } #mini { bottom: 180px; } }
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; font-family: 'Courier New', Courier, monospace; }
+  body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #111; color: #fff; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+  
+  /* Arayüz Katmanları */
+  #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+  .hud { position: absolute; padding: 10px; text-shadow: 2px 2px 0 #000; font-weight: bold; font-size: 20px; }
+  #hp-bar { top: 10px; left: 10px; color: #ff3366; }
+  #score-bar { top: 10px; right: 10px; color: #ffcc00; }
+  #level-text { top: 40px; right: 10px; color: #00d4ff; font-size: 16px; }
+  
+  /* Menüler */
+  .menu-screen { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; z-index: 20; }
+  h1 { color: #00d4ff; font-size: 50px; text-shadow: 4px 4px 0 #ff3cac; margin-bottom: 5px; text-align: center; }
+  h3 { color: #fff; margin-bottom: 30px; letter-spacing: 2px; }
+  button { background: linear-gradient(90deg, #ff3cac, #00d4ff); border: 2px solid #fff; color: white; padding: 15px 40px; font-size: 20px; font-weight: bold; border-radius: 10px; margin: 10px; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 0 #fff; transition: 0.1s; }
+  button:active { transform: translateY(4px); box-shadow: 0 0px 0 #fff; }
+  .small-btn { padding: 10px 20px; font-size: 14px; background: #333; }
+  
+  /* Diyalog Kutusu */
+  #dialog-box { position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%); width: 80%; max-width: 600px; background: rgba(20,20,40,0.95); border: 4px solid #00d4ff; border-radius: 10px; padding: 20px; font-size: 18px; line-height: 1.5; color: #fff; display: none; pointer-events: auto; z-index: 15; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+  #dialog-box span { color: #ffcc00; font-weight: bold; }
+  
+  /* Mobil Kontroller */
+  #mobile-controls { display: none; position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+  .btn-group { position: absolute; bottom: 20px; pointer-events: auto; display: flex; gap: 10px; }
+  .d-pad { left: 20px; }
+  .action-pad { right: 20px; }
+  .m-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.5); color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+  .m-btn:active { background: rgba(255,255,255,0.5); }
+  #btn-talk { position: absolute; bottom: 100px; right: 20px; background: #ffcc00; color: #000; border: none; display: none; font-size: 14px; border-radius: 10px; width: 80px; height: 40px; }
+  
+  @media (pointer: coarse) { #mobile-controls { display: block; } }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
-  <a id="back" href="#">← Menü</a>
-  <button id="muteBtn">🔊 Ses</button>
-  <canvas id="c"></canvas>
-  <canvas id="mini" width="120" height="120"></canvas>
-  <div id="hud">
-    <div id="hp">❤️❤️❤️</div>
-    <div id="stats">Bal 0/8 · Altın 0 · Skor 0</div>
-    <div id="toast">8 bal topla, kapıyı aç, Sigma Arıyı yen!</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="ui-layer">
+  <div id="hp-bar">❤️❤️❤️ (P1)</div>
+  <div id="score-bar">Altın: 0</div>
+  <div id="level-text">Bölüm: Tosbağa Köyü</div>
+  
+  <div id="dialog-box">
+    <span>Mümin Tosbağa:</span> <div id="dialog-text">Selamun Aleyküm yolcu!</div>
+    <button class="small-btn" id="close-dialog" style="margin-top:15px;">Devam Et (F)</button>
   </div>
-  <div id="mobile">
-    <div id="stick"><div id="knob"></div></div>
-    <button id="sbtn">KOŞ</button>
-    <button id="abtn">SALDIRI</button>
-    <button id="jbtn">ZİPLA</button>
+</div>
+
+<div id="mobile-controls">
+  <div class="btn-group d-pad">
+    <div class="m-btn" id="btn-l">◀</div>
+    <div class="m-btn" id="btn-r">▶</div>
   </div>
-  <div id="overlay">
-    <h1>SIGMA BEAR</h1>
-    <div class="tag">ULTRA ADVENTURE</div>
-    <p class="sub">WASD / Oklar: Hareket · SPACE: Zıpla (2x Çift Zıplama)<br>E: Döner Saldırı · S (Havada): Yere Çakılma (Ground Pound)<br>SHIFT: Koş · Fare Sürükle: Kamera · P: Duraklat · M: Ses<br>Buz kaydırır, lav yakar, trambolin fırlatır!</p>
-    <button class="cta" id="go">MACERA BAŞLASIN</button>
+  <button id="btn-talk" style="pointer-events: auto;">KONUŞ</button>
+  <div class="btn-group action-pad">
+    <div class="m-btn" id="btn-a" style="background: rgba(255,60,172,0.6);">A</div>
+    <div class="m-btn" id="btn-b" style="background: rgba(0,212,255,0.6);">B</div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-  <script>
-(() => {
-  if (typeof THREE === "undefined") {
-    document.getElementById("overlay").innerHTML = "<h1>3D YÜKLENEMEDİ</h1><p class='sub'>Three.js yüklenemedi. İnterneti kontrol edin.</p>";
+</div>
+
+<div id="main-menu" class="menu-screen">
+  <h1>ULTRA SIGMA BEAR</h1>
+  <h3>Yaratılanı Severiz Yaratandan Ötürü</h3>
+  <button onclick="startGame(1)">1 Oyuncu Başla</button>
+  <button onclick="startGame(2)">2 Oyuncu Başla</button>
+  <button class="small-btn" onclick="window.location.href='../'">← Geri Git</button>
+  <div style="margin-top:20px; color:#aaa; font-size:14px; text-align:center; max-width:600px;">
+    <b>P1:</b> WASD/Yön Tuşları ile hareket. Boşluk (Zıpla), K (Saldırı), F (Konuş).<br>
+    <b>P2:</b> IJKL ile hareket. O (Zıpla), U (Saldırı).<br>
+    <i>Taktik:</i> B+A (Zıpla + Saldırı) kombosu ile havada "Sigma Uçuşu" yap! Mor ballara dikkat, 3 saniye yavaşlatır! Duraklatmak için P.
+  </div>
+</div>
+
+<div id="pause-menu" class="menu-screen hidden">
+  <h1>DURAKLATILDI</h1>
+  <button onclick="togglePause()">Devam Et</button>
+  <button onclick="location.reload()">Ana Menü</button>
+</div>
+
+<script>
+// --- OYUN MOTORU & DEĞİŞKENLER ---
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+let W = canvas.width = window.innerWidth;
+let H = canvas.height = window.innerHeight;
+
+let gameState = "menu"; // menu, play, pause, dialog
+let players = [];
+let entities = [];
+let particles = [];
+let platforms = [];
+let score = 0;
+let camera = { x: 0, y: 0 };
+let currentLevelIdx = 0;
+let is2P = false;
+
+// UI Elementleri
+const uiHp = document.getElementById("hp-bar");
+const uiScore = document.getElementById("score-bar");
+const uiLevel = document.getElementById("level-text");
+const dialogBox = document.getElementById("dialog-box");
+const dialogText = document.getElementById("dialog-text");
+const btnTalk = document.getElementById("btn-talk");
+
+// Giriş Yönetimi
+const keys = {};
+window.addEventListener("keydown", e => { 
+  keys[e.code] = true; 
+  if(e.code === "KeyP" && gameState !== "menu") togglePause();
+  if(e.code === "KeyF" && gameState === "play") tryInteract();
+  if(e.code === "KeyF" && gameState === "dialog") closeDialog();
+});
+window.addEventListener("keyup", e => keys[e.code] = false);
+
+// Mobil Kontroller
+const mTouch = { l: false, r: false, a: false, b: false };
+const bindTouch = (id, key) => {
+  const el = document.getElementById(id);
+  el.addEventListener("touchstart", (e) => { e.preventDefault(); mTouch[key] = true; });
+  el.addEventListener("touchend", (e) => { e.preventDefault(); mTouch[key] = false; });
+};
+bindTouch("btn-l", "l"); bindTouch("btn-r", "r");
+bindTouch("btn-a", "a"); bindTouch("btn-b", "b"); // A=Saldırı, B=Zıplama
+btnTalk.addEventListener("touchstart", (e) => { e.preventDefault(); if(gameState === "play") tryInteract(); else closeDialog(); });
+document.getElementById("close-dialog").onclick = () => closeDialog();
+
+window.addEventListener("resize", () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; });
+
+// --- SES VE MÜZİK SİSTEMİ (Web Audio) ---
+let audioCtx;
+let beatTimer;
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  playDrumLoop();
+}
+
+function playSound(type) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  const now = audioCtx.currentTime;
+  
+  if (type === "jump") {
+    osc.type = "sine"; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.2);
+    gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+    osc.start(now); osc.stop(now + 0.2);
+  } else if (type === "dash") {
+    osc.type = "sawtooth"; osc.frequency.setValueAtTime(200, now); osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+    gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    osc.start(now); osc.stop(now + 0.3);
+  } else if (type === "hit") {
+    osc.type = "square"; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
+    gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+    osc.start(now); osc.stop(now + 0.2);
+  } else if (type === "coin") {
+    osc.type = "sine"; osc.frequency.setValueAtTime(1000, now); osc.frequency.setValueAtTime(1500, now + 0.1);
+    gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+    osc.start(now); osc.stop(now + 0.3);
+  }
+}
+
+function playDrumLoop() {
+  if(gameState !== "play") { setTimeout(playDrumLoop, 500); return; }
+  const now = audioCtx.currentTime;
+  const beatLen = 0.3; // Hip-hop tempo
+  
+  // Kick
+  const kick = audioCtx.createOscillator(); const kGain = audioCtx.createGain();
+  kick.frequency.setValueAtTime(150, now); kick.frequency.exponentialRampToValueAtTime(0.01, now + 0.1);
+  kGain.gain.setValueAtTime(0.5, now); kGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+  kick.connect(kGain); kGain.connect(audioCtx.destination); kick.start(now); kick.stop(now + 0.1);
+  
+  // Hi-Hat
+  const hat = audioCtx.createBufferSource(); const hGain = audioCtx.createGain();
+  const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.05, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0); for(let i=0; i<data.length; i++) data[i] = Math.random() * 2 - 1;
+  hat.buffer = buffer; // white noise
+  hGain.gain.setValueAtTime(0.1, now + beatLen); hGain.gain.exponentialRampToValueAtTime(0.01, now + beatLen + 0.05);
+  // basit filtre
+  const filter = audioCtx.createBiquadFilter(); filter.type = "highpass"; filter.frequency.value = 5000;
+  hat.connect(filter); filter.connect(hGain); hGain.connect(audioCtx.destination); hat.start(now + beatLen);
+
+  setTimeout(playDrumLoop, beatLen * 2000); // 2 vuruşta bir döngü
+}
+
+// --- FİZİK VE SINIFLAR ---
+const GRAVITY = 0.6;
+const FRICTION = 0.85;
+
+class Sprite {
+  constructor(x, y, w, h) {
+    this.x = x; this.y = y; this.w = w; this.h = h;
+    this.vx = 0; this.vy = 0;
+    this.color = "white";
+  }
+  rect() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+  collide(other) {
+    return this.x < other.x + other.w && this.x + this.w > other.x &&
+           this.y < other.y + other.h && this.y + this.h > other.y;
+  }
+}
+
+class Player extends Sprite {
+  constructor(id, x, y) {
+    super(x, y, 40, 50);
+    this.id = id;
+    this.hp = 3;
+    this.color = id === 1 ? "#8B4513" : "#4682B4"; // Kahverengi (P1), Mavi (P2)
+    this.jumps = 2;
+    this.grounded = false;
+    this.dashTimer = 0;
+    this.invulnTimer = 0;
+    this.slowTimer = 0;
+    this.facingRight = true;
+    this.lastJumpTime = 0;
+    this.lastAttackTime = 0;
+  }
+  
+  update() {
+    if (this.hp <= 0) return;
+    if (this.invulnTimer > 0) this.invulnTimer--;
+    if (this.slowTimer > 0) this.slowTimer--;
+    if (this.dashTimer > 0) { this.dashTimer--; this.vy = 0; }
+
+    let speedCap = this.slowTimer > 0 ? 3 : 6;
+    let accel = currentLevels[currentLevelIdx].ice ? 0.2 : 0.8; // Kar vadisi kaygan
+    
+    // Girdiler
+    let left = false, right = false, jump = false, attack = false;
+    if (this.id === 1) {
+      left = keys["KeyA"] || keys["ArrowLeft"] || mTouch.l;
+      right = keys["KeyD"] || keys["ArrowRight"] || mTouch.r;
+      jump = keys["Space"] || mTouch.b;
+      attack = keys["KeyK"] || mTouch.a;
+    } else {
+      left = keys["KeyJ"]; right = keys["KeyL"]; jump = keys["KeyO"]; attack = keys["KeyU"];
+    }
+
+    if (left) { this.vx -= accel; this.facingRight = false; }
+    if (right) { this.vx += accel; this.facingRight = true; }
+    
+    // Sürtünme ve Hız Sınırı
+    const fric = currentLevels[currentLevelIdx].ice && this.grounded ? 0.98 : FRICTION;
+    this.vx *= fric;
+    if (this.vx > speedCap && this.dashTimer <= 0) this.vx = speedCap;
+    if (this.vx < -speedCap && this.dashTimer <= 0) this.vx = -speedCap;
+
+    // B+A Kombosu (Sigma Dash / Uçuş)
+    let now = Date.now();
+    if (jump && !this.prevJump) this.lastJumpTime = now;
+    if (attack && !this.prevAttack) this.lastAttackTime = now;
+    
+    if (Math.abs(this.lastJumpTime - this.lastAttackTime) < 150 && this.dashTimer <= 0) {
+       this.dashTimer = 15; // 15 frame dash
+       this.vx = this.facingRight ? 15 : -15;
+       this.vy = 0;
+       playSound("dash");
+       spawnParticles(this.x+20, this.y+25, "#00d4ff", 10, "⭐");
+       this.lastJumpTime = 0; this.lastAttackTime = 0;
+    }
+
+    // Normal Zıplama
+    if (jump && !this.prevJump && this.jumps > 0 && this.dashTimer <= 0) {
+      this.vy = -12;
+      this.jumps--;
+      this.grounded = false;
+      playSound("jump");
+      spawnParticles(this.x+20, this.y+50, "#fff", 5);
+    }
+    
+    // Normal Saldırı
+    if (attack && !this.prevAttack && this.dashTimer <= 0) {
+      let atkBox = { x: this.facingRight ? this.x + 40 : this.x - 30, y: this.y, w: 30, h: 50 };
+      ctx.fillStyle = "rgba(255,255,255,0.5)"; // Debug veya görsel
+      entities.forEach((e, i) => {
+        if (e.isEnemy && checkAABB(atkBox, e)) {
+          e.hp--;
+          spawnParticles(e.x, e.y, "#ffcc00", 8, "💥");
+          playSound("hit");
+          if(e.hp <= 0) { entities.splice(i, 1); score += 50; }
+        }
+      });
+    }
+
+    this.prevJump = jump;
+    this.prevAttack = attack;
+
+    // Yerçekimi
+    if (this.dashTimer <= 0) this.vy += GRAVITY;
+    
+    // Pozisyon Güncelleme & Çarpışma
+    this.x += this.vx;
+    this.handleCollisions(true);
+    this.y += this.vy;
+    this.grounded = false;
+    this.handleCollisions(false);
+    
+    // Haritadan düşme
+    if(this.y > H + 500) this.takeDamage(1);
+  }
+
+  handleCollisions(isX) {
+    for (let p of platforms) {
+      if (this.collide(p)) {
+        if (p.isHazard) {
+          if (p.type === "purple_honey") {
+            this.slowTimer = 180; // 3 saniye (60fps)
+            spawnParticles(this.x, this.y+40, "#9c27b0", 2);
+          }
+          continue; // içinden geçilebilir ama etkiler
+        }
+        
+        if (isX) {
+          if (this.vx > 0) this.x = p.x - this.w;
+          else if (this.vx < 0) this.x = p.x + p.w;
+          this.vx = 0;
+        } else {
+          if (this.vy > 0) {
+            this.y = p.y - this.h;
+            this.vy = 0;
+            this.grounded = true;
+            this.jumps = 2; // Çift zıplama yenile
+          } else if (this.vy < 0) {
+            this.y = p.y + p.h;
+            this.vy = 0;
+          }
+        }
+      }
+    }
+  }
+
+  takeDamage(amount) {
+    if (this.invulnTimer > 0) return;
+    this.hp -= amount;
+    this.invulnTimer = 60;
+    this.vy = -8;
+    this.vx = this.facingRight ? -5 : 5;
+    playSound("hit");
+    spawnParticles(this.x+20, this.y+20, "#ff0000", 10, "💀");
+    if (this.hp <= 0) {
+      spawnParticles(this.x+20, this.y+20, "#fff", 30, "😭");
+    }
+  }
+
+  draw() {
+    if (this.hp <= 0 || (this.invulnTimer > 0 && Math.floor(Date.now() / 100) % 2 === 0)) return;
+    
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    if (!this.facingRight) { ctx.scale(-1, 1); ctx.translate(-this.w, 0); }
+    
+    // Ayı Gövdesi
+    ctx.fillStyle = this.color;
+    ctx.fillRect(0, 0, this.w, this.h);
+    
+    // Sigma Gözlük
+    ctx.fillStyle = "#000";
+    ctx.fillRect(20, 10, 25, 8); // Gözlük camı (ileriye taşar)
+    
+    // Ayı Kulakları
+    ctx.fillStyle = this.color;
+    ctx.fillRect(5, -10, 10, 10);
+    ctx.fillRect(25, -10, 10, 10);
+    
+    // Dash / Uçuş Efekti
+    if (this.dashTimer > 0) {
+      ctx.fillStyle = "rgba(0, 212, 255, 0.5)";
+      ctx.fillRect(-20, 10, 20, 30);
+    }
+    
+    // Mor bal (yavaşlama) efekti
+    if (this.slowTimer > 0) {
+      ctx.fillStyle = "rgba(156, 39, 176, 0.4)";
+      ctx.fillRect(0, 0, this.w, this.h);
+    }
+    
+    ctx.restore();
+  }
+}
+
+class Enemy extends Sprite {
+  constructor(type, x, y) {
+    super(x, y, 40, 40);
+    this.type = type;
+    this.isEnemy = true;
+    this.hp = type === 'rabbit' ? 5 : 1;
+    this.startX = x;
+    this.timer = 0;
+  }
+  update() {
+    this.timer += 0.05;
+    if (this.type === 'turtle') {
+      // Kötü Kaplumbağa (Yerde devriye)
+      this.vx = Math.sin(this.timer * 0.5) * 2;
+      this.vy += GRAVITY;
+      this.x += this.vx; this.y += this.vy;
+      for (let p of platforms) {
+        if (!p.isHazard && this.collide(p)) { 
+          if(this.vy > 0) { this.y = p.y - this.h; this.vy = 0; }
+        }
+      }
+    } else if (this.type === 'bee') {
+      // Gökyüzü Arısı (Uçuş)
+      this.y += Math.sin(this.timer) * 2;
+      this.x -= 1; // Sola doğru uçar
+      if (this.x < camera.x - 100) this.hp = 0; // Ekrandan çıkarsa öl
+    } else if (this.type === 'rabbit') {
+      // Deli Kare Tavşan (Zıplayarak gelir)
+      this.vx = -1.5;
+      if (Math.random() < 0.02 && this.vy === 0) this.vy = -15;
+      this.vy += GRAVITY;
+      this.x += this.vx; this.y += this.vy;
+      for (let p of platforms) {
+        if (!p.isHazard && this.collide(p)) { 
+          if(this.vy > 0) { this.y = p.y - this.h; this.vy = 0; }
+        }
+      }
+    }
+
+    // Oyunculara Hasar
+    players.forEach(pl => {
+      if (pl.hp > 0 && this.collide(pl)) pl.takeDamage(1);
+    });
+  }
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    if (this.type === 'turtle') {
+      ctx.fillStyle = "#2E8B57";
+      ctx.beginPath(); ctx.arc(20, 20, 20, Math.PI, 0); ctx.fill(); // Yarım daire kabuk
+    } else if (this.type === 'bee') {
+      ctx.fillStyle = "#FFD700"; ctx.fillRect(0, 10, 40, 20); // Gövde
+      ctx.fillStyle = "#000"; ctx.fillRect(10, 10, 10, 20); // Çizgi
+      ctx.fillStyle = "#fff"; ctx.fillRect(15, -5, 10, 15); // Kanat
+    } else if (this.type === 'rabbit') {
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 40, 40); // Kare Tavşan
+      ctx.fillStyle = "#ff0000"; ctx.fillRect(10, 10, 5, 5); ctx.fillRect(25, 10, 5, 5); // Deli Gözler
+      ctx.fillStyle = "#fff"; ctx.fillRect(5, -20, 10, 20); ctx.fillRect(25, -20, 10, 20); // Kulaklar
+    }
+    ctx.restore();
+  }
+}
+
+class NPC extends Sprite {
+  constructor(x, y, text) {
+    super(x, y, 40, 40);
+    this.text = text;
+    this.isNPC = true;
+  }
+  draw() {
+    ctx.fillStyle = "#4CAF50"; // Dost Tosbağa
+    ctx.beginPath(); ctx.arc(this.x + 20, this.y + 20, 20, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = "#FFCC00";
+    ctx.fillText("(!)", this.x + 10, this.y - 10);
+  }
+}
+
+class Item extends Sprite {
+  constructor(type, x, y) {
+    super(x, y, 20, 20);
+    this.type = type;
+  }
+  update() {
+    this.y += Math.sin(Date.now() * 0.005) * 0.5; // Dalgalanma
+    players.forEach(pl => {
+      if (pl.hp > 0 && this.collide(pl)) {
+        if (this.type === 'coin') { score += 10; playSound("coin"); spawnParticles(this.x, this.y, "#ffcc00", 5, "💎"); }
+        if (this.type === 'end') nextLevel();
+        this.hp = 0; // Silinmesi için flag
+      }
+    });
+  }
+  draw() {
+    if (this.type === 'coin') { ctx.fillStyle = "#FFD700"; ctx.beginPath(); ctx.arc(this.x+10, this.y+10, 10, 0, Math.PI*2); ctx.fill(); }
+    if (this.type === 'end') { ctx.fillStyle = "#00d4ff"; ctx.fillRect(this.x, this.y, 40, 80); ctx.fillText("KAPI", this.x, this.y-10); }
+  }
+}
+
+// --- BÖLÜMLER ---
+const currentLevels = [
+  { 
+    name: "Tosbağa Köyü", bg: "#87CEEB", ice: false, floor: "#8B4513", 
+    init: () => {
+      platforms = [
+        {x: 0, y: H-100, w: 1000, h: 100},
+        {x: 1200, y: H-100, w: 1500, h: 100},
+        {x: 500, y: H-250, w: 200, h: 30},
+        // Mor Bal Tuzağı
+        {x: 700, y: H-105, w: 300, h: 20, isHazard: true, type: "purple_honey", color: "rgba(156, 39, 176, 0.7)"}
+      ];
+      entities = [
+        new NPC(400, H-140, "Selamun Aleyküm yolcu. Sabır acıdır ama meyvesi tatlıdır. Şu ilerideki Mor Ballara dikkat et, insanı tembelleştirir, 3 saniye yavaşlatır! B+A kombosu (Zıpla+Saldırı) ile üzerinden uçabilirsin inşallah."),
+        new Enemy('turtle', 800, H-140),
+        new Enemy('bee', 900, H-300),
+        new Item('coin', 550, H-300),
+        new Item('end', 2500, H-180)
+      ];
+    }
+  },
+  { 
+    name: "Kar Vadisi", bg: "#B0E0E6", ice: true, floor: "#F0F8FF", 
+    init: () => {
+      platforms = [
+        {x: 0, y: H-100, w: 800, h: 100},
+        {x: 900, y: H-150, w: 400, h: 100},
+        {x: 1400, y: H-100, w: 1000, h: 100}
+      ];
+      entities = [
+        new Enemy('rabbit', 1200, H-200),
+        new Enemy('bee', 1000, H-300),
+        new Enemy('turtle', 1600, H-140),
+        new Item('coin', 1000, H-250),
+        new Item('end', 2300, H-180)
+      ];
+    }
+  },
+  { 
+    name: "Arımothep Çölü", bg: "#F4A460", ice: false, floor: "#DAA520", 
+    init: () => {
+      platforms = [
+        {x: 0, y: H-100, w: 2500, h: 100},
+        {x: 600, y: H-200, w: 150, h: 30},
+        {x: 900, y: H-300, w: 150, h: 30}
+      ];
+      entities = [
+        new Enemy('rabbit', 800, H-140),
+        new Enemy('rabbit', 1200, H-140),
+        new Enemy('bee', 700, H-400),
+        new Enemy('bee', 1100, H-350),
+        new NPC(300, H-140, "Burası sonun başlangıcı... Rabbim utandırmasın. Yaratılanı sevdik ama bu düşmanlar çok azıttı. Hepsini hakla!"),
+        new Item('end', 2400, H-180)
+      ];
+    }
+  }
+];
+
+// --- YARDIMCI FONKSİYONLAR ---
+function checkAABB(r1, r2) { return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y; }
+
+function spawnParticles(x, y, color, count, text="") {
+  for(let i=0; i<count; i++) {
+    particles.push({
+      x: x, y: y, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10 - 2,
+      life: 1.0, color: color, text: text
+    });
+  }
+}
+
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    let p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    p.vy += 0.2; // yerçekimi
+    p.life -= 0.02;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.globalAlpha = p.life;
+    if (p.text) {
+      ctx.font = "20px Arial"; ctx.fillText(p.text, p.x, p.y);
+    } else {
+      ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 6, 6);
+    }
+  });
+  ctx.globalAlpha = 1.0;
+}
+
+function tryInteract() {
+  if (gameState !== "play") return;
+  let p1 = players[0];
+  let npcFound = false;
+  entities.forEach(e => {
+    if (e.isNPC && Math.abs(e.x - p1.x) < 80) {
+      showDialog(e.text);
+      npcFound = true;
+    }
+  });
+}
+
+function showDialog(text) {
+  gameState = "dialog";
+  dialogText.innerText = text;
+  dialogBox.style.display = "block";
+}
+
+function closeDialog() {
+  dialogBox.style.display = "none";
+  gameState = "play";
+}
+
+// --- OYUN DÖNGÜSÜ ---
+function startGame(mode) {
+  initAudio();
+  document.getElementById("main-menu").classList.add("hidden");
+  is2P = (mode === 2);
+  currentLevelIdx = 0;
+  score = 0;
+  loadLevel();
+  gameState = "play";
+  loop();
+}
+
+function loadLevel() {
+  if (currentLevelIdx >= currentLevels.length) {
+    alert("Maşallah! Bütün levelleri geçtin! Efsanevi Sigma Bear oldun!");
+    location.reload();
     return;
   }
-  const canvas = document.getElementById("c");
-  const overlay = document.getElementById("overlay");
-  const hpEl = document.getElementById("hp");
-  const statsEl = document.getElementById("stats");
-  const toastEl = document.getElementById("toast");
-  const muteBtn = document.getElementById("muteBtn");
-  const mini = document.getElementById("mini");
-  const mctx = mini.getContext("2d");
-  const stick = document.getElementById("stick");
-  const knob = document.getElementById("knob");
-  const NEED = 8, SAVE = "sigma-bear-best";
+  let lvl = currentLevels[currentLevelIdx];
+  uiLevel.innerText = `Bölüm: ${lvl.name}`;
+  players = [new Player(1, 100, H - 200)];
+  if (is2P) players.push(new Player(2, 50, H - 200));
+  
+  particles = [];
+  lvl.init();
+}
 
-  let W = innerWidth, H = innerHeight, state = "menu", muted = false;
-  let px = 0, py = 1.2, pz = 10, vx = 0, vy = 0, vz = 0;
-  let camYaw = 0, camPitch = 0.2, hp = 3, honey = 0, coins = 0, score = 0, best = 0;
-  let grounded = false, jumps = 2, coyote = 0, jumpBuf = 0, inv = 0, toastT = 0;
-  let standOn = null, ice = false, facing = 0, bob = 0, squash = 1, shake = 0;
-  let cp = { x: 0, y: 1.2, z: 10 }, busy = false, tWorld = 0;
-  let joyX = 0, joyY = 0, sprintHold = false, dragging = false, lastMX = 0, lastMY = 0;
-  let isGroundPounding = false, isSpinning = 0;
-  const keys = {}, mats = {}, colliders = [], movers = [], items = [], bees = [], parts = [], cps = [], crates = [];
-  let bear, boss, gateC, starMesh, ac = null, musI = 0, musT = 0;
-  const achievements = new Set();
+function nextLevel() {
+  currentLevelIdx++;
+  playSound("jump");
+  loadLevel();
+}
 
-  try { best = parseInt(localStorage.getItem(SAVE) || "0", 10) || 0; } catch (e) {}
-
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
-  renderer.setSize(W, H);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x74c7ff);
-  scene.fog = new THREE.FogExp2(0x74c7ff, 0.008);
-  const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 400);
-  scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x3a2412, 0.75));
-  const sun = new THREE.DirectionalLight(0xfff3d2, 1.0);
-  sun.position.set(50, 90, 30);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -90, right: 90, top: 90, bottom: -90, far: 260 });
-  scene.add(sun);
-
-  function resize() {
-    W = innerWidth; H = innerHeight;
-    camera.aspect = W / H; camera.updateProjectionMatrix();
-    renderer.setSize(W, H);
+function togglePause() {
+  const pm = document.getElementById("pause-menu");
+  if (gameState === "play") {
+    gameState = "pause";
+    pm.classList.remove("hidden");
+  } else if (gameState === "pause") {
+    gameState = "play";
+    pm.classList.add("hidden");
+    loop(); // Döngüyü yeniden başlat
   }
-  addEventListener("resize", resize);
+}
 
-  function M(c) { return mats[c] || (mats[c] = new THREE.MeshLambertMaterial({ color: c })); }
-
-  // --- 1. SES VE MÜZİK SİSTEMİ (WEB AUDIO SYNTHESIZER) ---
-  function beep(f, d, v = 0.1, type = "sine") {
-    if (muted) return;
-    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
-    try {
-      const o = ac.createOscillator(), g = ac.createGain();
-      o.type = type; o.frequency.value = f;
-      g.gain.setValueAtTime(v, ac.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + d);
-      o.connect(g); g.connect(ac.destination);
-      o.start(); o.stop(ac.currentTime + d);
-    } catch(e){}
+function updateUI() {
+  let hpText = "❤️".repeat(Math.max(0, players[0].hp));
+  if(is2P) hpText += " | P2: " + "💙".repeat(Math.max(0, players[1].hp));
+  uiHp.innerText = hpText;
+  uiScore.innerText = `Altın: ${score}`;
+  
+  // Mobil "Konuş" butonu kontrolü
+  let nearNPC = entities.some(e => e.isNPC && Math.abs(e.x - players[0].x) < 80);
+  btnTalk.style.display = nearNPC ? "block" : "none";
+  
+  // Oyun Bitti mi?
+  let allDead = players.every(p => p.hp <= 0);
+  if(allDead && gameState === "play") {
+    setTimeout(() => { alert("Şehit düştün kardeşim... Tekrar dene inşallah!"); location.reload(); }, 1000);
+    gameState = "gameover";
   }
+}
 
-  function playMusicStep() {
-    if (muted || state !== "play") return;
-    musT++;
-    if (musT % 14 === 0) {
-      const notes = [261.63, 329.63, 392.00, 523.25, 440.00, 349.23, 392.00, 293.66];
-      const note = notes[(musI++) % notes.length];
-      beep(note, 0.12, 0.025, "triangle");
-      if (musI % 2 === 0) beep(note * 0.5, 0.18, 0.035, "sawtooth");
-    }
-  }
+function loop() {
+  if (gameState !== "play") return;
+  requestAnimationFrame(loop);
 
-  function showToast(text, duration = 3) {
-    toastEl.textContent = text;
-    toastT = duration;
-  }
+  // Update
+  players.forEach(p => p.update());
+  entities.forEach(e => e.update());
+  entities = entities.filter(e => e.hp !== 0); // Ölüleri temizle
+  updateParticles();
+  updateUI();
 
-  function grantAchievement(id, title) {
-    if (!achievements.has(id)) {
-      achievements.add(id);
-      showToast(`🏆 BAŞARIM KAZANILDIK: ${title}!`, 4);
-      beep(880, 0.1, 0.2); setTimeout(() => beep(1320, 0.3, 0.2), 100);
-    }
-  }
+  // Camera Follow (P1)
+  camera.x = players[0].x - W/2 + players[0].w/2;
+  if(camera.x < 0) camera.x = 0; // Sol sınırı geçme
 
-  // --- 2. MODEL TASARIMLARI (SIGMA BEAR & OBJE SİSTEMİ) ---
-  function createSigmaBear() {
-    const group = new THREE.Group();
-    // Gövde
-    const body = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 16), M(0x8B4513));
-    body.position.y = 0.7; body.castShadow = true; group.add(body);
-    // Kafa
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), M(0x8B4513));
-    head.position.set(0, 1.4, 0); head.castShadow = true; group.add(head);
-    // Ağız/Burun
-    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.25, 0.3), M(0xD2B48C));
-    snout.position.set(0, 1.35, 0.4); group.add(snout);
-    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.1), M(0x111111));
-    nose.position.set(0, 1.42, 0.56); group.add(nose);
-    // Kulaklar
-    const earL = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), M(0x8B4513));
-    earL.position.set(-0.35, 1.8, 0); group.add(earL);
-    const earR = earL.clone(); earR.position.x = 0.35; group.add(earR);
-    // SIGMA GÖZLÜK
-    const glasses = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.15, 0.1), M(0x050505));
-    glasses.position.set(0, 1.48, 0.42); group.add(glasses);
-    // KIRMIZI PELERİN
-    const cape = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.05), M(0xff0033));
-    cape.position.set(0, 0.8, -0.5); cape.rotation.x = 0.2; group.add(cape);
-    // Bacaklar & Kolları Canlandırma Pivotları
-    group.limbs = [];
-    [-0.3, 0.3].forEach(x => {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.5), M(0x5c2e0b));
-      leg.position.set(x, 0.25, 0); group.add(leg); group.limbs.push(leg);
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.5), M(0x8B4513));
-      arm.position.set(x * 1.8, 0.8, 0); group.add(arm); group.limbs.push(arm);
-    });
-    scene.add(group);
-    return group;
-  }
+  // Draw
+  let lvl = currentLevels[currentLevelIdx];
+  ctx.fillStyle = lvl.bg;
+  ctx.fillRect(0, 0, W, H);
 
-  function createBee(x, y, z) {
-    const g = new THREE.Group();
-    const b = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 12), M(0xffcc00));
-    b.scale.set(1, 1, 1.4); g.add(b);
-    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.41, 0.3), M(0x111111));
-    stripe.rotation.x = Math.PI / 2; g.add(stripe);
-    const w1 = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.3), M(0xffffff));
-    w1.position.set(0.4, 0.3, 0); g.add(w1);
-    const w2 = w1.clone(); w2.position.x = -0.4; g.add(w2);
-    g.position.set(x, y, z);
-    g.origin = { x, y, z };
-    g.wings = [w1, w2]; g.hp = 1;
-    scene.add(g); bees.push(g);
-  }
+  ctx.save();
+  ctx.translate(-camera.x, 0); // Sadece X ekseninde scroll
 
-  function createBoss(x, y, z) {
-    const g = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.SphereGeometry(1.6, 16, 16), M(0xffaa00));
-    body.scale.set(1, 1, 1.5); body.castShadow = true; g.add(body);
-    const crown = new THREE.Mesh(new THREE.ConeGeometry(0.8, 0.8, 5), M(0xffd700));
-    crown.position.set(0, 1.8, 0); g.add(crown);
-    g.position.set(x, y, z); g.hp = 5; g.maxHp = 5; g.targetY = y;
-    scene.add(g); boss = g;
-  }
-
-  function createCrate(x, y, z) {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), M(0xb5651d));
-    mesh.position.set(x, y + 0.75, z); mesh.castShadow = true; mesh.receiveShadow = true;
-    mesh.isCrate = true; scene.add(mesh); crates.push(mesh); colliders.push(mesh);
-  }
-
-  // --- 3. DÜNYA VE BÖLÜM TASARIMI ---
-  function buildWorld() {
-    // Ana Zemin (Çim)
-    const g = new THREE.Mesh(new THREE.BoxGeometry(160, 4, 160), M(0x4CAF50));
-    g.position.set(0, -2, 0); g.receiveShadow = true; scene.add(g); colliders.push(g);
-
-    // Başlangıç Platformları & Ağaçlar
-    for(let i=0; i<15; i++) {
-      const tx = (Math.random()-0.5)*120, tz = (Math.random()-0.5)*120;
-      if (Math.hypot(tx, tz) < 15) continue;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 4), M(0x5c2e0b));
-      trunk.position.set(tx, 2, tz); scene.add(trunk); colliders.push(trunk);
-      const leaves = new THREE.Mesh(new THREE.ConeGeometry(2.5, 5, 8), M(0x2E7D32));
-      leaves.position.set(tx, 5.5, tz); scene.add(leaves);
-    }
-
-    // BUZ BÖLGESİ
-    const iceP = new THREE.Mesh(new THREE.BoxGeometry(30, 2, 30), M(0x80deea));
-    iceP.position.set(-35, 1, -20); iceP.isIce = true; iceP.receiveShadow = true;
-    scene.add(iceP); colliders.push(iceP);
-
-    // LAV BÖLGESİ
-    const lavaP = new THREE.Mesh(new THREE.BoxGeometry(30, 1, 30), M(0xff3d00));
-    lavaP.position.set(35, 0.1, -20); lavaP.isLava = true; scene.add(lavaP);
-
-    // TRAMBOLİNLER (BOUNCE PADS)
-    const tramp = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 0.4, 16), M(0xff007f));
-    tramp.position.set(0, 0.2, -15); tramp.isTrampoline = true;
-    scene.add(tramp); colliders.push(tramp);
-
-    // HAREKETLİ PLATFORMLAR
-    const m1 = new THREE.Mesh(new THREE.BoxGeometry(6, 1, 6), M(0x9c27b0));
-    m1.position.set(-10, 4, -35); scene.add(m1); colliders.push(m1); movers.push({ m: m1, axis: 'x', range: 12, speed: 2, origin: -10 });
-
-    // BAL KANATLAR / TOPLANABİLİRLER
-    for(let i=0; i<NEED; i++) {
-      const angle = (i / NEED) * Math.PI * 2;
-      const h = new THREE.Mesh(new THREE.OctahedronGeometry(0.6), M(0xffb300));
-      h.position.set(Math.cos(angle)*35, 2.5 + (i%3), Math.sin(angle)*35);
-      h.isHoney = true; scene.add(h); items.push(h);
-    }
-
-    // ALTINLAR
-    for(let i=0; i<20; i++) {
-      const c = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.1, 12), M(0xffd700));
-      c.rotation.x = Math.PI/2; c.position.set((Math.random()-0.5)*80, 2, (Math.random()-0.5)*80);
-      c.isCoin = true; scene.add(c); items.push(c);
-    }
-
-    // KUTULAR & DÜŞMAN ARILAR
-    createCrate(-5, 0, 5); createCrate(-5, 1.5, 5); createCrate(5, 0, 5);
-    createBee(-15, 3, -10); createBee(15, 3, -10); createBee(0, 3, -30);
-
-    // CHECKPOINT FLAGS
-    const flag = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4), M(0xcccccc));
-    flag.position.set(0, 2, -40); scene.add(flag); cps.push({ x: 0, y: 1.2, z: -40, mesh: flag });
-
-    // KAPI VE BOSS ARENASI
-    gateC = new THREE.Mesh(new THREE.BoxGeometry(10, 8, 1), M(0x333333));
-    gateC.position.set(0, 4, -60); scene.add(gateC); colliders.push(gateC);
-
-    // BOSS ARENA ZEMİNİ
-    const bossFloor = new THREE.Mesh(new THREE.CylinderGeometry(20, 20, 2, 32), M(0x424242));
-    bossFloor.position.set(0, -1, -85); scene.add(bossFloor); colliders.push(bossFloor);
-    createBoss(0, 5, -85);
-
-    // ZAFER YILDIZI
-    starMesh = new THREE.Mesh(new THREE.OctahedronGeometry(1.2), M(0xffff00));
-    starMesh.position.set(0, -20, -85); scene.add(starMesh);
-  }
-
-  // --- 4. PARTİKÜL SİSTEMİ ---
-  function spawnParticles(x, y, z, color, count = 12) {
-    for(let i=0; i<count; i++) {
-      const p = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.15), M(color));
-      p.position.set(x, y, z);
-      p.vx = (Math.random()-0.5)*8; p.vy = Math.random()*8; p.vz = (Math.random()-0.5)*8;
-      p.life = 0.5 + Math.random()*0.3; scene.add(p); parts.push(p);
-    }
-  }
-
-  function updateParticles(dt) {
-    for(let i=parts.length-1; i>=0; i--) {
-      const p = parts[i]; p.life -= dt;
-      p.position.x += p.vx*dt; p.position.y += p.vy*dt; p.position.z += p.vz*dt;
-      p.vy -= 18*dt;
-      if (p.life <= 0) { scene.remove(p); parts.splice(i, 1); }
-    }
-  }
-
-  // --- 5. KONTROLLER (PC & MOBİL) ---
-  addEventListener("keydown", e => {
-    keys[e.code] = true;
-    if (e.code === "Space") triggerJump();
-    if (e.code === "KeyE") triggerAttack();
-    if (e.code === "KeyS" && !grounded) triggerGroundPound();
-    if (e.code === "KeyP") state = state === "play" ? "pause" : "play";
-    if (e.code === "KeyM") { muted = !muted; muteBtn.textContent = muted ? "🔇 Sessiz" : "🔊 Ses"; }
-  });
-  addEventListener("keyup", e => keys[e.code] = false);
-
-  addEventListener("pointerdown", e => {
-    if (e.target.tagName === "CANVAS") { dragging = true; lastMX = e.clientX; lastMY = e.clientY; }
-  });
-  addEventListener("pointermove", e => {
-    if (dragging) {
-      camYaw -= (e.clientX - lastMX) * 0.005;
-      camPitch = Math.max(-0.2, Math.min(0.8, camPitch + (e.clientY - lastMY) * 0.004));
-      lastMX = e.clientX; lastMY = e.clientY;
+  // Platformlar
+  platforms.forEach(p => {
+    ctx.fillStyle = p.color || lvl.floor;
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    // Çim/Kar detayı
+    if(!p.isHazard) {
+      ctx.fillStyle = lvl.ice ? "#fff" : "#4CAF50";
+      ctx.fillRect(p.x, p.y, p.w, 10);
     }
   });
-  addEventListener("pointerup", () => dragging = false);
 
-  // Mobil Dokunmatik Joystick
-  stick.addEventListener("touchstart", e => e.stopPropagation());
-  stick.addEventListener("touchmove", e => {
-    e.preventDefault(); const t = e.touches[0], r = stick.getBoundingClientRect();
-    const dx = t.clientX - (r.left + 59), dy = t.clientY - (r.top + 59);
-    const len = Math.hypot(dx, dy), maxR = 40;
-    joyX = (dx / (len || 1)) * Math.min(len, maxR) / maxR;
-    joyY = (dy / (len || 1)) * Math.min(len, maxR) / maxR;
-    knob.style.transform = `translate(${joyX*30}px, ${joyY*30}px)`;
-  });
-  const resetJoy = () => { joyX = 0; joyY = 0; knob.style.transform = "none"; };
-  stick.addEventListener("touchend", resetJoy); stick.addEventListener("touchcancel", resetJoy);
+  // Entitiler
+  entities.forEach(e => e.draw());
+  players.forEach(p => p.draw());
+  drawParticles();
 
-  document.getElementById("jbtn").onclick = () => triggerJump();
-  document.getElementById("abtn").onclick = () => triggerAttack();
-  document.getElementById("sbtn").ontouchstart = () => sprintHold = true;
-  document.getElementById("sbtn").ontouchend = () => sprintHold = false;
-  muteBtn.onclick = () => { muted = !muted; muteBtn.textContent = muted ? "🔇 Sessiz" : "🔊 Ses"; };
+  ctx.restore();
+}
 
-  function triggerJump() {
-    if (jumps > 0) {
-      vy = 12; jumps--; grounded = false; squash = 1.4;
-      beep(jumps === 1 ? 400 : 600, 0.15, 0.15);
-      spawnParticles(px, py-0.5, pz, 0xffffff, 6);
-      if (jumps === 0) grantAchievement("double_jump", "Hava Akrobatı");
-    }
-  }
-
-  function triggerAttack() {
-    if (isSpinning <= 0) {
-      isSpinning = 0.4; beep(300, 0.2, 0.2, "sawtooth");
-      grantAchievement("spin", "Sigma Kasırgası");
-    }
-  }
-
-  function triggerGroundPound() {
-    if (!grounded && !isGroundPounding) {
-      isGroundPounding = true; vy = -30;
-      beep(150, 0.3, 0.3, "square");
-      grantAchievement("pound", "Süper Balyoz");
-    }
-  }
-
-  // --- 6. FİZİK VE OYUN MANTIĞI ---
-  function updatePlayer(dt) {
-    if (inv > 0) inv -= dt;
-    if (isSpinning > 0) { isSpinning -= dt; bear.rotation.y += 25 * dt; }
-
-    // Girdi Analizi
-    let inputX = joyX, inputY = joyY;
-    if (keys["KeyA"] || keys["ArrowLeft"]) inputX = -1;
-    if (keys["KeyD"] || keys["ArrowRight"]) inputX = 1;
-    if (keys["KeyW"] || keys["ArrowUp"]) inputY = -1;
-    if (keys["KeyS"] || keys["ArrowDown"]) inputY = 1;
-
-    const speed = (keys["ShiftLeft"] || sprintHold ? 16 : 10) * (ice ? 1.2 : 1.0);
-    const moveLen = Math.hypot(inputX, inputY);
-
-    if (moveLen > 0.1) {
-      const angle = Math.atan2(inputX, -inputY) + camYaw;
-      const targetVx = Math.sin(angle) * speed;
-      const targetVz = Math.cos(angle) * speed;
-      const accel = ice ? 3 : 25;
-      vx += (targetVx - vx) * accel * dt;
-      vz += (targetVz - vz) * accel * dt;
-      facing = angle;
-    } else {
-      const fric = ice ? 1.5 : 20;
-      vx += (0 - vx) * fric * dt;
-      vz += (0 - vz) * fric * dt;
-    }
-
-    vy -= 32 * dt; // Yürütme yerçekimi
-    px += vx * dt; py += vy * dt; pz += vz * dt;
-
-    // Düşme Kontrolü
-    if (py < -15) {
-      hp--; inv = 1.5; shake = 0.5;
-      beep(100, 0.4, 0.3);
-      px = cp.x; py = cp.y + 2; pz = cp.z; vx = vy = vz = 0;
-      showToast("Checkpointe Dönüldü!");
-      if (hp <= 0) restartGame();
-    }
-
-    // Zemin Çarpışma Tespiti
-    grounded = false; ice = false;
-    colliders.forEach(c => {
-      const box = new THREE.Box3().setFromObject(c);
-      const playerBox = new THREE.Box3(new THREE.Vector3(px-0.5, py-0.7, pz-0.5), new THREE.Vector3(px+0.5, py+0.7, pz+0.5));
-
-      if (box.intersectsBox(playerBox)) {
-        if (c.isTrampoline) {
-          vy = 24; jumps = 2; beep(800, 0.25, 0.25);
-          spawnParticles(px, py, pz, 0xff007f, 15);
-          showToast("MÜKEMMEL TRAMBOLİN FIRLATMASI!");
-          return;
-        }
-        if (c.isCrate && (isGroundPounding || isSpinning > 0)) {
-          scene.remove(c); colliders.splice(colliders.indexOf(c), 1);
-          crates.splice(crates.indexOf(c), 1);
-          spawnParticles(c.position.x, c.position.y, c.position.z, 0xb5651d, 20);
-          beep(200, 0.2, 0.3); coins += 3; score += 150;
-          return;
-        }
-        // Normal Basma
-        if (vy < 0 && py > box.max.y - 0.4) {
-          py = box.max.y + 0.7; vy = 0; grounded = true; jumps = 2;
-          if (c.isIce) ice = true;
-          if (isGroundPounding) {
-            isGroundPounding = false; shake = 0.4;
-            spawnParticles(px, py-0.5, pz, 0xffffff, 25);
-            beep(120, 0.3, 0.4, "square");
-          }
-        }
-      }
-    });
-
-    // Hareketli Platformlar
-    movers.forEach(m => {
-      m.m.position[m.axis] = m.origin + Math.sin(tWorld * m.speed) * m.range;
-    });
-
-    // Toplanabilir Eşyalar
-    items.forEach((item, idx) => {
-      item.rotation.y += 2 * dt;
-      if (Math.hypot(px - item.position.x, py - item.position.y, pz - item.position.z) < 1.4) {
-        scene.remove(item); items.splice(idx, 1);
-        if (item.isHoney) {
-          honey++; score += 500; beep(900, 0.2, 0.2);
-          showToast(`Bal Toplandı! (${honey}/${NEED})`);
-          if (honey >= NEED) {
-            scene.remove(gateC); colliders.splice(colliders.indexOf(gateC), 1);
-            showToast("BÖLÜM KAPISI AÇILDI! BOSS ARENASINA GİT!");
-            grantAchievement("gate_open", "Sigma Kapı Kırıcı");
-          }
-        } else if (item.isCoin) {
-          coins++; score += 100; beep(1200, 0.1, 0.15);
-        }
-      }
-    });
-
-    // Checkpoint Kontrolü
-    cps.forEach(c => {
-      if (Math.hypot(px - c.x, pz - c.z) < 2.5) {
-        if (cp !== c) { cp = c; beep(1000, 0.3, 0.2); showToast("CHECKPOINT KAYDEDİLDİ!"); }
-      }
-    });
-
-    // Arı Düşman Yapay Zekası
-    bees.forEach((bee, idx) => {
-      bee.position.y = bee.origin.y + Math.sin(tWorld * 3) * 0.5;
-      bee.wings[0].rotation.z = Math.sin(tWorld * 20) * 0.5;
-      bee.wings[1].rotation.z = -Math.sin(tWorld * 20) * 0.5;
-
-      const dist = Math.hypot(px - bee.position.x, py - bee.position.y, pz - bee.position.z);
-      if (dist < 1.5) {
-        if (vy < 0 || isSpinning > 0 || isGroundPounding) {
-          scene.remove(bee); bees.splice(idx, 1);
-          spawnParticles(bee.position.x, bee.position.y, bee.position.z, 0xffcc00, 15);
-          vy = 12; score += 300; beep(500, 0.2, 0.2);
-          showToast("Arı Eza İle Yokedildi!");
-        } else if (inv <= 0) {
-          hp--; inv = 1.2; shake = 0.3; vy = 8;
-          beep(150, 0.3, 0.3); showToast("Hasar Aldın!");
-          if (hp <= 0) restartGame();
-        }
-      }
-    });
-
-    // Boss Mantığı
-    if (boss && boss.hp > 0) {
-      boss.position.y = 4 + Math.sin(tWorld * 2) * 1.5;
-      const bDist = Math.hypot(px - boss.position.x, py - boss.position.y, pz - boss.position.z);
-      if (bDist < 2.8) {
-        if ((vy < 0 && py > boss.position.y + 0.5) || isSpinning > 0 || isGroundPounding) {
-          boss.hp--; vy = 14; inv = 0.8; shake = 0.6;
-          spawnParticles(boss.position.x, boss.position.y, boss.position.z, 0xff0000, 30);
-          beep(200, 0.4, 0.4, "sawtooth");
-          showToast(`SIGMA BOSS HASAR ALDI! Kalan Can: ${boss.hp}`);
-          if (boss.hp <= 0) {
-            scene.remove(boss);
-            starMesh.position.set(0, 3, -85);
-            showToast("KAZANDIN! SIGMA YILDIZINI AL!");
-            grantAchievement("boss_slayer", "Kraliçe Katili Sigma");
-          }
-        } else if (inv <= 0) {
-          hp--; inv = 1.2; shake = 0.4; vy = 10;
-          beep(100, 0.3, 0.3); showToast("Boss Darbesi!");
-          if (hp <= 0) restartGame();
-        }
-      }
-    }
-
-    // Zafer Yıldızı
-    if (starMesh && Math.hypot(px - starMesh.position.x, py - starMesh.position.y, pz - starMesh.position.z) < 2) {
-      state = "win";
-      overlay.classList.remove("hide");
-      overlay.innerHTML = `<h1>ZAFER!</h1><p class='sub'>Tüm engelleri aştın, tam bir SIGMA oldun!<br>Skorun: ${score} · Toplanan Altın: ${coins}</p><button class='cta' onclick='location.reload()'>YENİDEN OYNA</button>`;
-    }
-
-    // Model Görsel Güncelleme
-    bear.position.set(px, py - 0.7, pz);
-    if (moveLen > 0.1 && isSpinning <= 0) bear.rotation.y = facing;
-
-    // Yürüme Animasyonları
-    bob += Math.hypot(vx, vz) * dt * 2;
-    if (bear.limbs) {
-      bear.limbs[0].rotation.x = Math.sin(bob * 5) * 0.6;
-      bear.limbs[1].rotation.x = -Math.sin(bob * 5) * 0.6;
-      bear.limbs[2].rotation.x = -Math.sin(bob * 5) * 0.6;
-      bear.limbs[3].rotation.x = Math.sin(bob * 5) * 0.6;
-    }
-  }
-
-  function restartGame() {
-    hp = 3; px = cp.x; py = cp.y + 1; pz = cp.z; vx = vy = vz = 0;
-    showToast("Canın Bitti! Checkpoint'ten Başlanıyor...");
-  }
-
-  // --- 7. MİNİ MAP Mimarisi ---
-  function renderMinimap() {
-    mctx.clearRect(0, 0, 120, 120);
-    mctx.fillStyle = "#111"; mctx.fillRect(0, 0, 120, 120);
-    const cx = 60, cy = 60, scale = 0.8;
-
-    // Bal Lokasyonları
-    mctx.fillStyle = "#ffb300";
-    items.forEach(i => {
-      if (i.isHoney) {
-        const mx = cx + (i.position.x - px) * scale;
-        const my = cy + (i.position.z - pz) * scale;
-        mctx.beginPath(); mctx.arc(mx, my, 3, 0, Math.PI*2); mctx.fill();
-      }
-    });
-
-    // Oyuncu Pozisyonu
-    mctx.fillStyle = "#00d4ff";
-    mctx.beginPath(); mctx.arc(cx, cy, 5, 0, Math.PI*2); mctx.fill();
-  }
-
-  // --- 8. ANA OYUN DÖNGÜSÜ ---
-  let lastT = performance.now();
-  function animate(now) {
-    requestAnimationFrame(animate);
-    const dt = Math.min((now - lastT) / 1000, 0.1);
-    lastT = now;
-
-    if (state === "play") {
-      tWorld += dt;
-      updatePlayer(dt);
-      updateParticles(dt);
-      playMusicStep();
-      renderMinimap();
-
-      if (toastT > 0) {
-        toastT -= dt;
-        if (toastT <= 0) toastEl.textContent = "";
-      }
-
-      // HUD Güncelleme
-      hpEl.textContent = "❤️".repeat(Math.max(0, hp));
-      statsEl.textContent = `Bal ${honey}/${NEED} · Altın ${coins} · Skor ${score}`;
-
-      // Kamera Takibi & Ekran Sallanması (Camera Shake)
-      if (shake > 0) shake -= dt * 2;
-      const shakeX = (Math.random()-0.5)*Math.max(0, shake);
-      const shakeY = (Math.random()-0.5)*Math.max(0, shake);
-
-      const cd = 12;
-      camera.position.x = px + Math.sin(camYaw) * cd * Math.cos(camPitch) + shakeX;
-      camera.position.y = py + Math.sin(camPitch) * cd + 2 + shakeY;
-      camera.position.z = pz + Math.cos(camYaw) * cd * Math.cos(camPitch);
-      camera.lookAt(px, py + 1.2, pz);
-    }
-
-    renderer.render(scene, camera);
-  }
-
-  // --- 9. BAŞLATMA ---
-  bear = createSigmaBear();
-  buildWorld();
-
-  document.getElementById("go").onclick = () => {
-    overlay.classList.add("hide");
-    state = "play";
-    if (ac && ac.state === "suspended") ac.resume();
-  };
-
-  requestAnimationFrame(animate);
-})();
-  </script>
+</script>
 </body>
 </html>
