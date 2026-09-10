@@ -2,39 +2,122 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIGMA 2048</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0f19">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>SİGMA 2048 • The Sigma Games</title>
+    
+    <!-- Modern Gaming Fontları -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>⚡ SIGMA 2048 ⚡</h1>
-        
-        <div class="game-info">
-            <p>← → ↑ ↓ veya WASD - Hareket</p>
-            <p>Karoları birleştirerek 2048'e ulaş!</p>
-        </div>
-        
-        <div class="stats">
-            <div class="stat-box">
-                <div class="label">PUAN</div>
-                <div class="value" id="score">0</div>
+
+    <!-- Arka Plan Neon Glow Efektleri -->
+    <div class="sigma-bg-glow glow-1"></div>
+    <div class="sigma-bg-glow glow-2"></div>
+
+    <main class="sigma-container">
+        <!-- Üst Başlık & Skor Paneli -->
+        <header class="sigma-header">
+            <div class="sigma-brand">
+                <span class="sigma-badge">THE SIGMA GAMES</span>
+                <h1 class="sigma-title">SİGMA 2048</h1>
             </div>
-            <div class="stat-box">
-                <div class="label">EN İYİ</div>
-                <div class="value" id="best">0</div>
+
+            <div class="sigma-score-board">
+                <div class="sigma-score-card">
+                    <span class="card-label">SKOR</span>
+                    <span class="card-value" id="sigma-score">0</span>
+                </div>
+                <div class="sigma-score-card highlight">
+                    <span class="card-label">REKOR</span>
+                    <span class="card-value" id="sigma-best">0</span>
+                </div>
             </div>
-        </div>
-        
-        <div id="gameBoard" class="game-board"></div>
-        
-        <button id="startBtn" class="btn">YENİ OYUN</button>
-        <button id="undoBtn" class="btn">GERİ AL</button>
-        
-        <br><br>
-        <a href="../../" class="back-link">← Geri Dön</a>
-    </div>
-    
+        </header>
+
+        <!-- Oyun İçi Aksiyon Butonları -->
+        <nav class="sigma-controls-bar">
+            <button class="sigma-btn" onclick="sigmaGame.restart()" title="Yeniden Başlat">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                <span>Yeniden</span>
+            </button>
+
+            <button class="sigma-btn" onclick="sigmaGame.undo()" title="Hamleyi Geri Al">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+                <span>Geri Al</span>
+            </button>
+
+            <button class="sigma-btn" onclick="sigmaGame.audio.toggleMusic()" title="Müzik Aç/Kapat">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                <span>Müzik</span>
+            </button>
+
+            <button class="sigma-btn danger" onclick="sigmaGame.togglePause()" title="Oyunu Duraklat">
+                <svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                <span>Duraklat</span>
+            </button>
+        </nav>
+
+        <!-- Canvas Oyun Sahnesi & Modal Katmanları -->
+        <section class="sigma-stage-wrapper">
+            <canvas id="sigma-2048-canvas"></canvas>
+
+            <!-- DURAKLATILDI OVERLAY MODAL -->
+            <div id="sigma-pause-overlay" class="sigma-modal">
+                <div class="modal-content">
+                    <div class="modal-icon-glow cyan">
+                        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    </div>
+                    <h2>DURAKLATILDI</h2>
+                    <p>Oyun şu anda duraklatıldı. Hazır olduğunda devam et!</p>
+                    <button class="sigma-modal-btn cyan" onclick="sigmaGame.togglePause()">
+                        <span>DEVAM ET</span>
+                        <span class="key-hint">[ OK / ENTER ]</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- OYUN BİTTİ OVERLAY MODAL -->
+            <div id="sigma-gameover-overlay" class="sigma-modal">
+                <div class="modal-content">
+                    <div class="modal-icon-glow red">
+                        <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg>
+                    </div>
+                    <h2>OYUN BİTTİ!</h2>
+                    <p>Hamle alanı kalmadı. Yeni bir rekor için tekrar dene!</p>
+                    <button class="sigma-modal-btn red" onclick="sigmaGame.restart()">
+                        <span>YENİDEN BAŞLA</span>
+                        <span class="key-hint">[ OK / ENTER ]</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Kontrol Kılavuzu & Bilgi Kartı (PC / TV / MOBİL) -->
+        <footer class="sigma-guide-card">
+            <div class="guide-item">
+                <span class="guide-title">📺 TV KUMANDA</span>
+                <span class="guide-desc">Yön Okları (D-Pad) & OK Tuşu</span>
+            </div>
+            <div class="guide-divider"></div>
+            <div class="guide-item">
+                <span class="guide-title">📱 MOBİL</span>
+                <span class="guide-desc">Ekranda Parmakla Kaydır (Swipe)</span>
+            </div>
+            <div class="guide-divider"></div>
+            <div class="guide-item">
+                <span class="guide-title">💻 BİLGİSAYAR</span>
+                <span class="guide-desc">W-A-S-D veya Yön Tuşları</span>
+            </div>
+        </footer>
+    </main>
+
     <script src="game.js"></script>
 </body>
 </html>
