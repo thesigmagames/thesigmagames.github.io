@@ -39,5 +39,6 @@ Türküz ve bizim vizyonumuz, saf Sigma kalitesinde oyunlar ve modlar geliştirm
 ****VE DAHASI****
 _______________________________________________________________________________________________________________________
 *NOT:PROJELERİMİN SİTEYE AKTARILMASI ZOR OLDUĞU İÇİN SİTENİN YAPIM SÜRECİ ÇOK UZUN SÜREBİLİR.KİM BİLİR,BELKİ [SCRATCH](https://www.scratch.mit.edu/) PLATFORMUNDAKİ PROJELERİMİ YÜKLERİM...*
+
 *ɪ̇ʟᴇᴛɪ̇şɪ̇ᴍ: parlakkerem98@gmail.com*
 # ~ SON ~
