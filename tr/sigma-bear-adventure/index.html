@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sigma Bear Adventure - The Sigma Games</title>
   <style>
-    /* GENEL AYARLAR VE SİGMABEAR ARKAPLANI */
+    /* --- GENEL AYARLAR VE SİGMABEAR ARKAPLANI --- */
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
+    
     body { 
-      background: radial-gradient(circle at center, #2b1055 0%, #130727 100%); /* SigmaBear Mor/Siber Arkaplan */
+      background: radial-gradient(circle at center, #2b1055 0%, #130727 100%); 
       color: #fff; 
       overflow: hidden; 
       display: flex; 
@@ -16,17 +17,29 @@
       align-items: center; 
       height: 100vh; 
     }
+
+    /* --- UÇUŞAN NEON PARTİKÜLLER İÇİN KANVAS STİLİ --- */
+    #bg-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0; 
+    }
     
     .screen { 
       position: absolute; width: 100%; height: 100%; 
       display: flex; flex-direction: column; justify-content: center; align-items: center; 
       transition: opacity 0.4s ease; 
+      z-index: 2; /* Menü ve oyun ekranlarının kanvasın önünde durması için */
     }
     
     /* KARA EKRAN HATASINI ÇÖZEN HIDE SINIFI */
     .hide { display: none !important; opacity: 0; pointer-events: none; }
 
-    /* MENÜ TASARIMI */
+    /* --- MENÜ TASARIMI --- */
     .menu-container {
       background: rgba(255, 255, 255, 0.08);
       padding: 40px;
@@ -37,6 +50,7 @@
       text-align: center;
       width: 350px;
     }
+    
     h1 { font-size: 2.8rem; margin-bottom: 25px; color: #00e5ff; text-shadow: 0 0 15px #00e5ff; }
     
     .btn-main { 
@@ -48,7 +62,7 @@
     }
     .btn-main:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(138, 43, 226, 0.6); }
 
-    /* OYUN İÇİ ARAYÜZ (HUD) & BUTONLAR */
+    /* --- OYUN İÇİ ARAYÜZ (HUD) & BUTONLAR --- */
     #hud { 
       position: absolute; top: 0; left: 0; width: 100%; 
       display: flex; justify-content: space-between; align-items: center; 
@@ -68,7 +82,7 @@
     .score-board span { color: #00e5ff; }
     .p2-text { color: #ff0055 !important; text-shadow: 0 0 10px #ff0055 !important; }
 
-    /* OYUN ALANI */
+    /* --- OYUN ALANI --- */
     .game-canvas { 
       width: 900px; height: 500px; 
       background: rgba(0, 0, 0, 0.6); 
@@ -80,10 +94,13 @@
 </head>
 <body>
 
+  <!-- UÇUŞAN NEON PARTİKÜLLER İÇİN KANVAS -->
+  <canvas id="bg-canvas"></canvas>
+
   <!-- MENÜ EKRANI -->
   <div id="menu-screen" class="screen">
     <div class="menu-container">
-      <h1 id="menu-title">SIGMA BEAR ADVENTURE</h1>
+      <h1 id="menu-title">SIGMA BEAR</h1>
       <button class="btn-main" id="btn-play-1p">1P Oyna</button>
       <button class="btn-main" id="btn-play-2p">2P Oyna</button>
     </div>
@@ -118,7 +135,7 @@
         <button class="btn-hud" id="btn-sound-2p">🔊 Ses: AÇIK</button>
       </div>
       <div class="score-board">
-        1P: <span id="p1-score">0</span> &nbsp;|&nbsp; MAVİ AYI 2P: <span id="p2-score" class="p2-text">0</span>
+        1P: <span id="p1-score">0</span> &nbsp;|&nbsp; P2: <span id="p2-score" class="p2-text">0</span>
       </div>
     </div>
     <div class="game-canvas">
@@ -128,38 +145,88 @@
 
   <script>
     (function() {
+      // --- NEON PARTİKÜL SİSTEMİ ---
+      const bgCanvas = document.getElementById("bg-canvas");
+      const ctx = bgCanvas.getContext("2d");
+
+      function resizeCanvas() {
+        bgCanvas.width = window.innerWidth;
+        bgCanvas.height = window.innerHeight;
+      }
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+
+      const particles = [];
+      const particleCount = 45; // Partikül sayısı
+
+      for (let i = 0; i < particleCount; i++) {
+        particles.push({
+          x: Math.random() * bgCanvas.width,
+          y: Math.random() * bgCanvas.height,
+          radius: Math.random() * 2.5 + 1,
+          color: Math.random() > 0.5 ? "#00e5ff" : "#8a2be2",
+          speedX: (Math.random() - 0.5) * 0.6,
+          speedY: (Math.random() - 0.5) * 0.6 - 0.3,
+          alpha: Math.random() * 0.7 + 0.3
+        });
+      }
+
+      function animateParticles() {
+        ctx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+        
+        particles.forEach(p => {
+          p.x += p.speedX;
+          p.y += p.speedY;
+
+          // Ekrandan çıkınca geri sok
+          if (p.x < 0) p.x = bgCanvas.width;
+          if (p.x > bgCanvas.width) p.x = 0;
+          if (p.y < 0) p.y = bgCanvas.height;
+          if (p.y > bgCanvas.height) p.y = 0;
+
+          ctx.save();
+          ctx.globalAlpha = p.alpha;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fillStyle = p.color;
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = p.color;
+          ctx.fill();
+          ctx.restore();
+        });
+
+        requestAnimationFrame(animateParticles);
+      }
+      animateParticles(); // Animasyonu başlat
+
+
       // --- OYUN DEĞİŞKENLERİ ---
       let currentMode = "1p";
       let isPaused = false;
-      
-      // Ayarlar
       let musicOn = true;
       let soundOn = true;
 
-      // DOM Elementleri Seçimi
+      // DOM Elementleri
       const menuScreen = document.getElementById("menu-screen");
       const loaderScreen = document.getElementById("loader-screen");
       const game1pScreen = document.getElementById("game-1p-screen");
       const game2pScreen = document.getElementById("game-2p-screen");
 
-      // --- SES VE MÜZİK MOTORU (Ayrı Ayrı) ---
-      // Gerçek dosyan olmadığı için Audio objelerini hazır bekletiyoruz.
-      const menuMusic = new Audio(); // src = "menu_music.mp3" olacak
-      const gameMusic = new Audio(); // src = "game_music.mp3" olacak
+      // --- SES VE MÜZİK KONTROLLERİ ---
+      const menuMusic = new Audio(); // Oyun tamamlanınca src eklenecek
+      const gameMusic = new Audio();
       menuMusic.loop = true;
       gameMusic.loop = true;
 
       function playMenuMusic() {
         if (!musicOn) return;
         gameMusic.pause();
-        // menuMusic.play().catch(e => console.log("Müzik etkileşim bekliyor"));
         console.log("🎵 Menü Müziği Çalıyor...");
       }
 
       function playGameMusic() {
         if (!musicOn) return;
         menuMusic.pause();
-        // gameMusic.play().catch(e => console.log("Müzik etkileşim bekliyor"));
         console.log("🎵 Oyun Müziği Çalıyor...");
       }
 
@@ -168,19 +235,19 @@
         console.log("🔊 Ses efekti oynatıldı: " + type);
       }
 
-      // --- EKRAN GEÇİŞİ (KARA EKRAN FİXİ) ---
+      // --- EKRAN GEÇİŞİ (KARA EKRAN HATASI ÇÖZÜMÜ) ---
       function transitionToGame(mode) {
         currentMode = mode;
         playSfx("click");
         
-        // Menüyü gizle, Loader'ı göster
+        // Önce menüyü sakla ve loader ekranını göster
         menuScreen.classList.add("hide");
         loaderScreen.classList.remove("hide");
 
-        // 1 saniyelik yükleme animasyonu sonrası oyuna geçiş
+        // 1 saniye bekle, sonra oyuna geçiş yap
         setTimeout(() => {
           loaderScreen.classList.add("hide");
-          playGameMusic(); // Oyun müziğine geç
+          playGameMusic();
 
           if (mode === "1p") {
             document.getElementById("score-1p").textContent = "0";
@@ -190,7 +257,7 @@
             document.getElementById("p2-score").textContent = "0";
             game2pScreen.classList.remove("hide");
           }
-          isPaused = false; // Oyun başlarken duraklatmayı sıfırla
+          isPaused = false;
         }, 1000);
       }
 
@@ -198,7 +265,7 @@
       document.getElementById("btn-play-1p").onclick = () => transitionToGame("1p");
       document.getElementById("btn-play-2p").onclick = () => transitionToGame("2p");
 
-      // --- DURAKLATMA (PAUSE) MANTIĞI ---
+      // --- DURAKLATMA (PAUSE) BUTONLARI ---
       function togglePause(btnElement) {
         isPaused = !isPaused;
         playSfx("click");
@@ -206,21 +273,19 @@
           btnElement.textContent = "▶ Devam Et";
           btnElement.classList.add("paused");
           console.log("⏸ Oyun Duraklatıldı");
-          // Burada oyun motorunu durduran kodu çağıracaksın
         } else {
           btnElement.textContent = "⏸ Duraklat";
           btnElement.classList.remove("paused");
           console.log("▶ Oyun Devam Ediyor");
-          // Burada oyun motorunu devam ettiren kodu çağıracaksın
         }
       }
       document.getElementById("btn-pause-1p").onclick = function() { togglePause(this); };
       document.getElementById("btn-pause-2p").onclick = function() { togglePause(this); };
 
-      // --- MÜZİK VE SES KONTROLLERİ ---
+      // --- MÜZİK VE SES KONTROLLERİ BUTONLARI ---
       function toggleMusic(btn1, btn2) {
         musicOn = !musicOn;
-        const text = musicOn ? "🎵 Müzik: AÇIK" : "🎵❌ Müzik: KAPALI";
+        const text = musicOn ? "🎵 Müzik: AÇIK" : "🔇 Müzik: KAPALI";
         btn1.textContent = text;
         btn2.textContent = text;
         
@@ -228,8 +293,8 @@
           menuMusic.pause();
           gameMusic.pause();
         } else {
-          // Hangi ekrandaysak o müziği çal
-          if (menuScreen.classList.contains("hide") === false) playMenuMusic();
+          // Eğer menü görünürse menü müziğini, değilse oyun müziğini çal
+          if (!menuScreen.classList.contains("hide")) playMenuMusic();
           else playGameMusic();
         }
       }
@@ -252,7 +317,7 @@
       btnSound1.onclick = () => toggleSound(btnSound1, btnSound2);
       btnSound2.onclick = () => toggleSound(btnSound1, btnSound2);
 
-      // Başlangıçta menü müziğini başlat
+      // Oyun yüklendiğinde menü müziğini başlat
       playMenuMusic();
     })();
   </script>
