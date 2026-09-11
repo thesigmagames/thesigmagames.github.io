@@ -1,7 +1,7 @@
 # thesigmagames.github.io
 THE SIGMA GAMES official hub. The grind never stops.
 # THE SIGMA GAMES 🗿
-
+<img width="968" height="400" alt="TSG_LOGO" src="https://github.com/user-attachments/assets/c6a49de0-29af-4edc-9277-d3515f3b73a7" />
 THE SIGMA GAMES, dijital oyun dünyasında yeni nesil deneyimler sunan bir stüdyodur. The grind never stops.
 
 ## Hakkımızda
