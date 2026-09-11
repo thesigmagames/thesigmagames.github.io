@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Ultra Sigma Bear 2D</title>
+<title>Sigma Bear Adventure 2D</title>
 <style>
   * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; font-family: 'Courier New', Courier, monospace; }
   body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #111; color: #fff; overflow: hidden; }
@@ -18,8 +18,7 @@
   
   /* Menüler */
   .menu-screen { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; z-index: 20; }
-  h1 { color: #00d4ff; font-size: 50px; text-shadow: 4px 4px 0 #ff3cac; margin-bottom: 5px; text-align: center; }
-  h3 { color: #fff; margin-bottom: 30px; letter-spacing: 2px; }
+  h1 { color: #00d4ff; font-size: 50px; text-shadow: 4px 4px 0 #ff3cac; margin-bottom: 15px; text-align: center; }
   button { background: linear-gradient(90deg, #ff3cac, #00d4ff); border: 2px solid #fff; color: white; padding: 15px 40px; font-size: 20px; font-weight: bold; border-radius: 10px; margin: 10px; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 0 #fff; transition: 0.1s; }
   button:active { transform: translateY(4px); box-shadow: 0 0px 0 #fff; }
   .small-btn { padding: 10px 20px; font-size: 14px; background: #333; }
@@ -70,7 +69,6 @@
 
 <div id="main-menu" class="menu-screen">
   <h1>ULTRA SIGMA BEAR</h1>
-  <h3>Yaratılanı Severiz Yaratandan Ötürü</h3>
   <button onclick="startGame(1)">1 Oyuncu Başla</button>
   <button onclick="startGame(2)">2 Oyuncu Başla</button>
   <button class="small-btn" onclick="window.location.href='../'">← Geri Git</button>
@@ -138,7 +136,6 @@ window.addEventListener("resize", () => { W = canvas.width = window.innerWidth; 
 
 // --- SES VE MÜZİK SİSTEMİ (Web Audio) ---
 let audioCtx;
-let beatTimer;
 function initAudio() {
   if (audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -186,13 +183,13 @@ function playDrumLoop() {
   const hat = audioCtx.createBufferSource(); const hGain = audioCtx.createGain();
   const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.05, audioCtx.sampleRate);
   const data = buffer.getChannelData(0); for(let i=0; i<data.length; i++) data[i] = Math.random() * 2 - 1;
-  hat.buffer = buffer; // white noise
+  hat.buffer = buffer; 
   hGain.gain.setValueAtTime(0.1, now + beatLen); hGain.gain.exponentialRampToValueAtTime(0.01, now + beatLen + 0.05);
-  // basit filtre
+  
   const filter = audioCtx.createBiquadFilter(); filter.type = "highpass"; filter.frequency.value = 5000;
   hat.connect(filter); filter.connect(hGain); hGain.connect(audioCtx.destination); hat.start(now + beatLen);
 
-  setTimeout(playDrumLoop, beatLen * 2000); // 2 vuruşta bir döngü
+  setTimeout(playDrumLoop, beatLen * 2000); 
 }
 
 // --- FİZİK VE SINIFLAR ---
@@ -204,6 +201,7 @@ class Sprite {
     this.x = x; this.y = y; this.w = w; this.h = h;
     this.vx = 0; this.vy = 0;
     this.color = "white";
+    this.hp = 1;
   }
   rect() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
   collide(other) {
@@ -235,7 +233,7 @@ class Player extends Sprite {
     if (this.dashTimer > 0) { this.dashTimer--; this.vy = 0; }
 
     let speedCap = this.slowTimer > 0 ? 3 : 6;
-    let accel = currentLevels[currentLevelIdx].ice ? 0.2 : 0.8; // Kar vadisi kaygan
+    let accel = currentLevels[currentLevelIdx].ice ? 0.2 : 0.8;
     
     // Girdiler
     let left = false, right = false, jump = false, attack = false;
@@ -263,7 +261,7 @@ class Player extends Sprite {
     if (attack && !this.prevAttack) this.lastAttackTime = now;
     
     if (Math.abs(this.lastJumpTime - this.lastAttackTime) < 150 && this.dashTimer <= 0) {
-       this.dashTimer = 15; // 15 frame dash
+       this.dashTimer = 15;
        this.vx = this.facingRight ? 15 : -15;
        this.vy = 0;
        playSound("dash");
@@ -283,13 +281,12 @@ class Player extends Sprite {
     // Normal Saldırı
     if (attack && !this.prevAttack && this.dashTimer <= 0) {
       let atkBox = { x: this.facingRight ? this.x + 40 : this.x - 30, y: this.y, w: 30, h: 50 };
-      ctx.fillStyle = "rgba(255,255,255,0.5)"; // Debug veya görsel
-      entities.forEach((e, i) => {
+      entities.forEach((e) => {
         if (e.isEnemy && checkAABB(atkBox, e)) {
           e.hp--;
           spawnParticles(e.x, e.y, "#ffcc00", 8, "💥");
           playSound("hit");
-          if(e.hp <= 0) { entities.splice(i, 1); score += 50; }
+          if(e.hp <= 0) { e.hp = 0; score += 50; }
         }
       });
     }
@@ -316,10 +313,10 @@ class Player extends Sprite {
       if (this.collide(p)) {
         if (p.isHazard) {
           if (p.type === "purple_honey") {
-            this.slowTimer = 180; // 3 saniye (60fps)
+            this.slowTimer = 180;
             spawnParticles(this.x, this.y+40, "#9c27b0", 2);
           }
-          continue; // içinden geçilebilir ama etkiler
+          continue;
         }
         
         if (isX) {
@@ -331,7 +328,7 @@ class Player extends Sprite {
             this.y = p.y - this.h;
             this.vy = 0;
             this.grounded = true;
-            this.jumps = 2; // Çift zıplama yenile
+            this.jumps = 2;
           } else if (this.vy < 0) {
             this.y = p.y + p.h;
             this.vy = 0;
@@ -367,7 +364,7 @@ class Player extends Sprite {
     
     // Sigma Gözlük
     ctx.fillStyle = "#000";
-    ctx.fillRect(20, 10, 25, 8); // Gözlük camı (ileriye taşar)
+    ctx.fillRect(20, 10, 25, 8);
     
     // Ayı Kulakları
     ctx.fillStyle = this.color;
@@ -402,7 +399,6 @@ class Enemy extends Sprite {
   update() {
     this.timer += 0.05;
     if (this.type === 'turtle') {
-      // Kötü Kaplumbağa (Yerde devriye)
       this.vx = Math.sin(this.timer * 0.5) * 2;
       this.vy += GRAVITY;
       this.x += this.vx; this.y += this.vy;
@@ -412,12 +408,10 @@ class Enemy extends Sprite {
         }
       }
     } else if (this.type === 'bee') {
-      // Gökyüzü Arısı (Uçuş)
       this.y += Math.sin(this.timer) * 2;
-      this.x -= 1; // Sola doğru uçar
-      if (this.x < camera.x - 100) this.hp = 0; // Ekrandan çıkarsa öl
+      this.x -= 1;
+      if (this.x < camera.x - 100) this.hp = 0;
     } else if (this.type === 'rabbit') {
-      // Deli Kare Tavşan (Zıplayarak gelir)
       this.vx = -1.5;
       if (Math.random() < 0.02 && this.vy === 0) this.vy = -15;
       this.vy += GRAVITY;
@@ -429,7 +423,6 @@ class Enemy extends Sprite {
       }
     }
 
-    // Oyunculara Hasar
     players.forEach(pl => {
       if (pl.hp > 0 && this.collide(pl)) pl.takeDamage(1);
     });
@@ -439,15 +432,15 @@ class Enemy extends Sprite {
     ctx.translate(this.x, this.y);
     if (this.type === 'turtle') {
       ctx.fillStyle = "#2E8B57";
-      ctx.beginPath(); ctx.arc(20, 20, 20, Math.PI, 0); ctx.fill(); // Yarım daire kabuk
+      ctx.beginPath(); ctx.arc(20, 20, 20, Math.PI, 0); ctx.fill();
     } else if (this.type === 'bee') {
-      ctx.fillStyle = "#FFD700"; ctx.fillRect(0, 10, 40, 20); // Gövde
-      ctx.fillStyle = "#000"; ctx.fillRect(10, 10, 10, 20); // Çizgi
-      ctx.fillStyle = "#fff"; ctx.fillRect(15, -5, 10, 15); // Kanat
+      ctx.fillStyle = "#FFD700"; ctx.fillRect(0, 10, 40, 20);
+      ctx.fillStyle = "#000"; ctx.fillRect(10, 10, 10, 20);
+      ctx.fillStyle = "#fff"; ctx.fillRect(15, -5, 10, 15);
     } else if (this.type === 'rabbit') {
-      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 40, 40); // Kare Tavşan
-      ctx.fillStyle = "#ff0000"; ctx.fillRect(10, 10, 5, 5); ctx.fillRect(25, 10, 5, 5); // Deli Gözler
-      ctx.fillStyle = "#fff"; ctx.fillRect(5, -20, 10, 20); ctx.fillRect(25, -20, 10, 20); // Kulaklar
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 40, 40);
+      ctx.fillStyle = "#ff0000"; ctx.fillRect(10, 10, 5, 5); ctx.fillRect(25, 10, 5, 5);
+      ctx.fillStyle = "#fff"; ctx.fillRect(5, -20, 10, 20); ctx.fillRect(25, -20, 10, 20);
     }
     ctx.restore();
   }
@@ -458,9 +451,10 @@ class NPC extends Sprite {
     super(x, y, 40, 40);
     this.text = text;
     this.isNPC = true;
+    this.hp = 1;
   }
   draw() {
-    ctx.fillStyle = "#4CAF50"; // Dost Tosbağa
+    ctx.fillStyle = "#4CAF50";
     ctx.beginPath(); ctx.arc(this.x + 20, this.y + 20, 20, Math.PI, 0); ctx.fill();
     ctx.fillStyle = "#FFCC00";
     ctx.fillText("(!)", this.x + 10, this.y - 10);
@@ -471,14 +465,15 @@ class Item extends Sprite {
   constructor(type, x, y) {
     super(x, y, 20, 20);
     this.type = type;
+    this.hp = 1;
   }
   update() {
-    this.y += Math.sin(Date.now() * 0.005) * 0.5; // Dalgalanma
+    this.y += Math.sin(Date.now() * 0.005) * 0.5;
     players.forEach(pl => {
       if (pl.hp > 0 && this.collide(pl)) {
         if (this.type === 'coin') { score += 10; playSound("coin"); spawnParticles(this.x, this.y, "#ffcc00", 5, "💎"); }
         if (this.type === 'end') nextLevel();
-        this.hp = 0; // Silinmesi için flag
+        this.hp = 0;
       }
     });
   }
@@ -497,7 +492,6 @@ const currentLevels = [
         {x: 0, y: H-100, w: 1000, h: 100},
         {x: 1200, y: H-100, w: 1500, h: 100},
         {x: 500, y: H-250, w: 200, h: 30},
-        // Mor Bal Tuzağı
         {x: 700, y: H-105, w: 300, h: 20, isHazard: true, type: "purple_honey", color: "rgba(156, 39, 176, 0.7)"}
       ];
       entities = [
@@ -539,7 +533,7 @@ const currentLevels = [
         new Enemy('rabbit', 1200, H-140),
         new Enemy('bee', 700, H-400),
         new Enemy('bee', 1100, H-350),
-        new NPC(300, H-140, "Burası sonun başlangıcı... Rabbim utandırmasın. Yaratılanı sevdik ama bu düşmanlar çok azıttı. Hepsini hakla!"),
+        new NPC(300, H-140, "Burası sonun başlangıcı... Rabbim utandırmasın. Düşmanlar çok azıttı. Hepsini hakla!"),
         new Item('end', 2400, H-180)
       ];
     }
@@ -562,7 +556,7 @@ function updateParticles() {
   for (let i = particles.length - 1; i >= 0; i--) {
     let p = particles[i];
     p.x += p.vx; p.y += p.vy;
-    p.vy += 0.2; // yerçekimi
+    p.vy += 0.2;
     p.life -= 0.02;
     if (p.life <= 0) particles.splice(i, 1);
   }
@@ -583,11 +577,9 @@ function drawParticles() {
 function tryInteract() {
   if (gameState !== "play") return;
   let p1 = players[0];
-  let npcFound = false;
   entities.forEach(e => {
     if (e.isNPC && Math.abs(e.x - p1.x) < 80) {
       showDialog(e.text);
-      npcFound = true;
     }
   });
 }
@@ -644,7 +636,7 @@ function togglePause() {
   } else if (gameState === "pause") {
     gameState = "play";
     pm.classList.add("hidden");
-    loop(); // Döngüyü yeniden başlat
+    loop();
   }
 }
 
@@ -654,11 +646,9 @@ function updateUI() {
   uiHp.innerText = hpText;
   uiScore.innerText = `Altın: ${score}`;
   
-  // Mobil "Konuş" butonu kontrolü
   let nearNPC = entities.some(e => e.isNPC && Math.abs(e.x - players[0].x) < 80);
   btnTalk.style.display = nearNPC ? "block" : "none";
   
-  // Oyun Bitti mi?
   let allDead = players.every(p => p.hp <= 0);
   if(allDead && gameState === "play") {
     setTimeout(() => { alert("Şehit düştün kardeşim... Tekrar dene inşallah!"); location.reload(); }, 1000);
@@ -673,13 +663,13 @@ function loop() {
   // Update
   players.forEach(p => p.update());
   entities.forEach(e => e.update());
-  entities = entities.filter(e => e.hp !== 0); // Ölüleri temizle
+  entities = entities.filter(e => e.hp !== 0);
   updateParticles();
   updateUI();
 
   // Camera Follow (P1)
   camera.x = players[0].x - W/2 + players[0].w/2;
-  if(camera.x < 0) camera.x = 0; // Sol sınırı geçme
+  if(camera.x < 0) camera.x = 0;
 
   // Draw
   let lvl = currentLevels[currentLevelIdx];
@@ -687,13 +677,12 @@ function loop() {
   ctx.fillRect(0, 0, W, H);
 
   ctx.save();
-  ctx.translate(-camera.x, 0); // Sadece X ekseninde scroll
+  ctx.translate(-camera.x, 0);
 
   // Platformlar
   platforms.forEach(p => {
     ctx.fillStyle = p.color || lvl.floor;
     ctx.fillRect(p.x, p.y, p.w, p.h);
-    // Çim/Kar detayı
     if(!p.isHazard) {
       ctx.fillStyle = lvl.ice ? "#fff" : "#4CAF50";
       ctx.fillRect(p.x, p.y, p.w, 10);
@@ -707,7 +696,6 @@ function loop() {
 
   ctx.restore();
 }
-
 </script>
 </body>
 </html>
