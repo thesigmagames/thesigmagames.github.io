@@ -1,325 +1,1059 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sigma Bear Adventure - The Sigma Games</title>
-  <style>
-    /* --- GENEL AYARLAR VE SİGMABEAR ARKAPLANI --- */
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
-    
-    body { 
-      background: radial-gradient(circle at center, #2b1055 0%, #130727 100%); 
-      color: #fff; 
-      overflow: hidden; 
-      display: flex; 
-      justify-content: center; 
-      align-items: center; 
-      height: 100vh; 
-    }
-
-    /* --- UÇUŞAN NEON PARTİKÜLLER İÇİN KANVAS STİLİ --- */
-    #bg-canvas {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 0; 
-    }
-    
-    .screen { 
-      position: absolute; width: 100%; height: 100%; 
-      display: flex; flex-direction: column; justify-content: center; align-items: center; 
-      transition: opacity 0.4s ease; 
-      z-index: 2; /* Menü ve oyun ekranlarının kanvasın önünde durması için */
-    }
-    
-    /* KARA EKRAN HATASINI ÇÖZEN HIDE SINIFI */
-    .hide { display: none !important; opacity: 0; pointer-events: none; }
-
-    /* --- MENÜ TASARIMI --- */
-    .menu-container {
-      background: rgba(255, 255, 255, 0.08);
-      padding: 40px;
-      border-radius: 20px;
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      box-shadow: 0 0 30px rgba(138, 43, 226, 0.4);
-      text-align: center;
-      width: 350px;
-    }
-    
-    h1 { font-size: 2.8rem; margin-bottom: 25px; color: #00e5ff; text-shadow: 0 0 15px #00e5ff; }
-    
-    .btn-main { 
-      width: 100%; padding: 15px; margin-bottom: 15px; 
-      background: linear-gradient(90deg, #8a2be2, #4a00e0); 
-      border: none; border-radius: 12px; color: #fff; 
-      font-size: 1.2rem; font-weight: bold; cursor: pointer; 
-      transition: transform 0.2s, box-shadow 0.2s; 
-    }
-    .btn-main:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(138, 43, 226, 0.6); }
-
-    /* --- OYUN İÇİ ARAYÜZ (HUD) & BUTONLAR --- */
-    #hud { 
-      position: absolute; top: 0; left: 0; width: 100%; 
-      display: flex; justify-content: space-between; align-items: center; 
-      padding: 20px 40px; z-index: 10; 
-    }
-    .hud-controls { display: flex; gap: 15px; }
-    
-    .btn-hud { 
-      background: rgba(0, 0, 0, 0.5); border: 2px solid #00e5ff; color: #00e5ff; 
-      padding: 10px 20px; border-radius: 8px; cursor: pointer; 
-      font-weight: bold; transition: all 0.2s; 
-    }
-    .btn-hud:hover { background: #00e5ff; color: #000; }
-    .btn-hud.paused { background: #ff0055; border-color: #ff0055; color: #fff; }
-
-    .score-board { font-size: 1.5rem; font-weight: bold; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
-    .score-board span { color: #00e5ff; }
-    .p2-text { color: #ff0055 !important; text-shadow: 0 0 10px #ff0055 !important; }
-
-    /* --- OYUN ALANI --- */
-    .game-canvas { 
-      width: 900px; height: 500px; 
-      background: rgba(0, 0, 0, 0.6); 
-      border-radius: 15px; border: 2px solid rgba(138, 43, 226, 0.5); 
-      display: flex; justify-content: center; align-items: center; 
-      box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
-    }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Sigma Bear Adventure</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  :root{--g:#f4d03f;--b:#6b3e26;--d:#1a120b;--p:#3d2914}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#050308;overflow:hidden;font-family:'Press Start 2P',monospace;color:#fff;user-select:none}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#050308}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:#000;display:block}
+  #ui{position:fixed;inset:0;pointer-events:none}
+  #ui .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:linear-gradient(180deg,rgba(8,6,14,.55),rgba(8,6,14,.72));pointer-events:auto}
+  #ui .hidden{display:none!important}
+  h1{font-size:22px;color:var(--g);text-align:center;line-height:1.6;text-shadow:3px 3px 0 #000}
+  h1 small{display:block;font-size:10px;color:#fff;margin-top:8px;letter-spacing:2px}
+  h2{font-size:12px;color:var(--g);margin-bottom:8px;text-align:center}
+  .btn{pointer-events:auto;font-family:inherit;font-size:10px;padding:12px 18px;min-width:220px;background:#2a1c10;color:#fff;border:3px solid #f4d03f;cursor:pointer;text-transform:uppercase}
+  .btn:hover{background:#f4d03f;color:#1a120b}
+  .btn.dim{border-color:#665;color:#aaa}
+  .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:640px}
+  .panel{background:rgba(20,12,8,.92);border:3px solid #f4d03f;padding:16px;max-width:560px;width:90%;max-height:80vh;overflow:auto}
+  .panel p,.hint{font-size:8px;line-height:1.8;color:#eee}
+  .shop-item{display:flex;justify-content:space-between;align-items:center;gap:10px;border:2px solid #5a3;padding:8px;margin:6px 0;font-size:8px}
+  #tb{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);width:min(640px,92%);background:#1a120be6;border:3px solid #f4d03f;padding:12px;pointer-events:none;display:none}
+  #tb b{color:var(--g);font-size:9px;display:block;margin-bottom:6px}
+  #tb span{font-size:8px;line-height:1.7}
+  #hud{position:absolute;left:10px;top:10px;font-size:8px;line-height:1.7;text-shadow:2px 2px 0 #000;pointer-events:none}
+  #ox{position:absolute;left:50%;top:10px;transform:translateX(-50%);width:140px;height:8px;border:2px solid #fff;display:none;pointer-events:none}
+  #ox i{display:block;height:100%;background:#48c;width:100%}
+  #bossbar{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:min(420px,80%);height:10px;border:2px solid #fff;display:none;pointer-events:none}
+  #bossbar i{display:block;height:100%;background:#c0392b;width:100%}
+  #toast{position:absolute;top:40px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--g);text-shadow:2px 2px 0 #000;display:none}
+</style>
 </head>
 <body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="ui">
+  <div id="hud"></div>
+  <div id="ox"><i id="oxi"></i></div>
+  <div id="bossbar"><i id="bossi"></i></div>
+  <div id="toast"></div>
+  <div id="tb"><b id="tbn"></b><span id="tbt"></span></div>
 
-  <!-- UÇUŞAN NEON PARTİKÜLLER İÇİN KANVAS -->
-  <canvas id="bg-canvas"></canvas>
-
-  <!-- MENÜ EKRANI -->
-  <div id="menu-screen" class="screen">
-    <div class="menu-container">
-      <h1 id="menu-title">SIGMA BEAR</h1>
-      <button class="btn-main" id="btn-play-1p">1P Oyna</button>
-      <button class="btn-main" id="btn-play-2p">2P Oyna</button>
+  <div class="screen" id="s-menu">
+    <h1>SIGMA BEAR<small>ADVENTURE</small></h1>
+    <button class="btn" data-act="play">Oyna</button>
+    <button class="btn" data-act="map">Dünyalar</button>
+    <button class="btn" data-act="shop">Mağaza</button>
+    <button class="btn" data-act="col">Koleksiyon</button>
+    <button class="btn" data-act="how">Nasıl Oynanır</button>
+  </div>
+  <div class="screen hidden" id="s-map">
+    <div class="panel">
+      <h2>Dünya Seç</h2>
+      <div class="row" id="worlds"></div>
+      <br/><button class="btn" data-act="menu">Geri</button>
     </div>
   </div>
-
-  <!-- LOADER (Yükleme Ekranı - Kara ekranı engelleyen geçiş) -->
-  <div id="loader-screen" class="screen hide" style="background: #000; z-index: 999;">
-    <h2 style="color: #00e5ff; font-size: 2rem;">OYUN YÜKLENİYOR...</h2>
-  </div>
-
-  <!-- 1P OYUN EKRANI -->
-  <div id="game-1p-screen" class="screen hide">
-    <div id="hud">
-      <div class="hud-controls">
-        <button class="btn-hud" id="btn-pause-1p">⏸ Duraklat</button>
-        <button class="btn-hud" id="btn-music-1p">🎵 Müzik: AÇIK</button>
-        <button class="btn-hud" id="btn-sound-1p">🔊 Ses: AÇIK</button>
-      </div>
-      <div class="score-board">1P SKOR: <span id="score-1p">0</span></div>
-    </div>
-    <div class="game-canvas">
-      <h2>(1P Oyun Motoru Buraya Gelecek)</h2>
+  <div class="screen hidden" id="s-shop">
+    <div class="panel">
+      <h2>Mağaza</h2>
+      <p id="shopcoins"></p>
+      <div id="shopbox"></div>
+      <button class="btn" data-act="menu">Geri</button>
     </div>
   </div>
-
-  <!-- 2P OYUN EKRANI (MAVİ AYI) -->
-  <div id="game-2p-screen" class="screen hide">
-    <div id="hud">
-      <div class="hud-controls">
-        <button class="btn-hud" id="btn-pause-2p">⏸ Duraklat</button>
-        <button class="btn-hud" id="btn-music-2p">🎵 Müzik: AÇIK</button>
-        <button class="btn-hud" id="btn-sound-2p">🔊 Ses: AÇIK</button>
-      </div>
-      <div class="score-board">
-        1P: <span id="p1-score">0</span> &nbsp;|&nbsp; P2: <span id="p2-score" class="p2-text">0</span>
-      </div>
-    </div>
-    <div class="game-canvas">
-      <h2>(2P Kapışma Motoru Buraya Gelecek)</h2>
+  <div class="screen hidden" id="s-col">
+    <div class="panel">
+      <h2>Koleksiyon</h2>
+      <p id="colbox"></p>
+      <button class="btn" data-act="menu">Geri</button>
     </div>
   </div>
+  <div class="screen hidden" id="s-how">
+    <div class="panel">
+      <h2>Kontroller</h2>
+      <p class="hint">
+        A/D veya ← → koş (ivmeli)<br/>
+        SPACE / W zıpla — basılı tut yüksek zıplar<br/>
+        Havada tekrar SPACE = çift zıplama<br/>
+        Çift zıplamadan sonra SPACE basılı = süzül<br/>
+        Havada S / ↓ = ground pound<br/>
+        J / X = pençe · K / C = takla (i-frame)<br/>
+        E = NPC / kapı · ESC = duraklat<br/>
+        Düşmanın tepesine in = stomp
+      </p>
+      <button class="btn" data-act="menu">Geri</button>
+    </div>
+  </div>
+  <div class="screen hidden" id="s-pause">
+    <div class="panel">
+      <h2>Duraklatıldı</h2>
+      <p id="qbox"></p>
+      <button class="btn" data-act="resume">Devam et</button>
+      <button class="btn" data-act="map">Dünya seç</button>
+      <button class="btn" data-act="mute" id="mutbtn">Ses: Açık</button>
+      <button class="btn" data-act="menu">Ana menü</button>
+    </div>
+  </div>
+  <div class="screen hidden" id="s-over">
+    <div class="panel">
+      <h2>Oyun Bitti</h2>
+      <p>Canların tükendi. Sigma yere kapandı.</p>
+      <button class="btn" data-act="retry">Tekrar dene</button>
+      <button class="btn" data-act="menu">Ana menü</button>
+    </div>
+  </div>
+  <div class="screen hidden" id="s-win">
+    <div class="panel">
+      <h2 id="wintitle">Bölüm Tamamlandı</h2>
+      <p id="winp"></p>
+      <button class="btn" data-act="next">Devam</button>
+      <button class="btn" data-act="map">Dünya seç</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+  const T = 16, W = 480, H = 270;
+  let canvas = document.querySelector('canvas');
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    document.body.style.cssText = 'margin:0;background:#0b0b10;display:flex;min-height:100vh;align-items:center;justify-content:center';
+    document.body.appendChild(canvas);
+  }
+  canvas.width = W; canvas.height = H;
+  canvas.style.cssText = 'image-rendering:pixelated;image-rendering:crisp-edges;width:min(100vw,1440px);height:auto;background:#000';
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
 
-  <script>
-    (function() {
-      // --- NEON PARTİKÜL SİSTEMİ ---
-      const bgCanvas = document.getElementById("bg-canvas");
-      const ctx = bgCanvas.getContext("2d");
+  const SAVE_KEY = 'ayicik-v1';
+  let save = { coins: 0, gold: [], unlocked: 1, maxHp: 3 };
+  try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
+  function persist() { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }
 
-      function resizeCanvas() {
-        bgCanvas.width = window.innerWidth;
-        bgCanvas.height = window.innerHeight;
+  let actx = null;
+  function ensureAudio() {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  }
+  function beep(f, d, type = 'square', v = 0.07) {
+    if (!actx) return;
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(v, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + d);
+    o.connect(g); g.connect(actx.destination);
+    o.start(); o.stop(actx.currentTime + d);
+  }
+  const sfx = {
+    jump: () => beep(520, 0.08),
+    coin: () => beep(880, 0.09),
+    hurt: () => beep(140, 0.18, 'sawtooth', 0.08),
+    win: () => { beep(523, 0.1); setTimeout(() => beep(659, 0.1), 90); setTimeout(() => beep(784, 0.2), 180); },
+    ui: () => beep(660, 0.05, 'sine'),
+    shop: () => beep(400, 0.14, 'sine'),
+    atk: () => beep(240, 0.06),
+    dash: () => beep(180, 0.08, 'sawtooth', 0.05)
+  };
+
+  const keys = {};
+  let state = 'menu', frame = 0, levelN = 1, score = 0;
+  let talk = null, talkI = 0, toasts = [];
+  const ents = [], bullets = [], parts = [];
+  let tiles = [], mapW = 0, mapH = 0;
+  const cam = { x: 0, y: 0 };
+  const player = {
+    x: 0, y: 0, w: 12, h: 14, vx: 0, vy: 0,
+    hp: save.maxHp, maxHp: save.maxHp, o2: 180, maxO2: 180,
+    onGround: false, jumps: 2, coyote: 0, facing: 1,
+    iframes: 0, dashT: 0, dashCd: 0, dashDir: 1,
+    atkT: 0, glide: false, pounding: false, jpPrev: false,
+    spawn: { x: 0, y: 0 }, anim: 0, dead: false
+  };
+
+  /* Harita:
+     # duvar  = tek yön  ~ su  ^ diken  * lav  I buz
+     @ oyuncu  o coin  h bal  g altın  v yay  U rüzgar
+     m yatay platform  V dikey  F düşen  p checkpoint  X çıkış
+     N NPC  1 patrol  2 aggro  3 fly  4 hopper  5 shooter  6 dash
+     B boss  K kafes  n fındık
+  */
+  const LEVELS = [
+    [
+      '........................................',
+      '........................g...............',
+      '........................................',
+      '.............o.....o....................',
+      '...........======....h..................',
+      '.................................v......',
+      '......o......................=======....',
+      '.....................N..................',
+      '....@...1........o.........p..........X.',
+      '################....######..############',
+      '################^^^^######..############',
+      '########################################'
+    ],
+    [
+      '........................................',
+      '....g...................................',
+      '...........o................U...........',
+      '.........=======........................',
+      '..............................o.........',
+      '....o......................=======......',
+      '.........3..............................',
+      '.....IIIIII..............F..............',
+      '.@.........2.....h..v........p...n....X.',
+      '####..##########~~~~##########..########',
+      '####^^##########~~~~##########..########',
+      '########################################'
+    ],
+    [
+      '........................................',
+      '.................g......................',
+      '.........o...............o..............',
+      '.......=====...........=====............',
+      '....................5...................',
+      '....K...................................',
+      '.........6..........m..........4........',
+      '........................................',
+      '.@.....2.....................B........X.',
+      '########....####....####..##############',
+      '########****####^^^^####**##############',
+      '########################################'
+    ]
+  ];
+
+  const NPC_LINES = [
+    ['Merhaba! Ben Balcı.', 'Ok / WASD: hareket, Space: zıpla.', 'J: vur  ·  Shift: dash  ·  E: konuş', 'Havada Space basılı = süzül.', 'Aşağı = ground pound. Altın ayıcık ara!'],
+    ['Buz kaygan, su oksijen yer.', 'Uçanlara stomp yap, kafelere J ile vur.'],
+    ['Boss kapıyı kilitledi.', 'Stomp + vuruş! Kafesin içinde bal var.']
+  ];
+
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function rect(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+  function tileAt(px, py) {
+    const tx = Math.floor(px / T), ty = Math.floor(py / T);
+    if (ty < 0 || tx < 0 || ty >= mapH || tx >= mapW) return '#';
+    return tiles[ty][tx];
+  }
+  function burst(x, y, c, n, spd = 1) {
+    for (let i = 0; i < n; i++) {
+      parts.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 3 * spd,
+        vy: (Math.random() - 0.5) * 3 * spd - 1,
+        life: 16 + Math.random() * 12,
+        c, g: 0.18, s: 1 + Math.random() * 1.5
+      });
+    }
+  }
+  function toast(msg) { toasts.push({ msg, t: 90 }); }
+
+  function startLevel(n) {
+    levelN = n;
+    const L = LEVELS[n - 1];
+    tiles = L.map(r => r.split(''));
+    mapH = tiles.length; mapW = tiles[0].length;
+    ents.length = 0; bullets.length = 0; parts.length = 0;
+    player.vx = player.vy = 0; player.onGround = false;
+    player.iframes = 40; player.dashT = 0; player.dashCd = 0;
+    player.atkT = 0; player.o2 = player.maxO2; player.pounding = false;
+    player.maxHp = save.maxHp; if (player.hp <= 0) player.hp = player.maxHp;
+    player.dead = false;
+
+    for (let y = 0; y < mapH; y++) {
+      for (let x = 0; x < mapW; x++) {
+        const c = tiles[y][x], px = x * T, py = y * T;
+        const clr = () => { tiles[y][x] = '.'; };
+        if (c === '@') {
+          player.x = px + 2; player.y = py + 2;
+          player.spawn = { x: player.x, y: player.y }; clr();
+        } else if (c === 'o') {
+          ents.push({ kind: 'coin', x: px + 4, y: py + 4, w: 8, h: 8, t: 0, oy: py + 4 }); clr();
+        } else if (c === 'h') {
+          ents.push({ kind: 'honey', x: px + 3, y: py + 4, w: 10, h: 10 }); clr();
+        } else if (c === 'g') {
+          const id = levelN + ':' + x + ':' + y;
+          ents.push({ kind: 'gold', x: px + 2, y: py + 2, w: 12, h: 12, id, t: 0 }); clr();
+        } else if (c === 'v') {
+          ents.push({ kind: 'spring', x: px, y: py + 8, w: T, h: 8, t: 0 }); clr();
+        } else if (c === 'U') {
+          ents.push({ kind: 'wind', x: px, y: py - T * 3, w: T, h: T * 4, dx: 0, dy: -0.35 }); clr();
+        } else if (c === 'm') {
+          ents.push({ kind: 'mover', x: px, y: py, w: T * 3, h: 8, ox: px, oy: py, axis: 'x', amp: 28, spd: 0.04, t: 0, _dx: 0 }); clr();
+        } else if (c === 'V') {
+          ents.push({ kind: 'mover', x: px, y: py, w: T * 2, h: 8, ox: px, oy: py, axis: 'y', amp: 22, spd: 0.04, t: 0, _dx: 0 }); clr();
+        } else if (c === 'F') {
+          ents.push({ kind: 'fall', x: px, y: py, w: T * 2, h: 8, oy: py, timer: 0, fall: 0, deadT: 0 }); clr();
+        } else if (c === 'p') {
+          ents.push({ kind: 'cp', x: px, y: py, w: T, h: T, on: false }); clr();
+        } else if (c === 'X') {
+          ents.push({ kind: 'exit', x: px, y: py - 8, w: T, h: T + 8, open: false }); clr();
+        } else if (c === 'N') {
+          ents.push({ kind: 'npc', x: px + 2, y: py, w: 12, h: 14, lines: NPC_LINES[n - 1] || ['...'] }); clr();
+        } else if (c === 'K') {
+          ents.push({ kind: 'cage', x: px, y: py - 8, w: T, h: T + 8, hp: 3 }); clr();
+        } else if (c === 'n') {
+          ents.push({ kind: 'nut', x: px + 4, y: py + 4, w: 8, h: 8, hp: 1, vy: 0 }); clr();
+        } else if (c === 'B') {
+          ents.push({ kind: 'boss', x: px, y: py - 10, w: 22, h: 22, hp: 10, facing: -1, vx: 0.5, vy: 0, anim: 0, cd: 40, type: 'boss' }); clr();
+        } else if ('123456'.includes(c)) {
+          const types = { 1: 'patrol', 2: 'aggro', 3: 'fly', 4: 'hopper', 5: 'shooter', 6: 'dash' };
+          const type = types[c];
+          const e = {
+            kind: 'enemy', type, x: px + 2, y: py + 2, w: 12, h: 12,
+            facing: 1, vx: 0.7, vy: 0, hp: type === 'patrol' ? 1 : 2,
+            anim: 0, t: 0, cd: 0, timer: 0, onGround: false, dashing: false, dashT: 0, score: 100
+          };
+          if (type === 'fly') { e.h = 10; e.y = py; }
+          ents.push(e); clr();
+        }
       }
-      window.addEventListener("resize", resizeCanvas);
-      resizeCanvas();
+    }
+    cam.x = player.x - W / 2; cam.y = player.y - H / 2;
+    state = 'play';
+  }
 
-      const particles = [];
-      const particleCount = 45; // Partikül sayısı
-
-      for (let i = 0; i < particleCount; i++) {
-        particles.push({
-          x: Math.random() * bgCanvas.width,
-          y: Math.random() * bgCanvas.height,
-          radius: Math.random() * 2.5 + 1,
-          color: Math.random() > 0.5 ? "#00e5ff" : "#8a2be2",
-          speedX: (Math.random() - 0.5) * 0.6,
-          speedY: (Math.random() - 0.5) * 0.6 - 0.3,
-          alpha: Math.random() * 0.7 + 0.3
-        });
+  function hurt(n) {
+    const p = player;
+    if (p.iframes > 0 || p.dashT > 0) return;
+    p.hp -= n; p.iframes = 60;
+    sfx.hurt(); burst(p.x, p.y, '#e74c3c', 8);
+    if (p.hp <= 0) die();
+  }
+  function die() {
+    const p = player;
+    p.hp = p.maxHp; p.x = p.spawn.x; p.y = p.spawn.y;
+    p.vx = p.vy = 0; p.iframes = 90; p.o2 = p.maxO2;
+    toast('Yeniden!');
+  }
+  function winLevel() {
+    sfx.win();
+    save.unlocked = Math.max(save.unlocked || 1, levelN + 1);
+    persist();
+    state = 'win';
+  }
+  function tryTalk() {
+    if (state !== 'play') return;
+    const p = player;
+    for (const e of ents) {
+      if (e.kind !== 'npc') continue;
+      const dx = (p.x + p.w / 2) - (e.x + e.w / 2);
+      const dy = (p.y + p.h / 2) - (e.y + e.h / 2);
+      if (dx * dx + dy * dy < 40 * 40) {
+        talk = e.lines || ['...']; talkI = 0; state = 'talk'; sfx.ui();
+        return;
       }
+    }
+  }
 
-      function animateParticles() {
-        ctx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-        
-        particles.forEach(p => {
-          p.x += p.speedX;
-          p.y += p.speedY;
-
-          // Ekrandan çıkınca geri sok
-          if (p.x < 0) p.x = bgCanvas.width;
-          if (p.x > bgCanvas.width) p.x = 0;
-          if (p.y < 0) p.y = bgCanvas.height;
-          if (p.y > bgCanvas.height) p.y = 0;
-
-          ctx.save();
-          ctx.globalAlpha = p.alpha;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-          ctx.fillStyle = p.color;
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = p.color;
-          ctx.fill();
-          ctx.restore();
-        });
-
-        requestAnimationFrame(animateParticles);
+  function resolve(horiz) {
+    const p = player;
+    const x0 = Math.floor(p.x / T), x1 = Math.floor((p.x + p.w - 0.001) / T);
+    const y0 = Math.floor(p.y / T), y1 = Math.floor((p.y + p.h - 0.001) / T);
+    for (let ty = y0; ty <= y1; ty++) {
+      for (let tx = x0; tx <= x1; tx++) {
+        if (ty < 0 || tx < 0 || ty >= mapH || tx >= mapW) continue;
+        const t = tiles[ty][tx];
+        const oneWay = t === '=' && !horiz && p.vy >= 0 && (p.y + p.h - p.vy) <= ty * T + 3;
+        const solid = t === '#' || t === 'I' || oneWay;
+        if (!solid) continue;
+        const rx = tx * T, ry = ty * T;
+        if (horiz) {
+          if (p.vx > 0) p.x = rx - p.w; else if (p.vx < 0) p.x = rx + T;
+          p.vx = 0;
+        } else {
+          if (p.vy > 0) { p.y = ry - p.h; p.vy = 0; p.onGround = true; }
+          else if (p.vy < 0) { p.y = ry + T; p.vy = 0; }
+        }
       }
-      animateParticles(); // Animasyonu başlat
-
-
-      // --- OYUN DEĞİŞKENLERİ ---
-      let currentMode = "1p";
-      let isPaused = false;
-      let musicOn = true;
-      let soundOn = true;
-
-      // DOM Elementleri
-      const menuScreen = document.getElementById("menu-screen");
-      const loaderScreen = document.getElementById("loader-screen");
-      const game1pScreen = document.getElementById("game-1p-screen");
-      const game2pScreen = document.getElementById("game-2p-screen");
-
-      // --- SES VE MÜZİK KONTROLLERİ ---
-      const menuMusic = new Audio(); // Oyun tamamlanınca src eklenecek
-      const gameMusic = new Audio();
-      menuMusic.loop = true;
-      gameMusic.loop = true;
-
-      function playMenuMusic() {
-        if (!musicOn) return;
-        gameMusic.pause();
-        console.log("🎵 Menü Müziği Çalıyor...");
+    }
+    ents.forEach(e => {
+      if ((e.kind === 'mover' || e.kind === 'fall') && !e.dead && p.vy >= 0 && p.x + p.w > e.x + 2 && p.x < e.x + e.w - 2 && p.y + p.h >= e.y && p.y + p.h <= e.y + 10) {
+        p.y = e.y - p.h; p.vy = 0; p.onGround = true;
+        if (e.kind === 'mover') p.x += e._dx || 0;
+        if (e.kind === 'fall' && e.fall === 0) e.timer = 1;
       }
-
-      function playGameMusic() {
-        if (!musicOn) return;
-        menuMusic.pause();
-        console.log("🎵 Oyun Müziği Çalıyor...");
+      if (e.kind === 'cage' && !e.dead && rect(p, e)) {
+        if (horiz) {
+          if (p.x + p.w / 2 < e.x + e.w / 2) p.x = e.x - p.w; else p.x = e.x + e.w;
+          p.vx = 0;
+        } else if (p.vy > 0 && p.y + p.h <= e.y + 12) {
+          p.y = e.y - p.h; p.vy = 0; p.onGround = true;
+        }
       }
+    });
+  }
 
-      function playSfx(type) {
-        if (!soundOn) return;
-        console.log("🔊 Ses efekti oynatıldı: " + type);
+  function updatePlayer() {
+    const p = player;
+    if (p.iframes > 0) p.iframes--;
+    const cx = p.x + p.w / 2, fy = p.y + p.h;
+    const inWater = tileAt(cx, p.y + p.h / 2) === '~';
+    const onIce = p.onGround && (tileAt(p.x + 2, fy + 1) === 'I' || tileAt(p.x + p.w - 2, fy + 1) === 'I');
+    if (tileAt(cx, fy - 2) === '*' || tileAt(cx, p.y + 4) === '*') hurt(1);
+    if (tileAt(p.x + 2, fy - 1) === '^' || tileAt(p.x + p.w - 2, fy - 1) === '^') hurt(1);
+
+    if (inWater) { p.o2--; if (p.o2 <= 0) { p.o2 = 20; hurt(1); } }
+    else p.o2 = Math.min(p.maxO2, p.o2 + 2);
+
+    const left = keys.ArrowLeft || keys.KeyA;
+    const right = keys.ArrowRight || keys.KeyD;
+    const ax = (left ? -1 : 0) + (right ? 1 : 0);
+    const jumpHeld = keys.Space || keys.ArrowUp || keys.KeyW || keys.KeyZ;
+    const down = keys.ArrowDown || keys.KeyS;
+    const wantDash = keys.ShiftLeft || keys.ShiftRight || keys.KeyX;
+    const wantAtk = keys.KeyJ || keys.KeyK || keys.KeyC;
+
+    if (p.dashCd > 0) p.dashCd--;
+    if (p.dashT > 0) {
+      p.dashT--;
+      p.vx = p.dashDir * 5.5; p.vy = 0;
+    } else if (wantDash && p.dashCd <= 0 && ax) {
+      p.dashT = 8; p.dashCd = 40; p.dashDir = ax;
+      p.iframes = Math.max(p.iframes, 8);
+      sfx.dash(); burst(p.x, p.y + 6, '#cfe', 6, 1.2);
+    }
+
+    if (p.dashT <= 0) {
+      const acc = inWater ? 0.25 : onIce ? 0.14 : 0.55;
+      const maxSpd = inWater ? 1.2 : 2.2;
+      const fric = onIce ? 0.985 : p.onGround ? 0.72 : 0.86;
+      if (ax) p.vx += ax * acc; else p.vx *= fric;
+      if (p.vx > maxSpd) p.vx = maxSpd;
+      if (p.vx < -maxSpd) p.vx = -maxSpd;
+
+      if (down && !p.onGround) { p.pounding = true; p.vy = 8; p.glide = false; }
+      const grav = inWater ? 0.08 : 0.35;
+      const maxFall = inWater ? 1.4 : (p.glide && p.vy > 0 ? 1.15 : 8);
+      if (!p.onGround) {
+        if (jumpHeld && p.vy > 0 && !p.pounding) { p.glide = true; p.vy += 0.05; }
+        else { p.glide = false; p.vy += grav; }
       }
+      if (p.vy > maxFall) p.vy = maxFall;
+    }
 
-      // --- EKRAN GEÇİŞİ (KARA EKRAN HATASI ÇÖZÜMÜ) ---
-      function transitionToGame(mode) {
-        currentMode = mode;
-        playSfx("click");
-        
-        // Önce menüyü sakla ve loader ekranını göster
-        menuScreen.classList.add("hide");
-        loaderScreen.classList.remove("hide");
+    if (p.onGround) { p.coyote = 8; p.jumps = 2; if (p.pounding) burst(p.x, p.y + p.h, '#ccc', 6); p.pounding = false; }
+    else if (p.coyote > 0) p.coyote--;
 
-        // 1 saniye bekle, sonra oyuna geçiş yap
-        setTimeout(() => {
-          loaderScreen.classList.add("hide");
-          playGameMusic();
+    if (jumpHeld && !p.jpPrev) {
+      if (inWater) { p.vy = -3.2; p.onGround = false; sfx.jump(); }
+      else if (p.coyote > 0 || p.jumps > 0) {
+        if (p.coyote > 0) { p.vy = -5.6; p.coyote = 0; p.jumps = 1; }
+        else { p.vy = -5.2; p.jumps--; }
+        p.onGround = false; sfx.jump();
+      }
+    }
+    p.jpPrev = jumpHeld;
+    if (ax) p.facing = ax;
+    p.anim++;
 
-          if (mode === "1p") {
-            document.getElementById("score-1p").textContent = "0";
-            game1pScreen.classList.remove("hide");
-          } else if (mode === "2p") {
-            document.getElementById("p1-score").textContent = "0";
-            document.getElementById("p2-score").textContent = "0";
-            game2pScreen.classList.remove("hide");
+    p.x += p.vx; resolve(true);
+    p.y += p.vy; p.onGround = false; resolve(false);
+
+    if (p.atkT > 0) p.atkT--;
+    if (wantAtk && p.atkT <= 0) {
+      p.atkT = 16; sfx.atk();
+      const hb = { x: p.facing > 0 ? p.x + p.w : p.x - 14, y: p.y + 3, w: 14, h: 10 };
+      ents.forEach(e => {
+        if (e.dead) return;
+        if ((e.kind === 'enemy' || e.kind === 'boss' || e.kind === 'cage' || e.kind === 'nut') && rect(hb, e)) {
+          e.hp = (e.hp || 1) - 1;
+          burst(e.x + e.w / 2, e.y + e.h / 2, '#fff', 6);
+          e.hitT = 6;
+          if (e.kind === 'enemy' || e.kind === 'boss') {
+            e.facing = p.facing > 0 ? -1 : 1;
+            if (e.hp <= 0) { e.dead = true; score += e.score || 150; save.coins += 2; persist(); }
           }
-          isPaused = false;
-        }, 1000);
+        }
+      });
+    }
+
+    if (p.y > mapH * T + 48) die();
+  }
+
+  function applyEntPhysics(e, canFly) {
+    if (!canFly) {
+      e.vy = (e.vy || 0) + 0.35;
+      if (e.vy > 8) e.vy = 8;
+      e.y += e.vy;
+    }
+    if (e.facing > 0) {
+      if (tileAt(e.x + e.w, e.y + 4) === '#' || tileAt(e.x + e.w, e.y + e.h - 4) === '#') {
+        e.x = Math.floor((e.x + e.w) / T) * T - e.w;
+        e.facing = -1; e.vx = 0; e.dashing = false;
       }
-
-      // --- MENÜ BUTONLARI ---
-      document.getElementById("btn-play-1p").onclick = () => transitionToGame("1p");
-      document.getElementById("btn-play-2p").onclick = () => transitionToGame("2p");
-
-      // --- DURAKLATMA (PAUSE) BUTONLARI ---
-      function togglePause(btnElement) {
-        isPaused = !isPaused;
-        playSfx("click");
-        if (isPaused) {
-          btnElement.textContent = "▶ Devam Et";
-          btnElement.classList.add("paused");
-          console.log("⏸ Oyun Duraklatıldı");
-        } else {
-          btnElement.textContent = "⏸ Duraklat";
-          btnElement.classList.remove("paused");
-          console.log("▶ Oyun Devam Ediyor");
+    } else {
+      if (tileAt(e.x, e.y + 4) === '#' || tileAt(e.x, e.y + e.h - 4) === '#') {
+        e.x = Math.floor(e.x / T) * T + T;
+        e.facing = 1; e.vx = 0; e.dashing = false;
+      }
+    }
+    e.onGround = false;
+    if (!canFly) {
+      if (e.vy >= 0) {
+        const t1 = tileAt(e.x + 2, e.y + e.h);
+        const t2 = tileAt(e.x + e.w - 2, e.y + e.h);
+        if (t1 === '#' || t2 === '#' || t1 === '=' || t2 === '=' || t1 === 'I' || t2 === 'I') {
+          e.y = Math.floor((e.y + e.h) / T) * T - e.h;
+          e.vy = 0; e.vx = 0; e.onGround = true;
+        }
+        if (t1 === '^' || t2 === '^' || t1 === '*' || t2 === '*') e.dead = true;
+        if (t1 === '~' || t2 === '~') e.vy = Math.min(e.vy, 1.2);
+      } else {
+        const t1 = tileAt(e.x + 2, e.y);
+        const t2 = tileAt(e.x + e.w - 2, e.y);
+        if (t1 === '#' || t2 === '#') {
+          e.y = Math.floor(e.y / T) * T + T;
+          e.vy = 0;
         }
       }
-      document.getElementById("btn-pause-1p").onclick = function() { togglePause(this); };
-      document.getElementById("btn-pause-2p").onclick = function() { togglePause(this); };
+    }
+  }
 
-      // --- MÜZİK VE SES KONTROLLERİ BUTONLARI ---
-      function toggleMusic(btn1, btn2) {
-        musicOn = !musicOn;
-        const text = musicOn ? "🎵 Müzik: AÇIK" : "🔇 Müzik: KAPALI";
-        btn1.textContent = text;
-        btn2.textContent = text;
-        
-        if (!musicOn) {
-          menuMusic.pause();
-          gameMusic.pause();
-        } else {
-          // Eğer menü görünürse menü müziğini, değilse oyun müziğini çal
-          if (!menuScreen.classList.contains("hide")) playMenuMusic();
-          else playGameMusic();
+  function stompOrHit(e) {
+    const p = player;
+    if (e.dead || !rect(p, e)) return;
+    if (p.vy > 0 && p.y + p.h < e.y + e.h * 0.55) {
+      e.hp = (e.hp || 1) - 1;
+      p.vy = -6; p.pounding = false;
+      burst(e.x, e.y, '#fff', 6);
+      if (e.hp <= 0) { e.dead = true; score += e.score || 100; save.coins += 1; persist(); }
+    } else if (p.iframes <= 0 && p.dashT <= 0) {
+      p.hp--; p.iframes = 60;
+      p.vx = (p.x < e.x ? -1 : 1) * 3; p.vy = -4;
+      sfx.hurt();
+      if (p.hp <= 0) die();
+    }
+  }
+
+  function updateEnts() {
+    const p = player;
+    for (let i = ents.length - 1; i >= 0; i--) {
+      const e = ents[i];
+      if (e.dead) { ents.splice(i, 1); continue; }
+      if (e.hitT > 0) e.hitT--;
+
+      if (e.kind === 'coin') {
+        e.t++; e.y = e.oy + Math.sin(frame * 0.15 + e.x) * 2;
+        if (rect(p, e)) { save.coins++; persist(); burst(e.x, e.y, '#f4d03f', 8); sfx.coin(); e.dead = true; }
+      } else if (e.kind === 'honey') {
+        if (rect(p, e)) { p.hp = Math.min(p.maxHp, p.hp + 1); burst(e.x, e.y, '#e67e22', 8); sfx.shop(); e.dead = true; toast('Bal! +1 kalp'); }
+      } else if (e.kind === 'gold') {
+        e.t++;
+        if (save.gold.includes(e.id)) e.dead = true;
+        else if (rect(p, e)) { save.gold.push(e.id); persist(); burst(e.x, e.y, '#ffd700', 16, 2); sfx.win(); e.dead = true; toast('Altın Ayıcık!'); }
+      } else if (e.kind === 'spring') {
+        if (p.vy > 0 && p.x + p.w > e.x && p.x < e.x + e.w && p.y + p.h > e.y && p.y + p.h < e.y + 14) {
+          p.vy = -11; p.onGround = false; p.jumps = 2; e.t = 8; sfx.jump();
+        }
+        if (e.t > 0) e.t--;
+      } else if (e.kind === 'wind') {
+        if (rect(p, e)) {
+          p.vx += e.dx; p.vy += e.dy;
+          if (Math.random() < 0.4) parts.push({ x: e.x + Math.random() * e.w, y: e.y + e.h, vx: e.dx * 2, vy: e.dy * 3, life: 16, c: '#cfe', g: 0, s: 1 });
+        }
+      } else if (e.kind === 'mover') {
+        e.t += e.spd;
+        const nx = e.axis === 'x' ? e.ox + Math.sin(e.t) * e.amp : e.ox;
+        const ny = e.axis === 'y' ? e.oy + Math.sin(e.t) * e.amp : e.oy;
+        e._dx = nx - e.x; e.x = nx; e.y = ny;
+      } else if (e.kind === 'fall') {
+        if (e.timer > 0 && e.fall === 0) { e.timer++; if (e.timer > 35) e.fall = 1; }
+        if (e.fall) { e.y += 2.2; e.deadT = (e.deadT || 0) + 1; if (e.deadT > 90) { e.y = e.oy; e.fall = 0; e.timer = 0; e.deadT = 0; } }
+      } else if (e.kind === 'cp') {
+        if (!e.on && rect(p, { x: e.x, y: e.y, w: e.w, h: e.h })) {
+          e.on = true; p.spawn = { x: e.x, y: e.y - 4 }; toast('Checkpoint!'); sfx.ui();
+        }
+      } else if (e.kind === 'exit') {
+        const b = ents.find(x => x.kind === 'boss' && x.hp > 0);
+        e.open = !b;
+        if (e.open && rect(p, e)) winLevel();
+      } else if (e.kind === 'npc') {
+        e.x += Math.sin(frame * 0.04) * 0.02;
+      } else if (e.kind === 'cage') {
+        if ((e.hp || 3) <= 0) {
+          e.dead = true; burst(e.x, e.y, '#aaa', 12, 2);
+          ents.push({ kind: 'honey', x: e.x + 3, y: e.y + 4, w: 10, h: 10 });
+          sfx.shop();
+        }
+      } else if (e.kind === 'nut') {
+        e.vy = (e.vy || 0) + 0.3; e.y += e.vy;
+        const t1 = tileAt(e.x + 2, e.y + e.h), t2 = tileAt(e.x + e.w - 2, e.y + e.h);
+        if (t1 === '#' || t2 === '#' || t1 === '=' || t2 === '=' || t1 === 'I' || t2 === 'I') {
+          e.y = Math.floor((e.y + e.h) / T) * T - e.h; e.vy = 0;
+        }
+        if ((e.hp || 1) <= 0) { e.dead = true; save.coins += 5; persist(); burst(e.x, e.y, '#c80', 10, 2); sfx.win(); }
+          } else if ((player.iframes || 0) <= 0) {
+            player.hp--;
+            player.iframes = 60;
+            player.vx = (player.x < e.x ? -1 : 1) * 3.2;
+            player.vy = -4.5;
+            burst(player.x, player.y, '#e74c3c', 6);
+          }
+        }
+      } else if (e.kind === 'boss') {
+        e.anim = (e.anim || 0) + 1;
+        e.cd = (e.cd || 0) - 1;
+        e.t = (e.t || 0) + 0.03;
+        const dist = player.x - e.x;
+        e.facing = dist > 0 ? 1 : -1;
+        e.ox = e.ox ?? e.x;
+        e.oy = e.oy ?? e.y;
+        e.x = e.ox + Math.sin(e.t) * (e.amp || 48);
+        e.y = e.oy + Math.cos(e.t * 0.7) * 6;
+        if (e.cd <= 0) {
+          bullets.push({
+            x: e.x + e.w / 2, y: e.y + e.h / 2,
+            vx: e.facing * 2.6, vy: (player.y - e.y) * 0.02,
+            from: 'enemy', life: 120
+          });
+          e.cd = (e.hp || 8) > 4 ? 55 : 32;
+        }
+        if (!e.dead && rect(player, e)) {
+          if (player.vy > 0 && player.y + player.h < e.y + e.h * 0.4) {
+            e.hp = (e.hp || 8) - 1;
+            player.vy = -8;
+            burst(e.x + e.w / 2, e.y, '#a00', 12, 2);
+            if (e.hp <= 0) {
+              e.dead = true;
+              save.coins += 50; persist();
+              burst(e.x, e.y, '#ffd700', 24, 3);
+              sfx.win(); toast('Boss yenildi!');
+            }
+          } else if ((player.iframes || 0) <= 0) {
+            player.hp--;
+            player.iframes = 80;
+            player.vx = (player.x < e.x ? -1 : 1) * 4;
+            player.vy = -5;
+          }
+        }
+      } else if (e.kind === 'cage') {
+        if ((e.hp || 1) <= 0) {
+          e.dead = true;
+          burst(e.x, e.y, '#95a5a6', 12, 2);
+          sfx.ui(); toast('Kafes kırıldı!');
+        }
+      } else if (e.kind === 'nut') {
+        e.t = (e.t || 0) + 1;
+        e.y += Math.sin(frame * 0.12 + e.x) * 0.12;
+        if (rect(player, e)) {
+          save.coins += 2; persist();
+          burst(e.x, e.y, '#d4a017', 8);
+          sfx.coin(); e.dead = true;
         }
       }
+    }
+  }
 
-      function toggleSound(btn1, btn2) {
-        soundOn = !soundOn;
-        const text = soundOn ? "🔊 Ses: AÇIK" : "🔇 Ses: KAPALI";
-        btn1.textContent = text;
-        btn2.textContent = text;
-        playSfx("click");
+  function updateBullets() {
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      b.x += b.vx; b.y += b.vy; b.life--;
+      const hitTile = tileAt(b.x, b.y);
+      if (b.life <= 0 || hitTile === '#') { bullets.splice(i, 1); continue; }
+      const bb = { x: b.x - 3, y: b.y - 3, w: 6, h: 6 };
+      if (b.from === 'enemy' && rect(bb, player) && (player.iframes || 0) <= 0) {
+        player.hp--;
+        player.iframes = 60;
+        player.vx = b.vx > 0 ? 3 : -3;
+        player.vy = -3;
+        burst(b.x, b.y, '#e74c3c', 6);
+        bullets.splice(i, 1);
+        continue;
       }
+      if (b.from === 'player') {
+        let hit = false;
+        ents.forEach(e => {
+          if (hit || e.dead) return;
+          if ((e.kind === 'enemy' || e.kind === 'boss' || e.kind === 'cage') && rect(bb, e)) {
+            e.hp = (e.hp || 1) - 1;
+            hit = true;
+            burst(e.x, e.y, '#fff', 6);
+            if (e.hp <= 0) {
+              e.dead = true;
+              save.coins += e.kind === 'boss' ? 50 : 5;
+              persist();
+              burst(e.x, e.y, '#c80', 12, 2);
+              sfx.win();
+            }
+          }
+        });
+        if (hit) bullets.splice(i, 1);
+      }
+    }
+  }
 
-      const btnMusic1 = document.getElementById("btn-music-1p");
-      const btnMusic2 = document.getElementById("btn-music-2p");
-      const btnSound1 = document.getElementById("btn-sound-1p");
-      const btnSound2 = document.getElementById("btn-sound-2p");
+  function updateParts() {
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const q = parts[i];
+      q.x += q.vx; q.y += q.vy;
+      q.vy += q.g == null ? 0.15 : q.g;
+      q.life--;
+      if (q.life <= 0) parts.splice(i, 1);
+    }
+  }
 
-      btnMusic1.onclick = () => toggleMusic(btnMusic1, btnMusic2);
-      btnMusic2.onclick = () => toggleMusic(btnMusic1, btnMusic2);
-      btnSound1.onclick = () => toggleSound(btnSound1, btnSound2);
-      btnSound2.onclick = () => toggleSound(btnSound1, btnSound2);
+  if (typeof winLevel !== 'function') {
+    function winLevel() {
+      state = 'win';
+      sfx.win(); toast('Seviye tamam!');
+      persist();
+    }
+  }
 
-      // Oyun yüklendiğinde menü müziğini başlat
-      playMenuMusic();
-    })();
-  </script>
+  function drawTiles(camX, camY) {
+    const cols = map[0].length, rows = map.length;
+    const x0 = Math.max(0, Math.floor(camX / T) - 1);
+    const y0 = Math.max(0, Math.floor(camY / T) - 1);
+    const x1 = Math.min(cols, Math.ceil((camX + canvas.width) / T) + 1);
+    const y1 = Math.min(rows, Math.ceil((camY + canvas.height) / T) + 1);
+    for (let ty = y0; ty < y1; ty++) {
+      const row = map[ty]; if (!row) continue;
+      for (let tx = x0; tx < x1; tx++) {
+        const t = row[tx]; if (!t || t === '.' || t === ' ') continue;
+        const rx = tx * T, ry = ty * T;
+        if (t === '#') {
+          ctx.fillStyle = '#6d4c41'; ctx.fillRect(rx, ry, T, T);
+          ctx.fillStyle = '#5d4037'; ctx.fillRect(rx, ry, T, 4);
+        } else if (t === '=') {
+          ctx.fillStyle = '#8d6e63'; ctx.fillRect(rx, ry, T, 7);
+          ctx.fillStyle = '#a1887f'; ctx.fillRect(rx, ry, T, 2);
+        } else if (t === '^') {
+          ctx.fillStyle = '#c62828';
+          ctx.beginPath();
+          ctx.moveTo(rx, ry + T); ctx.lineTo(rx + T / 2, ry + 2); ctx.lineTo(rx + T, ry + T); ctx.fill();
+        } else if (t === '~') {
+          ctx.fillStyle = 'rgba(33,150,243,0.55)'; ctx.fillRect(rx, ry, T, T);
+          ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+          ctx.beginPath();
+          ctx.moveTo(rx, ry + 4 + Math.sin(frame * 0.1 + tx) * 2);
+          ctx.lineTo(rx + T, ry + 4 + Math.sin(frame * 0.1 + tx + 1) * 2);
+          ctx.stroke();
+        } else if (t === 'L' || t === 'v') {
+          ctx.fillStyle = '#e65100'; ctx.fillRect(rx, ry, T, T);
+          ctx.fillStyle = '#ffeb3b'; ctx.fillRect(rx + 4, ry + 4, T - 8, 4);
+        }
+      }
+    }
+  }
+
+  function drawBear(x, y, w, h, facing, hurt) {
+    ctx.fillStyle = hurt ? '#e57373' : '#a67c52';
+    ctx.fillRect(x, y + 4, w, h - 4);
+    ctx.fillRect(x, y, 6, 6);
+    ctx.fillRect(x + w - 6, y, 6, 6);
+    ctx.fillStyle = '#6d4c41';
+    ctx.fillRect(x + 4, y + 10, w - 8, 8);
+    ctx.fillStyle = '#3e2723';
+    const blink = Math.floor(frame / 40) % 12 === 0;
+    if (!blink) {
+      const ex = facing >= 0 ? x + w - 12 : x + 4;
+      ctx.fillRect(ex, y + 10, 3, 3);
+      ctx.fillRect(ex + (facing >= 0 ? -6 : 6), y + 10, 3, 3);
+    }
+    ctx.fillStyle = '#4e342e';
+    ctx.fillRect(x + w / 2 - 2, y + 16, 4, 3);
+  }
+
+  function drawEnts() {
+    ents.forEach(e => {
+      if (e.dead) return;
+      if (e.kind === 'coin') {
+        ctx.fillStyle = '#f4d03f';
+        ctx.beginPath(); ctx.arc(e.x + e.w / 2, e.y + e.h / 2, 5 + Math.sin(frame * 0.2) * 0.6, 0, Math.PI * 2); ctx.fill();
+      } else if (e.kind === 'honey') {
+        ctx.fillStyle = '#e67e22'; ctx.fillRect(e.x, e.y, e.w, e.h);
+        ctx.fillStyle = '#f5b041'; ctx.fillRect(e.x + 2, e.y + 2, e.w - 4, 4);
+      } else if (e.kind === 'gold') {
+        ctx.fillStyle = '#ffd700';
+        drawBear(e.x, e.y, e.w, e.h, 1, false);
+      } else if (e.kind === 'spring') {
+        ctx.fillStyle = e.t > 0 ? '#81c784' : '#43a047';
+        ctx.fillRect(e.x, e.y + (e.t > 0 ? 4 : 0), e.w, e.h - (e.t > 0 ? 4 : 0));
+      } else if (e.kind === 'wind') {
+        ctx.fillStyle = 'rgba(200,230,255,0.25)'; ctx.fillRect(e.x, e.y, e.w, e.h);
+      } else if (e.kind === 'mover' || e.kind === 'fall') {
+        ctx.fillStyle = e.kind === 'fall' && e.timer > 0 ? '#d4a373' : '#8d6e63';
+        ctx.fillRect(e.x, e.y, e.w, e.h);
+        ctx.fillStyle = '#5d4037'; ctx.fillRect(e.x, e.y, e.w, 3);
+      } else if (e.kind === 'cp') {
+        ctx.fillStyle = e.on ? '#66bb6a' : '#ef5350';
+        ctx.fillRect(e.x + e.w / 2 - 2, e.y, 4, e.h);
+        ctx.fillRect(e.x + e.w / 2, e.y, 10, 8);
+      } else if (e.kind === 'exit') {
+        ctx.fillStyle = e.open ? '#26a69a' : '#455a64';
+        ctx.fillRect(e.x, e.y, e.w, e.h);
+        ctx.fillStyle = e.open ? '#80cbc4' : '#37474f';
+        ctx.fillRect(e.x + 4, e.y + 6, e.w - 8, e.h - 10);
+      } else if (e.kind === 'npc') {
+        drawBear(e.x, e.y, e.w || 14, e.h || 18, 1, false);
+        ctx.fillStyle = '#fff'; ctx.fillRect(e.x + 4, e.y - 10, 8, 6);
+      } else if (e.kind === 'enemy') {
+        const pal = {
+          patrol: '#7e57c2', aggro: '#c62828', fly: '#5c6bc0',
+          hopper: '#2e7d32', shooter: '#6d4c41', dash: '#ef6c00'
+        };
+        ctx.fillStyle = pal[e.type] || '#8e24aa';
+        ctx.fillRect(e.x, e.y, e.w, e.h);
+        ctx.fillStyle = '#111';
+        const ex = (e.facing || 1) >= 0 ? e.x + e.w - 6 : e.x + 2;
+        ctx.fillRect(ex, e.y + 4, 3, 3);
+      } else if (e.kind === 'boss') {
+        ctx.fillStyle = '#4a148c';
+        ctx.fillRect(e.x, e.y, e.w, e.h);
+        ctx.fillStyle = '#ea80fc';
+        ctx.fillRect(e.x + 4, e.y + 6, 6, 6);
+        ctx.fillRect(e.x + e.w - 10, e.y + 6, 6, 6);
+        const maxHp = e.maxHp || 8;
+        ctx.fillStyle = '#222'; ctx.fillRect(e.x, e.y - 8, e.w, 4);
+        ctx.fillStyle = '#e53935'; ctx.fillRect(e.x, e.y - 8, e.w * Math.max(0, e.hp) / maxHp, 4);
+      } else if (e.kind === 'cage') {
+        ctx.strokeStyle = '#90a4ae'; ctx.lineWidth = 2;
+        ctx.strokeRect(e.x, e.y, e.w, e.h);
+        ctx.beginPath();
+        ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + e.w, e.y + e.h);
+        ctx.moveTo(e.x + e.w, e.y); ctx.lineTo(e.x, e.y + e.h);
+        ctx.stroke();
+      } else if (e.kind === 'nut') {
+        ctx.fillStyle = '#a1887f';
+        ctx.beginPath(); ctx.arc(e.x + e.w / 2, e.y + e.h / 2, e.w / 2, 0, Math.PI * 2); ctx.fill();
+      }
+    });
+  }
+
+  function drawHUD() {
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(6, 6, 150, 34);
+    ctx.fillStyle = '#e74c3c';
+    for (let i = 0; i < (player.maxHp || 3); i++) {
+      ctx.globalAlpha = i < player.hp ? 1 : 0.25;
+      ctx.fillRect(12 + i * 14, 12, 12, 10);
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px monospace';
+    ctx.fillText('◎ ' + (save.coins || 0) + '   ★ ' + ((save.gold && save.gold.length) || 0), 12, 34);
+
+    if (state === 'menu') {
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffe082';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Altın Ayıcık', canvas.width / 2, canvas.height / 2 - 20);
+      ctx.fillStyle = '#fff';
+      ctx.font = '14px sans-serif';
+      ctx.fillText('Enter / tıkla — oyna', canvas.width / 2, canvas.height / 2 + 16);
+      ctx.fillText('Oklar / WASD  Z saldırı  X dash  E konuş  Space zıpla', canvas.width / 2, canvas.height / 2 + 40);
+      ctx.textAlign = 'left';
+    } else if (state === 'win') {
+      ctx.fillStyle = 'rgba(0,40,20,0.55)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffd54f';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Seviye tamam!', canvas.width / 2, canvas.height / 2);
+      ctx.fillStyle = '#fff';
+      ctx.font = '14px sans-serif';
+      ctx.fillText('Enter — devam', canvas.width / 2, canvas.height / 2 + 28);
+      ctx.textAlign = 'left';
+    } else if (state === 'pause') {
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Duraklatıldı', canvas.width / 2, canvas.height / 2);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  function draw() {
+    if (!ctx || !canvas) return;
+    const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    sky.addColorStop(0, '#7ec8e3');
+    sky.addColorStop(1, '#c9eaf5');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const cols = (map && map[0]) ? map[0].length : 0;
+    const rows = map ? map.length : 0;
+    const camX = cols ? Math.max(0, Math.min(player.x - canvas.width / 2 + player.w / 2, cols * T - canvas.width)) : 0;
+    const camY = rows ? Math.max(0, Math.min(player.y - canvas.height / 2 + player.h / 2, rows * T - canvas.height)) : 0;
+
+    ctx.save();
+    ctx.translate(-Math.floor(camX), -Math.floor(camY));
+    if (map) drawTiles(camX, camY);
+    drawEnts();
+
+    bullets.forEach(b => {
+      ctx.fillStyle = b.from === 'player' ? '#fff59d' : '#ff8a65';
+      ctx.fillRect(b.x - 3, b.y - 3, 6, 6);
+    });
+
+    const hurt = (player.iframes || 0) > 0 && Math.floor(frame / 3) % 2 === 0;
+    if (!hurt || (player.iframes || 0) <= 0) {
+      drawBear(player.x, player.y, player.w, player.h, player.facing || 1, (player.iframes || 0) > 0);
+    } else {
+      drawBear(player.x, player.y, player.w, player.h, player.facing || 1, true);
+    }
+
+    parts.forEach(q => {
+      ctx.globalAlpha = Math.max(0, q.life / 20);
+      ctx.fillStyle = q.c || '#fff';
+      const s = q.s || 2;
+      ctx.fillRect(q.x, q.y, s, s);
+    });
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    drawHUD();
+
+    if (typeof toasts !== 'undefined' && toasts && toasts.length) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      toasts.forEach((t, i) => ctx.fillText(t.msg || t, canvas.width / 2, 56 + i * 16));
+      ctx.textAlign = 'left';
+    }
+  }
+
+  if (typeof keys === 'undefined') window.keys = {};
+  addEventListener('keydown', e => {
+    keys[e.key] = true;
+    keys[e.code] = true;
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+    if (e.key === 'e' || e.key === 'E') tryTalk && tryTalk();
+    if (e.key === 'Enter') {
+      if (state === 'menu' || state === 'win') state = 'play';
+    }
+    if (e.key === 'Escape') {
+      if (state === 'play') state = 'pause';
+      else if (state === 'pause') state = 'play';
+    }
+  });
+  addEventListener('keyup', e => { keys[e.key] = false; keys[e.code] = false; });
+  canvas && canvas.addEventListener('click', () => { if (state === 'menu' || state === 'win') state = 'play'; });
+
+  function step() {
+    frame++;
+    if (typeof toasts !== 'undefined' && toasts && toasts.length) {
+      toasts.forEach(t => t.life != null && t.life--);
+      for (let i = toasts.length - 1; i >= 0; i--) {
+        if (toasts[i].life != null && toasts[i].life <= 0) toasts.splice(i, 1);
+      }
+    }
+    if (state === 'play') {
+      if (typeof updatePlayer === 'function') updatePlayer();
+      updateEnts();
+      updateBullets();
+      updateParts();
+    }
+    draw();
+    requestAnimationFrame(step);
+  }
+  if (typeof state === 'undefined') state = 'play';
+  step();
+})();
+// ===== MENÜ TIKLAMA DÜZELTMESİ =====
+(function () {
+  const canvas = document.getElementById('game') || document.getElementById('c') || document.querySelector('canvas');
+  if (!canvas) { console.error('Canvas bulunamadı'); return; }
+
+  // Tam ekran canvas tıklamayı yutmasın diye menü HTML overlay
+  let ui = document.getElementById('ui-menu');
+  if (!ui) {
+    const style = document.createElement('style');
+    style.textContent = `
+      #ui-menu, #ui-worlds, #ui-shop {
+        position: fixed; inset: 0; z-index: 50;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        gap: 12px;
+        background: rgba(0,0,0,.55);
+        font-family: system-ui, sans-serif;
+      }
+      #ui-menu.hidden, #ui-worlds.hidden, #ui-shop.hidden { display: none !important; }
+      #ui-menu h1, #ui-worlds h1, #ui-shop h1 { color: #fff; margin: 0 0 12px; }
+      #ui-menu button, #ui-worlds button, #ui-shop button {
+        width: min(320px, 80vw); padding: 14px 18px;
+        font-size: 18px; font-weight: 700; cursor: pointer;
+        border: 0; border-radius: 10px; color: #fff;
+        background: #3d8c40;
+      }
+      #ui-menu button.alt, #ui-worlds button.alt, #ui-shop button.alt { background: #2b6cb0; }
+      #ui-menu button.back, #ui-worlds button.back, #ui-shop button.back { background: #555; }
+    `;
+    document.head.appendChild(style);
+
+    ui = document.createElement('div');
+    ui.id = 'ui-menu';
+    ui.innerHTML = `
+      <h1>MENÜ</h1>
+      <button id="btnPlay">Oyna</button>
+      <button id="btnWorlds" class="alt">Dünyalar</button>
+      <button id="btnShop" class="alt">Mağaza</button>
+    `;
+    document.body.appendChild(ui);
+
+    const worlds = document.createElement('div');
+    worlds.id = 'ui-worlds';
+    worlds.className = 'hidden';
+    worlds.innerHTML = `
+      <h1>Dünyalar</h1>
+      <button id="btnWorld1">Dünya 1</button>
+      <button id="btnWorld2">Dünya 2</button>
+      <button id="btnWorldsBack" class="back">Geri</button>
+    `;
+    document.body.appendChild(worlds);
+
+    const shop = document.createElement('div');
+    shop.id = 'ui-shop';
+    shop.className = 'hidden';
+    shop.innerHTML = `
+      <h1>Mağaza</h1>
+      <button>Yakında</button>
+      <button id="btnShopBack" class="back">Geri</button>
+    `;
+    document.body.appendChild(shop);
+  }
+
+  function show(id) {
+    ['ui-menu', 'ui-worlds', 'ui-shop'].forEach(x => {
+      const el = document.getElementById(x);
+      if (el) el.classList.toggle('hidden', x !== id);
+    });
+  }
+
+  function startFromMenu() {
+    show(null);
+    ['ui-menu', 'ui-worlds', 'ui-shop'].forEach(x => {
+      const el = document.getElementById(x);
+      if (el) el.classList.add('hidden');
+    });
+    if (typeof startGame === 'function') startGame();
+    else if (typeof start === 'function') start();
+    else if (window.state) window.state.screen = 'play';
+    canvas.focus();
+  }
+
+  document.getElementById('btnPlay').onclick = startFromMenu;
+  document.getElementById('btnWorlds').onclick = () => show('ui-worlds');
+  document.getElementById('btnShop').onclick = () => show('ui-shop');
+  document.getElementById('btnWorldsBack').onclick = () => show('ui-menu');
+  document.getElementById('btnShopBack').onclick = () => show('ui-menu');
+  document.getElementById('btnWorld1').onclick = startFromMenu;
+  document.getElementById('btnWorld2').onclick = startFromMenu;
+})();
+
+</script>
 </body>
 </html>
