@@ -2,7 +2,6 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <!-- Telefon, Tablet ve PC Tarayıcı Uyumluluk Ayarları -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
     <title>THE SIGMA GAMES</title>
@@ -67,25 +66,26 @@
             color: var(--accent-color);
             text-transform: uppercase;
             letter-spacing: 4px;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             text-shadow: 0 0 15px var(--accent-glow);
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
             width: 100%;
         }
 
         .game-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             justify-content: center;
             padding: 10px;
+            margin-bottom: 25px;
         }
 
-        .game-btn {
+        .game-btn, .about-toggle-btn {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -101,23 +101,110 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
             text-transform: uppercase;
             letter-spacing: 1px;
+            cursor: pointer;
+            width: 100%;
         }
 
-        .game-btn:hover { 
+        .game-btn:hover, .about-toggle-btn:hover { 
             background: var(--accent-color); 
             color: var(--bg-color);
             box-shadow: 0 0 20px var(--accent-glow);
-            transform: translateY(-5px);
+            transform: translateY(-3px);
         }
 
-        .about-section {
-            margin: 30px auto;
-            width: 100%;
-            max-width: 300px;
+        /* Hakkında Gizli / Açılır Panel */
+        #about-box {
+            display: none;
+            background: var(--card-bg);
+            border: 2px solid var(--accent-color);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: left;
+            margin-top: 20px;
+            box-shadow: 0 0 25px rgba(0, 255, 157, 0.15);
+            line-height: 1.6;
+        }
+
+        /* Bayrak Butonları */
+        .lang-switch {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .lang-btn {
+            background: #1a1a1a;
+            border: 2px solid var(--accent-color);
+            color: var(--text-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .lang-btn:hover {
+            background: var(--accent-color);
+            color: var(--bg-color);
+        }
+
+        .about-box img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 1px solid var(--accent-color);
+        }
+
+        .about-box h2 {
+            color: var(--accent-color);
+            margin-top: 25px;
+            margin-bottom: 10px;
+            border-bottom: 1px dashed var(--accent-color);
+            padding-bottom: 5px;
+        }
+
+        .about-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .about-box li {
+            margin: 8px 0;
+        }
+
+        .about-box a {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .about-box a:hover {
+            text-decoration: underline;
+        }
+
+        hr {
+            border: 0;
+            height: 1px;
+            background: var(--accent-color);
+            margin: 25px 0;
+        }
+
+        .lang-content {
+            display: none;
+        }
+
+        .lang-content.active {
+            display: block;
         }
 
         footer {
-            margin-top: 30px;
+            margin-top: 40px;
             color: #666;
             font-size: 0.9rem;
         }
@@ -128,22 +215,147 @@
     <div class="container">
         <h1>THE SIGMA GAMES</h1>
         
+        <!-- Oyun Linkleri -->
         <div class="game-grid">
             <a href="en/" class="game-btn">ENGLISH(EN)</a>
             <a href="tr/" class="game-btn">TÜRKÇE(TR)</a>
         </div>
 
-        <!-- Hakkında ve GitHub Reposu Butonu -->
-        <div class="about-section">
-            <a href="https://thesigmagames.github.io/README.md" target="_blank" class="game-btn" style="font-size: 1rem; padding: 15px;">
-                HAKKINDA/ABOUT
-            </a>
+        <!-- Hakkında Açma/Kapama Butonu -->
+        <div style="max-width: 420px; margin: 0 auto;">
+            <button class="about-toggle-btn" onclick="toggleAbout()">HAKKINDA / ABOUT 🗿</button>
+        </div>
+
+        <!-- 🔴 HAKKINDA GİZLİ PANELİ (BUTONA BASINCA AÇILIR) -->
+        <div id="about-box" class="about-box">
+            
+            <!-- Panel İçindeki Bayrak Dil Değiştirici -->
+            <div class="lang-switch">
+                <button class="lang-btn" onclick="showLang('tr')">
+                    <img src="https://flagcdn.com/w20/tr.png" alt="TR Flag"> Türkçe (TR)
+                </button>
+                <button class="lang-btn" onclick="showLang('en')">
+                    <img src="https://flagcdn.com/w20/gb.png" alt="EN Flag"> English (EN)
+                </button>
+            </div>
+
+            <!-- TÜRKÇE İÇERİK -->
+            <div id="content-tr" class="lang-content active">
+                <h2>THE SIGMA GAMES 🗿</h2>
+                <p>THE SIGMA GAMES official hub. The grind never stops.</p>
+                <img src="https://github.com/user-attachments/assets/c6a49de0-29af-4edc-9277-d3515f3b73a7" alt="TSG_LOGO" />
+                <p>THE SIGMA GAMES, dijital oyun dünyasında yeni nesil deneyimler sunan bir sitedir. Mücadelemiz asla durmaz.</p>
+
+                <h2>Hakkımızda</h2>
+                <p>Türküz ve bizim vizyonumuz, saf Sigma kalitesinde oyunlar ve modlar geliştirmektir. Kodlama, tasarım ve rekabet bizim DNA'mızda var. Sigma kuralları ve Sigmalık bizim kırmızı çizgimiz! Kopyalama yok © Tüm Haklarımız Saklıdır! Tüm Kodlar Bizim Emeğimizdir.</p>
+
+                <h2>Bağlantılar</h2>
+                <ul>
+                    <li>• <a href="https://thesigmagames.github.io" target="_blank">Resmi Site</a></li>
+                    <li>• <a href="https://www.chess.com/member/parlakkerem98" target="_blank">Chess.com Profilim</a></li>
+                    <li>• <a href="https://www.scratch.mit.edu/users/parlakkerem98" target="_blank">Scratch Hesabım</a></li>
+                </ul>
+
+                <h2>Dil Seçenekleri</h2>
+                <ul>
+                    <li>• <a href="#" onclick="showLang('tr'); return false;">Türkçe (TR)</a></li>
+                    <li>• <a href="#" onclick="showLang('en'); return false;">English (EN)</a></li>
+                </ul>
+
+                <h2 style="text-align: center;">---- MÜCADELE ASLA DURMAZ ----</h2>
+                <hr>
+                <p><em>Sitemiz şu anda beta aşamasında olduğu için sorunlar olabilir. Çünkü hazırlamaya yeni başlandı.</em></p>
+                <hr>
+
+                <h3>YAKINDA</h3>
+                <ul>
+                    <li>-- sɪ̇ɢᴍᴀ ᴀʀᴇɴᴀ ᴘᴄ 💻🖱</li>
+                    <li>-- sɪ̇ɢᴍᴀ ᴀʀᴇɴᴀ ᴛᴇʟ 📱</li>
+                    <li>-- sɪ̇ɢᴍᴀ ᴄʜᴇss ♟</li>
+                    <li>-- sɪ̇ɢᴍᴀ x-ᴏ-x(ᴛɪ̇ᴄ-ᴛᴀᴄ ᴛᴏᴇ) ❌⭕❌</li>
+                    <li>-- sɪ̇ɢᴍᴀ ᴍᴏɴᴋᴇʏ 🐒</li>
+                    <li>-- sɪ̇ɢᴍᴀ-ᴄʀᴀꜰᴛ</li>
+                </ul>
+                <p style="margin-top: 10px; font-weight: bold;">**** VE DAHASI ****</p>
+                <hr>
+                <p><small>NOT: PROJELERİMİN SİTEYE AKTARILMASI ZOR OLDUĞU İÇİN SİTENİN YAPIM SÜRECİ ÇOK UZUN SÜREBİLİR. KİM BİLİR, BELKİ <a href="https://www.scratch.mit.edu/" target="_blank">SCRATCH</a> PLATFORMUNDAKİ PROJELERİMİ YÜKLERİM...</small></p>
+                <p><small>İLETİŞİM: parlakkerem98@gmail.com | thesigmagamesss@gmail.com</small></p>
+                <h3 style="text-align: center; margin-top: 15px;"># ~ SON ~</h3>
+            </div>
+
+            <!-- İNGİLİZCE İÇERİK -->
+            <div id="content-en" class="lang-content">
+                <h2>THE SIGMA GAMES 🗿</h2>
+                <p>THE SIGMA GAMES official hub. The grind never stops.</p>
+                <img src="https://github.com/user-attachments/assets/c6a49de0-29af-4edc-9277-d3515f3b73a7" alt="TSG_LOGO" />
+                <p>THE SIGMA GAMES is a platform delivering next-generation digital gaming experiences. The grind never stops.</p>
+
+                <h2>About Us</h2>
+                <p>We are Turkish and our vision is to develop games and mods with pure Sigma quality. Coding, design, and competition are in our DNA. Sigma rules are our red line! No copying © All Rights Reserved! All codes belong to our hard work.</p>
+
+                <h2>Links</h2>
+                <ul>
+                    <li>• <a href="https://thesigmagames.github.io" target="_blank">Official Site</a></li>
+                    <li>• <a href="https://www.chess.com/member/parlakkerem98" target="_blank">Chess.com Profile</a></li>
+                    <li>• <a href="https://www.scratch.mit.edu/users/parlakkerem98" target="_blank">Scratch Account</a></li>
+                </ul>
+
+                <h2>Language Options</h2>
+                <ul>
+                    <li>• <a href="#" onclick="showLang('tr'); return false;">Türkçe (TR)</a></li>
+                    <li>• <a href="#" onclick="showLang('en'); return false;">English (EN)</a></li>
+                </ul>
+
+                <h2 style="text-align: center;">---- THE GRIND NEVER STOPS ----</h2>
+                <hr>
+                <p><em>Our site is currently in beta stage, so there may be issues since development has just begun.</em></p>
+                <hr>
+
+                <h3>COMING SOON</h3>
+                <ul>
+                    <li>-- sɪ̇ɢᴍᴀ ᴀʀᴇɴᴀ ᴘᴄ 💻🖱</li>
+                    <li>-- sɪ̇ɢᴍᴀ ᴀʀᴇɴᴀ ᴍᴏʙɪʟᴇ 📱</li>
+                    <li>-- sɪ̇ɢᴍᴀ ᴄʜᴇss ♟</li>
+                    <li>-- sɪ̇ɢᴍᴀ x-ᴏ-x(ᴛɪ̇ᴄ-ᴛᴀᴄ ᴛᴏᴇ) ❌⭕❌</li>
+                    <li>-- sɪ̇ɢᴍᴀ ᴍᴏɴᴋᴇʏ 🐒</li>
+                    <li>-- sɪ̇ɢᴍᴀ-ᴄʀᴀꜰᴛ</li>
+                </ul>
+                <p style="margin-top: 10px; font-weight: bold;">**** AND MORE ****</p>
+                <hr>
+                <p><small>NOTE: SINCE TRANSFERRING MY PROJECTS TO THE SITE IS HARD, DEVELOPMENT MAY TAKE A LONG TIME. WHO KNOWS, MAYBE I WILL UPLOAD MY <a href="https://www.scratch.mit.edu/" target="_blank">SCRATCH</a> PROJECTS...</small></p>
+                <p><small>CONTACT: parlakkerem98@gmail.com | thesigmagamesss@gmail.com</small></p>
+                <h3 style="text-align: center; margin-top: 15px;"># ~ THE END ~</h3>
+            </div>
+
         </div>
     </div>
 
     <footer>
-        <p>&copy; 2026 The Sigma Games. Tüm hakları saklıdır.<br>&copy; 2026 The Sigma Games. All rights reserved</p>
+        <p>&copy; 2026 The Sigma Games. Tüm hakları saklıdır.</p>
     </footer>
 
+    <!-- 🟢 JavaScript Kontrolleri -->
+    <script>
+        // Hakkında Bölümünü Aç/Kapat
+        function toggleAbout() {
+            const aboutBox = document.getElementById('about-box');
+            if (aboutBox.style.display === 'block') {
+                aboutBox.style.display = 'none';
+            } else {
+                aboutBox.style.display = 'block';
+                aboutBox.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // Dil Değiştirme (TR / EN)
+        function showLang(lang) {
+            document.querySelectorAll('.lang-content').forEach(el => el.classList.remove('active'));
+            if(lang === 'tr') {
+                document.getElementById('content-tr').classList.add('active');
+            } else if(lang === 'en') {
+                document.getElementById('content-en').classList.add('active');
+            }
+        }
+    </script>
 </body>
 </html>
