@@ -3,15 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>THE SIGMA GAMES | OYUNLAR</title>
+    <title>THE SIGMA GAMES | Ücretsiz En İyi Tarayıcı Oyunları</title>
+    
+    <!-- Google SEO Meta Etiketleri -->
+    <meta name="description" content="THE SIGMA GAMES - En efsanevi ücretsiz tarayıcı ve HTML5 oyunları! Sigma Brawl Arena, Space Shooter, Snake, Tetris ve daha fazlasını hemen oyna.">
+    <meta name="keywords" content="the sigma games, sigma oyunları, ücretsiz oyunlar, html5 oyunlar, oyuna başla, sigma brawl arena, sigma math arena">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="THE SIGMA GAMES">
+    
     <link rel="icon" type="image/png" href="tricon.png">
+    
     <style>
         :root {
             --bg-color: #0a0a0a;
             --card-bg: #121212;
             --accent-color: #00FF9D;
             --accent-glow: rgba(0, 255, 157, 0.3);
+            --gold-color: #FFD700;
+            --gold-glow: rgba(255, 215, 0, 0.4);
             --text-color: #ffffff;
+            --subtext-color: #a0a0a0;
         }
 
         * {
@@ -25,11 +36,15 @@
             color: var(--text-color); 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             text-align: center; 
-            padding: 40px 20px;
+            padding: 30px 20px;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+        }
+
+        header {
+            margin-bottom: 30px;
         }
 
         h1 {
@@ -37,8 +52,78 @@
             color: var(--accent-color);
             text-transform: uppercase;
             letter-spacing: 4px;
-            margin-bottom: 40px;
+            margin-bottom: 15px;
             text-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        /* Top Bar Controls (Search & Hakkında) */
+        .controls-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            max-width: 800px;
+            margin: 0 auto 30px auto;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 250px;
+            padding: 12px 20px;
+            background: var(--card-bg);
+            border: 2px solid var(--accent-color);
+            border-radius: 25px;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .about-btn {
+            background: transparent;
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .about-btn:hover {
+            background: var(--accent-color);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        /* Hakkında Kutusu */
+        .about-section {
+            display: none;
+            background: var(--card-bg);
+            border: 2px dashed var(--accent-color);
+            border-radius: 12px;
+            padding: 25px;
+            max-width: 800px;
+            margin: 0 auto 40px auto;
+            text-align: left;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        .about-section h2 {
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+
+        .about-section p {
+            color: var(--subtext-color);
+            line-height: 1.6;
+            margin-bottom: 10px;
         }
 
         .container {
@@ -47,94 +132,438 @@
             width: 100%;
         }
 
+        .section-header {
+            font-size: 1.5rem;
+            margin: 30px 0 15px 0;
+            color: var(--accent-color);
+            text-align: left;
+            border-bottom: 2px solid #222;
+            padding-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .top-header {
+            color: var(--gold-color);
+            border-bottom-color: var(--gold-color);
+        }
+
         .game-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 20px;
             justify-content: center;
-            padding: 10px;
+            padding: 10px 0;
         }
 
-        .game-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+        /* Game Card Styles */
+        .game-card {
             background: var(--card-bg);
             border: 2px solid var(--accent-color);
-            color: var(--accent-color);
-            text-decoration: none;
-            font-size: 1.2rem;
-            font-weight: bold;
-            border-radius: 8px;
+            border-radius: 12px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
             transition: all 0.3s ease;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-            text-transform: uppercase;
-            letter-spacing: 1px;
         }
 
-        .game-btn:hover { 
-            background: var(--accent-color); 
-            color: var(--bg-color);
+        .game-card:hover {
             box-shadow: 0 0 20px var(--accent-glow);
             transform: translateY(-5px);
         }
 
-        .footer-nav {
-            margin-top: 50px;
+        /* En İyi 3 Oyun İçin Özel Altın Çerçeve */
+        .game-card.top-game {
+            border-color: var(--gold-color);
+            background: #18150a;
         }
 
-        .back-btn {
+        .game-card.top-game:hover {
+            box-shadow: 0 0 20px var(--gold-glow);
+        }
+
+        .top-badge {
+            background: var(--gold-color);
+            color: #000;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 5px;
+            align-self: flex-start;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .game-link {
             color: var(--accent-color);
             text-decoration: none;
-            font-size: 1.1rem;
-            border-bottom: 1px dashed var(--accent-color);
-            padding-bottom: 4px;
-            transition: opacity 0.2s;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            display: block;
         }
 
-        .back-btn:hover {
-            opacity: 0.8;
+        .top-game .game-link {
+            color: var(--gold-color);
+        }
+
+        /* Like / Dislike Butonları */
+        .rating-box {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+            border-top: 1px solid #222;
+            padding-top: 10px;
+        }
+
+        .rate-btn {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .rate-btn:hover {
+            background: #2a2a2a;
+        }
+
+        .rate-btn.liked {
+            background: #00cc66;
+            border-color: #00cc66;
+            color: #fff;
+        }
+
+        .rate-btn.disliked {
+            background: #cc0033;
+            border-color: #cc0033;
+            color: #fff;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 50px;
+            border-top: 1px solid #222;
+            padding-top: 20px;
+            color: var(--subtext-color);
+            font-size: 0.9rem;
+        }
+
+        footer strong {
+            color: var(--accent-color);
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <header class="container">
         <h1>THE SIGMA GAMES</h1>
         
-        <div class="game-grid">
-            <a href="sigma-ballz/" class="game-btn">Sigma Ballz</a>
-            <a href="sigma-bear-adventure/" class="game-btn">Sigma Bear Adventure</a>
-            <a href="sigma-bird/" class="game-btn">Sigma Bird</a>
-            <a href="sigma-brawl-arena/" class="game-btn">Sigma Brawl Arena</a>
-            <a href="sigma-brick-breaker/" class="game-btn">Sigma Brick Breaker</a>
-            <a href="sigma-clicker/" class="game-btn">Sigma Clicker</a>
-            <a href="sigma-color-switch/" class="game-btn">Sigma Color Switch</a>
-            <a href="sigma-cyber-breakout/" class="game-btn">Sigma Cyber Breakout</a>
-            <a href="sigma-helix-tower/" class="game-btn">Sigma Helix Tower</a>
-            <a href="sigma-knife-hit/" class="game-btn">Sigma Knife Hit</a>
-            <a href="sigma-math-arena/" class="game-btn">Sigma Math Arena</a>
-            <a href="sigma-memory/" class="game-btn">Sigma Memory</a>
-            <a href="sigma-neon-dash/" class="game-btn">Sigma Dash</a>
-            <a href="sigma-neon-jump/" class="game-btn">Sigma Jump</a>
-            <a href="pong-game/" class="game-btn">Sigma Ping Pong</a>
-            <a href="sigma-neon-runner/" class="game-btn">Sigma Runner</a>
-            <a href="sigma-snake/" class="game-btn">Sigma Snake</a>
-            <a href="sigma-snake-vs-block/" class="game-btn">Sigma Snake VS Block</a>
-            <a href="sigma-space-shooter/" class="game-btn">Sigma Space Shooter</a>
-            <a href="sigma-stack/" class="game-btn">Sigma Stack</a>
-            <a href="sigma-strike/" class="game-btn">Sigma Strike</a>
-            <a href="tetris/" class="game-btn">Sigma Tetris</a>
-            <a href="sigma-twist/" class="game-btn">Sigma Twist</a>
-            <a href="sigma-whack-mole/" class="game-btn">Sigma Whack A Mole</a>
-            <a href="2048/" class="game-btn">Sigma 2048</a>
+        <!-- Arama Çubuğu & Hakkında Butonu -->
+        <div class="controls-bar">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Oyunlarda ara..." onkeyup="filterGames()">
+            <button class="about-btn" onclick="toggleAbout()">Hakkında</button>
         </div>
-    </div>
 
-    <div class="footer-nav">
-        <a href="../" class="back-btn">← Ana Sayfaya Dön</a>
-    </div>
+        <!-- Gizlenebilir Hakkında Alanı -->
+        <div class="about-section" id="aboutSection">
+            <h2>📌 THE SIGMA GAMES Hakkında</h2>
+            <p><strong>THE SIGMA GAMES</strong>, tarayıcınız üzerinden hiçbir yükleme yapmadan anında oynayabileceğiniz en popüler ve performanslı web oyunlarını sunan yerli oyun platformudur.</p>
+            <p>Oyunlarımız tamamen ücretsizdir ve sürekli güncellenmektedir. Sitemizi favorilerinize eklemeyi ve arkadaşlarınızla paylaşmayı unutmayın!</p>
+        </div>
+    </header>
 
+    <main class="container">
+        
+        <!-- EN İYİ 3 OYUN SEKSİYONU -->
+        <h2 class="section-header top-header">🔥 En Çok Oynanan En İyi 3 Oyun</h2>
+        <div class="game-grid" id="topGamesGrid">
+            
+            <div class="game-card top-game" data-name="sigma brawl arena">
+                <span class="top-badge">👑 #1 Popüler</span>
+                <a href="sigma-brawl-arena/" class="game-link">Sigma Brawl Arena</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">245</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">4</span></button>
+                </div>
+            </div>
+
+            <div class="game-card top-game" data-name="sigma space shooter uzay">
+                <span class="top-badge">⚡ #2 Popüler</span>
+                <a href="sigma-space-shooter/" class="game-link">Sigma Space Shooter</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">189</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">2</span></button>
+                </div>
+            </div>
+
+            <div class="game-card top-game" data-name="sigma clicker tiklama">
+                <span class="top-badge">⭐ #3 Popüler</span>
+                <a href="sigma-clicker/" class="game-link">Sigma Clicker</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">162</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">3</span></button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- TÜM OYUNLAR SEKSİYONU -->
+        <h2 class="section-header">🎮 Tüm Oyunlarımız</h2>
+        <div class="game-grid" id="allGamesGrid">
+
+            <div class="game-card" data-name="sigma ballz">
+                <a href="sigma-ballz/" class="game-link">Sigma Ballz</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">45</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">1</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma bear adventure ayi">
+                <a href="sigma-bear-adventure/" class="game-link">Sigma Bear Adventure</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">52</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">0</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma bird kus flappy">
+                <a href="sigma-bird/" class="game-link">Sigma Bird</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">88</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">3</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma brick breaker tuğla kırma">
+                <a href="sigma-brick-breaker/" class="game-link">Sigma Brick Breaker</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">34</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">1</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma color switch renk degistirme">
+                <a href="sigma-color-switch/" class="game-link">Sigma Color Switch</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">61</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">2</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma cyber breakout siber">
+                <a href="sigma-cyber-breakout/" class="game-link">Sigma Cyber Breakout</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">73</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">0</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma helix tower kule">
+                <a href="sigma-helix-tower/" class="game-link">Sigma Helix Tower</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">94</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">4</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma knife hit bıçak atma">
+                <a href="sigma-knife-hit/" class="game-link">Sigma Knife Hit</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">112</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">2</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma math arena matematik">
+                <a href="sigma-math-arena/" class="game-link">Sigma Math Arena</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">40</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">1</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma memory hafiza kart">
+                <a href="sigma-memory/" class="game-link">Sigma Memory</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">29</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">0</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma dash neon kosu">
+                <a href="sigma-neon-dash/" class="game-link">Sigma Dash</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">105</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">3</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma jump zıplama">
+                <a href="sigma-neon-jump/" class="game-link">Sigma Jump</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">81</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">2</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma ping pong masa tenisi">
+                <a href="pong-game/" class="game-link">Sigma Ping Pong</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">67</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">1</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma runner koşturma">
+                <a href="sigma-neon-runner/" class="game-link">Sigma Runner</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">90</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">2</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma snake yılan">
+                <a href="sigma-snake/" class="game-link">Sigma Snake</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">130</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">3</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma snake vs block yılan blok">
+                <a href="sigma-snake-vs-block/" class="game-link">Sigma Snake VS Block</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">78</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">1</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma stack kule dikme">
+                <a href="sigma-stack/" class="game-link">Sigma Stack</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">55</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">1</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma strike vuruş">
+                <a href="sigma-strike/" class="game-link">Sigma Strike</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">64</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">0</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma tetris">
+                <a href="tetris/" class="game-link">Sigma Tetris</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">141</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">2</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma twist">
+                <a href="sigma-twist/" class="game-link">Sigma Twist</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">38</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">1</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma whack a mole köstebek vurma">
+                <a href="sigma-whack-mole/" class="game-link">Sigma Whack A Mole</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">47</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">0</span></button>
+                </div>
+            </div>
+
+            <div class="game-card" data-name="sigma 2048 bulmaca">
+                <a href="2048/" class="game-link">Sigma 2048</a>
+                <div class="rating-box">
+                    <button class="rate-btn" onclick="rateGame(this, 'like')">👍 <span class="count">99</span></button>
+                    <button class="rate-btn" onclick="rateGame(this, 'dislike')">👎 <span class="count">1</span></button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2026 <strong>THE SIGMA GAMES</strong>. Tüm Hakları Saklıdır.</p>
+    </footer>
+
+    <script>
+        // Hakkında Aç/Kapat
+        function toggleAbout() {
+            const about = document.getElementById('aboutSection');
+            about.style.display = (about.style.display === 'block') ? 'none' : 'block';
+        }
+
+        // Oyun Arama Filtresi
+        function filterGames() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const cards = document.querySelectorAll('.game-card');
+
+            cards.forEach(card => {
+                const name = card.getAttribute('data-name').toLowerCase();
+                if (name.includes(query)) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // Like / Dislike Oylama Mantığı
+        function rateGame(btn, type) {
+            const card = btn.closest('.game-card');
+            const likeBtn = card.querySelector('.rate-btn:nth-child(1)');
+            const dislikeBtn = card.querySelector('.rate-btn:nth-child(2)');
+            
+            const likeCount = likeBtn.querySelector('.count');
+            const dislikeCount = dislikeBtn.querySelector('.count');
+
+            if (type === 'like') {
+                if (likeBtn.classList.contains('liked')) {
+                    likeBtn.classList.remove('liked');
+                    likeCount.innerText = parseInt(likeCount.innerText) - 1;
+                } else {
+                    likeBtn.classList.add('liked');
+                    likeCount.innerText = parseInt(likeCount.innerText) + 1;
+                    if (dislikeBtn.classList.contains('disliked')) {
+                        dislikeBtn.classList.remove('disliked');
+                        dislikeCount.innerText = parseInt(dislikeCount.innerText) - 1;
+                    }
+                }
+            } else if (type === 'dislike') {
+                if (dislikeBtn.classList.contains('disliked')) {
+                    dislikeBtn.classList.remove('disliked');
+                    dislikeCount.innerText = parseInt(dislikeCount.innerText) - 1;
+                } else {
+                    dislikeBtn.classList.add('disliked');
+                    dislikeCount.innerText = parseInt(dislikeCount.innerText) + 1;
+                    if (likeBtn.classList.contains('liked')) {
+                        likeBtn.classList.remove('liked');
+                        likeCount.innerText = parseInt(likeCount.innerText) - 1;
+                    }
+                }
+            }
+        }
+    </script>
 </body>
 </html>
