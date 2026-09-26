@@ -1,34 +1,786 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIGMA BRICK BREAKER</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGMA BRICK BREAKER • The Sigma Games</title>
+  <link rel="icon" href="img/favicon.png">
+  <style>
+    :root {
+      --background-dark: #18181b;
+      --background-light: #ffffff;
+      --text-color-dark: #f4f4f5;
+      --text-color-light: #0f172a;
+      --accent: #3b82f6;
+      --on-background-extra-light-dark: #27272a;
+      --on-background-light-dark: #3f3f46;
+      --on-background-secondary-dark: #a1a1aa;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: #121212;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      box-sizing: border-box;
+      height: 100vh;
+      width: 100vw;
+      touch-action: manipulation;
+      overflow: hidden;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    body::-webkit-scrollbar { display: none; }
+
+    .breakout-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-height: 600px;
+      width: 100%;
+      max-width: 400px;
+      outline: none;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+    }
+
+    .breakout-container--dark { background: var(--background-dark); color: var(--text-color-dark); }
+
+    .breakout-header {
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      font-size: 16px;
+      background: #202020;
+      border-bottom: 1px solid #2d2d2d;
+      color: var(--accent);
+    }
+
+    .breakout-header svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--accent);
+    }
+
+    .breakout-content {
+      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #202020;
+    }
+
+    .breakout-score-wrapper {
+      padding: 12px 16px 8px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .breaker-score-display {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      max-width: 350px;
+      margin: 0 auto;
+    }
+
+    .breaker-score-item {
+      border-radius: 8px;
+      padding: 6px 8px;
+      border: 1px solid;
+      background: var(--on-background-extra-light-dark);
+      border-color: var(--on-background-light-dark);
+    }
+
+    .breaker-score-header {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 2px;
+    }
+
+    .breaker-score-label {
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--on-background-secondary-dark);
+    }
+
+    .breaker-score-value {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-color-dark);
+    }
+
+    .breakout-game-area {
+      flex: 1;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 8px 16px 16px;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+
+    .breakout-board-wrapper {
+      position: relative;
+      max-width: 350px;
+      width: 100%;
+    }
+
+    .breaker-board {
+      position: relative;
+      border-radius: 8px;
+      border: 2px solid rgba(59, 130, 246, 0.5);
+      box-sizing: border-box;
+      overflow: hidden;
+      margin: 0 auto;
+      background: var(--background-dark);
+    }
+
+    .breaker-brick {
+      position: absolute;
+      border-radius: 3px;
+      box-sizing: border-box;
+      transition: opacity 0.1s;
+    }
+
+    .brick-red-1 { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .brick-red-2 { background: linear-gradient(135deg, #b91c1c, #991b1b); }
+    .brick-red-3 { background: linear-gradient(135deg, #7f1d1d, #450a0a); }
+    .brick-orange-1 { background: linear-gradient(135deg, #f97316, #ea580c); }
+    .brick-orange-2 { background: linear-gradient(135deg, #c2410c, #9a3412); }
+    .brick-orange-3 { background: linear-gradient(135deg, #7c2d12, #431407); }
+    .brick-yellow-1 { background: linear-gradient(135deg, #eab308, #ca8a04); }
+    .brick-yellow-2 { background: linear-gradient(135deg, #a16207, #854d0e); }
+    .brick-yellow-3 { background: linear-gradient(135deg, #713f12, #422006); }
+    .brick-green-1 { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .brick-green-2 { background: linear-gradient(135deg, #15803d, #166534); }
+    .brick-green-3 { background: linear-gradient(135deg, #14532d, #052e16); }
+    .brick-blue-1 { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .brick-blue-2 { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
+    .brick-blue-3 { background: linear-gradient(135deg, #1e3a8a, #172554); }
+
+    .breaker-paddle {
+      position: absolute;
+      background: linear-gradient(to top, #3b82f6, #60a5fa);
+      border-radius: 4px;
+      box-shadow: 0 2px 8px #3b82f680;
+      transition: width 0.2s ease;
+    }
+
+    .breaker-paddle--shield {
+      box-shadow: 0 0 12px #22d3eecc;
+      border: 2px solid rgba(34, 211, 238, 0.8);
+    }
+
+    .breaker-ball {
+      position: absolute;
+      background: linear-gradient(135deg, #ffffff, #d4d4d4);
+      border-radius: 50%;
+      box-shadow: 0 2px 4px #0000004d;
+    }
+
+    .breaker-powerup {
+      position: absolute;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: 0 2px 4px #0000004d;
+    }
+
+    .breaker-powerup--good { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .breaker-powerup--bad { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .breaker-powerup--neutral { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+
+    .breaker-shield-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #22d3ee, #06b6d4, #22d3ee);
+      background-size: 200% 100%;
+      animation: shimmer 2s infinite linear;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -100% 0; }
+      100% { background-position: 100% 0; }
+    }
+
+    .breakout-content-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      background: rgba(32, 32, 32, 0.92);
+      backdrop-filter: blur(4px);
+      padding: 24px;
+      text-align: center;
+    }
+
+    .overlay-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .overlay-sub {
+      font-size: 14px;
+      color: #a1a1aa;
+      margin-bottom: 20px;
+    }
+
+    .btn-action {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.1s, background 0.2s;
+    }
+
+    .btn-action:hover {
+      transform: scale(1.04);
+      background: #2563eb;
+    }
+
+    .controls-hint {
+      margin-top: 20px;
+      font-size: 11px;
+      color: #71717a;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .controls-hint kbd {
+      background: #27272a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #3f3f46;
+      color: #e4e4e7;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>⚡ SIGMA BRICK BREAKER ⚡</h1>
-        
-        <div class="game-info">
-            <p>← → - Uzat Hareket Et</p>
-            <p>Tuğlaları kır ve kazanışsın!</p>
-        </div>
-        
-        <canvas id="gameCanvas" width="800" height="400"></canvas>
-        
-        <div class="score-board">
-            <div class="score">Skor: <span id="score">0</span></div>
-            <div class="score">Tuğlalar: <span id="bricks">0</span></div>
-        </div>
-        
-        <button id="startBtn" class="btn">OYUNU BAŞLAT</button>
-        <button id="resetBtn" class="btn">SIFIRLA</button>
-        
-        <br><br>
-        <a href="../../" class="back-link">← Geri Dön</a>
+
+  <div class="breakout-container breakout-container--dark" tabindex="0" id="gameContainer">
+    <div class="breakout-header">
+      <!-- Sigma Logosu (Görsel Grafik) -->
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 4H20V7H8L14 12L8 17H20V20H4V4Z"/>
+      </svg>
+      SIGMA BRICK BREAKER
     </div>
     
-    <script src="game.js"></script>
+    <div class="breakout-content">
+      <div class="breakout-score-wrapper">
+        <div class="breaker-score-display">
+          <div class="breaker-score-item">
+            <div class="breaker-score-header">
+              <span class="breaker-score-label">SKOR</span>
+            </div>
+            <p class="breaker-score-value" id="scoreVal">0</p>
+          </div>
+          <div class="breaker-score-item">
+            <div class="breaker-score-header">
+              <span class="breaker-score-label">REKOR</span>
+            </div>
+            <p class="breaker-score-value" id="highScoreVal">0</p>
+          </div>
+          <div class="breaker-score-item">
+            <div class="breaker-score-header">
+              <span class="breaker-score-label">SEVİYE</span>
+            </div>
+            <p class="breaker-score-value" id="levelVal">1</p>
+          </div>
+          <div class="breaker-score-item">
+            <div class="breaker-score-header">
+              <span class="breaker-score-label">CAN</span>
+            </div>
+            <p class="breaker-score-value" id="livesVal">3</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="breakout-game-area">
+        <div class="breakout-board-wrapper">
+          <div class="breaker-board" id="board" style="width: 350px; height: 400px;">
+            <div id="bricksContainer"></div>
+            <div id="powerUpsContainer"></div>
+            <div id="paddle" class="breaker-paddle"></div>
+            <div id="ballsContainer"></div>
+            <div id="shieldBar" class="breaker-shield-bar" style="display: none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="breakout-content-overlay" id="overlay">
+        <div class="overlay-title" id="overlayTitle">SİGMA BRICK BREAKER</div>
+        <div class="overlay-sub" id="overlaySub">Oyuna başlamak için hazırlanın!</div>
+        <button class="btn-action" id="overlayBtn">BAŞLA (SPACE)</button>
+        <div class="controls-hint">
+          <span>Hareket: <kbd>←</kbd> <kbd>→</kbd> veya <kbd>A</kbd> <kbd>D</kbd></span>
+          <span>Topu Fırlat / Başlat: <kbd>SPACE</kbd></span>
+          <span>Duraklat: <kbd>P</kbd></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BOARD_WIDTH = 350;
+    const BOARD_HEIGHT = 400;
+    const PADDLE_HEIGHT = 10;
+    const DEFAULT_PADDLE_WIDTH = 60;
+    const BALL_RADIUS = 6;
+    const BRICK_ROWS = 5;
+    const BRICK_COLS = 8;
+    const BRICK_WIDTH = 40;
+    const BRICK_HEIGHT = 15;
+    const BRICK_GAP = 3;
+    const BRICK_TOP_OFFSET = 40;
+    const BRICK_LEFT_OFFSET = 3;
+
+    const COLOR_MAP = [
+      { 1: "brick-red-1", 2: "brick-red-2", 3: "brick-red-3" },
+      { 1: "brick-orange-1", 2: "brick-orange-2", 3: "brick-orange-3" },
+      { 1: "brick-yellow-1", 2: "brick-yellow-2", 3: "brick-yellow-3" },
+      { 1: "brick-green-1", 2: "brick-green-2", 3: "brick-green-3" },
+      { 1: "brick-blue-1", 2: "brick-blue-2", 3: "brick-blue-3" }
+    ];
+
+    const POWERUP_TYPES = [
+      "widen-paddle", "shrink-paddle", "multi-ball", 
+      "slow-ball", "fast-ball", "shield", "extra-life"
+    ];
+
+    let paddle = { x: BOARD_WIDTH / 2 - DEFAULT_PADDLE_WIDTH / 2, y: BOARD_HEIGHT - 30, width: DEFAULT_PADDLE_WIDTH, height: PADDLE_HEIGHT };
+    let balls = [{ x: BOARD_WIDTH / 2, y: BOARD_HEIGHT - 30 - BALL_RADIUS, dx: 0, dy: 0, radius: BALL_RADIUS }];
+    let bricks = [];
+    let powerUps = [];
+    let score = 0;
+    let highScore = parseInt(localStorage.getItem("browser_breaker_high_score") || "0");
+    let lives = 3;
+    let level = 1;
+    let gameStarted = false;
+    let isPaused = false;
+    let waitingForLaunch = true;
+    let hasShield = false;
+    let shieldTimer = null;
+    let speedMultiplier = 1.4;
+
+    const keysPressed = new Set();
+    let animationFrameId = null;
+
+    const paddleEl = document.getElementById("paddle");
+    const bricksContainerEl = document.getElementById("bricksContainer");
+    const powerUpsContainerEl = document.getElementById("powerUpsContainer");
+    const ballsContainerEl = document.getElementById("ballsContainer");
+    const shieldBarEl = document.getElementById("shieldBar");
+    const scoreValEl = document.getElementById("scoreVal");
+    const highScoreValEl = document.getElementById("highScoreVal");
+    const levelValEl = document.getElementById("levelVal");
+    const livesValEl = document.getElementById("livesVal");
+    const overlayEl = document.getElementById("overlay");
+    const overlayTitleEl = document.getElementById("overlayTitle");
+    const overlaySubEl = document.getElementById("overlaySub");
+    const overlayBtnEl = document.getElementById("overlayBtn");
+
+    highScoreValEl.textContent = highScore;
+
+    function initBricks(lvl) {
+      const newBricks = [];
+      const rowCount = Math.min(BRICK_ROWS + Math.floor(lvl / 3), 8);
+      for (let r = 0; r < rowCount; r++) {
+        for (let c = 0; c < BRICK_COLS; c++) {
+          const hits = lvl > 3 && Math.random() > 0.7 ? (Math.random() > 0.5 ? 2 : 3) : 1;
+          newBricks.push({
+            x: c * (BRICK_WIDTH + BRICK_GAP) + BRICK_LEFT_OFFSET,
+            y: r * (BRICK_HEIGHT + BRICK_GAP) + BRICK_TOP_OFFSET,
+            width: BRICK_WIDTH,
+            height: BRICK_HEIGHT,
+            hits: hits,
+            color: COLOR_MAP[r % COLOR_MAP.length][hits],
+            hasPowerUp: Math.random() > 0.82
+          });
+        }
+      }
+      return newBricks;
+    }
+
+    function renderBricks() {
+      bricksContainerEl.innerHTML = "";
+      bricks.forEach((b) => {
+        const div = document.createElement("div");
+        div.className = `breaker-brick ${b.color}`;
+        div.style.left = `${b.x}px`;
+        div.style.top = `${b.y}px`;
+        div.style.width = `${b.width}px`;
+        div.style.height = `${b.height}px`;
+        bricksContainerEl.appendChild(div);
+      });
+    }
+
+    function renderPaddle() {
+      paddleEl.style.left = `${paddle.x}px`;
+      paddleEl.style.top = `${paddle.y}px`;
+      paddleEl.style.width = `${paddle.width}px`;
+      paddleEl.style.height = `${paddle.height}px`;
+      paddleEl.className = `breaker-paddle ${hasShield ? "breaker-paddle--shield" : ""}`;
+    }
+
+    function renderBalls() {
+      ballsContainerEl.innerHTML = "";
+      balls.forEach((b) => {
+        const div = document.createElement("div");
+        div.className = "breaker-ball";
+        div.style.left = `${b.x - b.radius}px`;
+        div.style.top = `${b.y - b.radius}px`;
+        div.style.width = `${b.radius * 2}px`;
+        div.style.height = `${b.radius * 2}px`;
+        ballsContainerEl.appendChild(div);
+      });
+    }
+
+    function getPowerUpIcon(type) {
+      switch (type) {
+        case "widen-paddle": return "↔";
+        case "shrink-paddle": return "→←";
+        case "multi-ball": return "●●";
+        case "slow-ball": return "▼";
+        case "fast-ball": return "▲";
+        case "shield": return "🛡";
+        case "extra-life": return "♥";
+        default: return "?";
+      }
+    }
+
+    function getPowerUpClass(type) {
+      switch (type) {
+        case "widen-paddle": case "slow-ball": case "shield": case "extra-life": return "breaker-powerup--good";
+        case "shrink-paddle": case "fast-ball": return "breaker-powerup--bad";
+        default: return "breaker-powerup--neutral";
+      }
+    }
+
+    function renderPowerUps() {
+      powerUpsContainerEl.innerHTML = "";
+      powerUps.forEach((p) => {
+        const div = document.createElement("div");
+        div.className = `breaker-powerup ${getPowerUpClass(p.type)}`;
+        div.style.left = `${p.x}px`;
+        div.style.top = `${p.y}px`;
+        div.style.width = `${p.width}px`;
+        div.style.height = `${p.height}px`;
+        div.textContent = getPowerUpIcon(p.type);
+        powerUpsContainerEl.appendChild(div);
+      });
+    }
+
+    function applyPowerUp(type) {
+      switch (type) {
+        case "widen-paddle":
+          paddle.width = Math.min(paddle.width + 30, BOARD_WIDTH - 40);
+          break;
+        case "shrink-paddle":
+          paddle.width = Math.max(paddle.width - 12, 35);
+          break;
+        case "multi-ball":
+          if (balls.length < 5) {
+            const base = balls[0];
+            balls.push({ ...base, dx: -base.dx || 2, dy: base.dy });
+            balls.push({ ...base, dx: base.dx * 0.5 || -2, dy: -base.dy });
+          }
+          break;
+        case "slow-ball":
+          speedMultiplier = Math.max(speedMultiplier - 0.4, 1.1);
+          balls.forEach(b => { b.dx *= 0.75; b.dy *= 0.75; });
+          break;
+        case "fast-ball":
+          speedMultiplier = Math.min(speedMultiplier + 0.3, 3.2);
+          balls.forEach(b => { b.dx *= 1.15; b.dy *= 1.15; });
+          break;
+        case "shield":
+          hasShield = true;
+          shieldBarEl.style.display = "block";
+          if (shieldTimer) clearTimeout(shieldTimer);
+          shieldTimer = setTimeout(() => {
+            hasShield = false;
+            shieldBarEl.style.display = "none";
+          }, 12000);
+          break;
+        case "extra-life":
+          lives++;
+          livesValEl.textContent = lives;
+          break;
+      }
+    }
+
+    function updateUI() {
+      scoreValEl.textContent = score;
+      highScoreValEl.textContent = highScore;
+      levelValEl.textContent = level;
+      livesValEl.textContent = lives;
+    }
+
+    function launchBall() {
+      if (!waitingForLaunch) return;
+      waitingForLaunch = false;
+      const spd = speedMultiplier * (1 + level * 0.08);
+      balls[0].dx = spd * (Math.random() > 0.5 ? 1 : -1);
+      balls[0].dy = -spd;
+    }
+
+    function startNewGame() {
+      score = 0;
+      lives = 3;
+      level = 1;
+      speedMultiplier = 1.4;
+      hasShield = false;
+      shieldBarEl.style.display = "none";
+      resetRound();
+      gameStarted = true;
+      isPaused = false;
+      overlayEl.style.display = "none";
+      updateUI();
+      gameLoop();
+    }
+
+    function resetRound() {
+      paddle.width = DEFAULT_PADDLE_WIDTH;
+      paddle.x = BOARD_WIDTH / 2 - DEFAULT_PADDLE_WIDTH / 2;
+      balls = [{ x: BOARD_WIDTH / 2, y: paddle.y - BALL_RADIUS, dx: 0, dy: 0, radius: BALL_RADIUS }];
+      bricks = initBricks(level);
+      powerUps = [];
+      waitingForLaunch = true;
+      renderBricks();
+      renderPaddle();
+      renderBalls();
+      renderPowerUps();
+    }
+
+    function nextLevel() {
+      level++;
+      updateUI();
+      overlayTitleEl.textContent = `TEBRİKLER! SEVİYE ${level-1} TAMAMLANDI`;
+      overlaySubEl.textContent = `Seviye ${level} alanına geçiliyor...`;
+      overlayBtnEl.style.display = "none";
+      overlayEl.style.display = "flex";
+
+      setTimeout(() => {
+        resetRound();
+        overlayEl.style.display = "none";
+        overlayBtnEl.style.display = "inline-block";
+      }, 2000);
+    }
+
+    function gameOver() {
+      gameStarted = false;
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("browser_breaker_high_score", highScore.toString());
+      }
+      updateUI();
+      overlayTitleEl.textContent = "OYUN BİTTİ!";
+      overlaySubEl.textContent = `Toplam Skorun: ${score}`;
+      overlayBtnEl.textContent = "YENİDEN OYNA (SPACE)";
+      overlayEl.style.display = "flex";
+    }
+
+    function togglePause() {
+      if (!gameStarted) return;
+      isPaused = !isPaused;
+      if (isPaused) {
+        overlayTitleEl.textContent = "OYUN DURAKLATILDI";
+        overlaySubEl.textContent = "Devam etmek için P veya düğmeye bas";
+        overlayBtnEl.textContent = "DEVAM ET";
+        overlayEl.style.display = "flex";
+      } else {
+        overlayEl.style.display = "none";
+        gameLoop();
+      }
+    }
+
+    function update() {
+      if (keysPressed.has("ArrowLeft") || keysPressed.has("KeyA")) {
+        paddle.x = Math.max(2, paddle.x - 7);
+      }
+      if (keysPressed.has("ArrowRight") || keysPressed.has("KeyD")) {
+        paddle.x = Math.min(BOARD_WIDTH - paddle.width - 2, paddle.x + 7);
+      }
+
+      if (waitingForLaunch) {
+        balls[0].x = paddle.x + paddle.width / 2;
+        balls[0].y = paddle.y - BALL_RADIUS;
+        renderPaddle();
+        renderBalls();
+        return;
+      }
+
+      for (let i = powerUps.length - 1; i >= 0; i--) {
+        const p = powerUps[i];
+        p.y += 2;
+        if (p.y + p.height >= paddle.y && p.y <= paddle.y + paddle.height &&
+            p.x + p.width >= paddle.x && p.x <= paddle.x + paddle.width) {
+          applyPowerUp(p.type);
+          powerUps.splice(i, 1);
+        } else if (p.y > BOARD_HEIGHT) {
+          powerUps.splice(i, 1);
+        }
+      }
+
+      for (let i = balls.length - 1; i >= 0; i--) {
+        let b = balls[i];
+        let nextX = b.x + b.dx;
+        let nextY = b.y + b.dy;
+
+        if (nextX + b.radius > BOARD_WIDTH || nextX - b.radius < 0) {
+          b.dx = -b.dx;
+          nextX = b.x;
+        }
+        if (nextY - b.radius < 0) {
+          b.dy = -b.dy;
+          nextY = b.y;
+        }
+
+        if (b.dy > 0 && nextY + b.radius >= paddle.y && nextY - b.radius <= paddle.y + paddle.height &&
+            nextX + b.radius >= paddle.x && nextX - b.radius <= paddle.x + paddle.width) {
+          b.dy = -Math.abs(b.dy);
+          let hitPoint = (nextX - paddle.x) / paddle.width - 0.5;
+          b.dx = hitPoint * 6;
+          nextY = paddle.y - b.radius;
+        }
+
+        if (nextY - b.radius > BOARD_HEIGHT) {
+          balls.splice(i, 1);
+          if (balls.length === 0) {
+            if (hasShield) {
+              hasShield = false;
+              shieldBarEl.style.display = "none";
+              balls.push({ x: paddle.x + paddle.width / 2, y: paddle.y - BALL_RADIUS, dx: 2, dy: -3, radius: BALL_RADIUS });
+            } else {
+              lives--;
+              updateUI();
+              if (lives <= 0) {
+                gameOver();
+                return;
+              } else {
+                balls = [{ x: paddle.x + paddle.width / 2, y: paddle.y - BALL_RADIUS, dx: 0, dy: 0, radius: BALL_RADIUS }];
+                waitingForLaunch = true;
+              }
+            }
+          }
+          continue;
+        }
+
+        for (let j = bricks.length - 1; j >= 0; j--) {
+          const br = bricks[j];
+          if (nextX + b.radius > br.x && nextX - b.radius < br.x + br.width &&
+              nextY + b.radius > br.y && nextY - b.radius < br.y + br.height) {
+            
+            b.dy = -b.dy;
+            br.hits--;
+            score += 10;
+            updateUI();
+
+            if (br.hits <= 0) {
+              if (br.hasPowerUp) {
+                const randomType = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
+                powerUps.push({ x: br.x + br.width / 2 - 10, y: br.y, width: 20, height: 20, type: randomType });
+              }
+              bricks.splice(j, 1);
+            } else {
+              const rIndex = Math.floor((br.y - BRICK_TOP_OFFSET) / (BRICK_HEIGHT + BRICK_GAP));
+              br.color = COLOR_MAP[rIndex % COLOR_MAP.length][br.hits];
+            }
+
+            if (bricks.length === 0) {
+              nextLevel();
+              return;
+            }
+            break;
+          }
+        }
+
+        b.x = nextX;
+        b.y = nextY;
+      }
+
+      renderPaddle();
+      renderBalls();
+      renderPowerUps();
+      renderBricks();
+    }
+
+    function gameLoop() {
+      if (!gameStarted || isPaused) return;
+      update();
+      animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (["Space", "ArrowLeft", "ArrowRight", "KeyA", "KeyD", "KeyP"].includes(e.code)) {
+        e.preventDefault();
+      }
+
+      if (e.code === "Space") {
+        if (!gameStarted) {
+          startNewGame();
+        } else if (waitingForLaunch) {
+          launchBall();
+        } else if (isPaused) {
+          togglePause();
+        }
+      } else if (e.code === "KeyP") {
+        togglePause();
+      } else {
+        keysPressed.add(e.code);
+      }
+    });
+
+    window.addEventListener("keyup", (e) => {
+      keysPressed.delete(e.code);
+    });
+
+    overlayBtnEl.addEventListener("click", () => {
+      if (!gameStarted) startNewGame();
+      else if (isPaused) togglePause();
+    });
+
+    resetRound();
+  </script>
 </body>
 </html>
