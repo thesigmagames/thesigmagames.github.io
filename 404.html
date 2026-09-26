@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>404 - Sayfa Bulunamadı | THE SIGMA GAMES</title>
+    <link rel="icon" href="img/favicon.png">
     
     <style>
         :root {
@@ -144,11 +145,11 @@
         <div class="error-code">404</div>
         <h1 class="error-title">HATA - SAYFA BULUNAMADI</h1>
         <p class="error-desc">
-            Aradığınız bölüm, harita veya sayfa silinmiş ya da hiç var olmamış olabilir. Sigma arenasına geri dönüp oyun oynamaya devam et!
+            Aradığınız bölüm, harita, servis veya sayfa silinmiş ya da hiç var olmamış olabilir. Sigma arenasına geri dönüp oyun oynamaya devam et!
         </p>
 
         <div class="btn-group">
-            <a href="index.html" class="action-btn primary-btn">🎮 Ana Menüye Dön</a>
+            <a href="/" class="action-btn primary-btn">🎮 Ana Menüye Dön</a>
             <button onclick="history.back()" class="action-btn secondary-btn">↩ Geri Git</button>
         </div>
 
@@ -168,7 +169,7 @@
 
             if (seconds <= 0) {
                 clearInterval(countdown);
-                window.location.href = 'index.html';
+                window.location.href = '/';
             }
         }, 1000);
     </script>
