@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -112,7 +113,6 @@
             transform: translateY(-3px);
         }
 
-        /* Hakkında Gizli / Açılır Panel */
         #about-box {
             display: none;
             background: var(--card-bg);
@@ -125,7 +125,6 @@
             line-height: 1.6;
         }
 
-        /* Bayrak Butonları */
         .lang-switch {
             display: flex;
             justify-content: center;
@@ -205,8 +204,21 @@
 
         footer {
             margin-top: 40px;
-            color: #666;
+            color: #888;
             font-size: 0.9rem;
+            line-height: 1.8;
+        }
+
+        footer a {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.2s ease;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+            text-shadow: 0 0 8px var(--accent-glow);
         }
     </style>
 </head>
@@ -254,6 +266,7 @@
                     <li>• <a href="https://thesigmagames.github.io" target="_blank">Resmi Site</a></li>
                     <li>• <a href="https://www.chess.com/member/parlakkerem98" target="_blank">Chess.com Profilim</a></li>
                     <li>• <a href="https://www.scratch.mit.edu/users/parlakkerem98" target="_blank">Scratch Hesabım</a></li>
+                    <li>• <a href="privacy-policy.html">Gizlilik Politikası (Privacy Policy)</a></li>
                 </ul>
 
                 <h2>Dil Seçenekleri</h2>
@@ -298,6 +311,7 @@
                     <li>• <a href="https://thesigmagames.github.io" target="_blank">Official Site</a></li>
                     <li>• <a href="https://www.chess.com/member/parlakkerem98" target="_blank">Chess.com Profile</a></li>
                     <li>• <a href="https://www.scratch.mit.edu/users/parlakkerem98" target="_blank">Scratch Account</a></li>
+                    <li>• <a href="privacy-policy.html">Privacy Policy</a></li>
                 </ul>
 
                 <h2>Language Options</h2>
@@ -331,12 +345,15 @@
     </div>
 
     <footer>
-        <p>&copy; 2026 The Sigma Games. Tüm hakları saklıdır.<br>&copy; 2026 The Sigma Games. All rights reserved</p>
+        <p>
+            &copy; 2026 The Sigma Games. Tüm hakları saklıdır. | <a href="privacy-policy.html">Gizlilik Politikası</a>
+            <br>
+            &copy; 2026 The Sigma Games. All rights reserved. | <a href="privacy-policy.html">Privacy Policy</a>
+        </p>
     </footer>
 
     <!-- 🟢 JavaScript Kontrolleri -->
     <script>
-        // Hakkında Bölümünü Aç/Kapat
         function toggleAbout() {
             const aboutBox = document.getElementById('about-box');
             if (aboutBox.style.display === 'block') {
@@ -347,7 +364,6 @@
             }
         }
 
-        // Dil Değiştirme (TR / EN)
         function showLang(lang) {
             document.querySelectorAll('.lang-content').forEach(el => el.classList.remove('active'));
             if(lang === 'tr') {
@@ -359,3 +375,4 @@
     </script>
 </body>
 </html>
+```
