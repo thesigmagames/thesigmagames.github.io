@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>THE SIGMA GAMES | Best Free Browser Games</title>
+<title>THE SIGMA GAMES | Ücretsiz En İyi Tarayıcı Oyunları</title>
 
 <!-- Google SEO Meta Tags -->
-<meta name="description" content="THE SIGMA GAMES - The ultimate free browser and HTML5 games! Play Sigma Brawl Arena, Space Shooter, Snake, Tetris and more right now.">
-<meta name="keywords" content="the sigma games, sigma games, free games, html5 games, play online, sigma brawl arena, sigma math arena">
+<meta name="description" content="THE SIGMA GAMES - Efsanevi ücretsiz tarayıcı ve HTML5 oyunları! Sigma Brawl Arena, Space Shooter, Snake, Tetris ve dahası.">
+<meta name="keywords" content="the sigma games, sigma games, free games, html5 games, play online, sigma brawl arena, sigma math arena, ücretsiz oyunlar, poki, crazy games">
 <meta name="robots" content="index, follow">
 <meta name="author" content="THE SIGMA GAMES">
 <meta name="theme-color" content="#05060a">
-<meta property="og:title" content="THE SIGMA GAMES | Best Free Browser Games">
-<meta property="og:description" content="Play free HTML5 browser games instantly. No downloads.">
+<meta property="og:title" content="THE SIGMA GAMES | En iyi ücretsiz tarayıcı oyunları">
+<meta property="og:description" content="Ücretsiz  HTML5 tarayıcı oyunları oyna. Yükleme gerekmez.">
 <meta property="og:type" content="website">
 <link rel="icon" href="/img/favicon.png">
 
@@ -222,137 +222,137 @@ body.gated{overflow:hidden}
 </style>
 </head>
 <body class="gated">
-<div id="startGate" role="dialog" aria-label="Start"><h1>THE SIGMA GAMES</h1><button type="button" id="startBtn">▶ START</button></div>
+<div id="startGate" role="dialog" aria-label="Başlat"><h1>THE SIGMA GAMES</h1><button type="button" id="startBtn">▶ BAŞLAT</button></div>
 <canvas id="bg" aria-hidden="true"></canvas>
 <div id="spot" aria-hidden="true"></div>
 <div id="progress" aria-hidden="true"></div>
 
-<div class="audio-controls glass" role="region" aria-label="Audio controls">
+<div class="audio-controls glass" role="region" aria-label="Ses Kontrolleri">
     <div class="audio-group">
-        <button type="button" id="musicBtn" class="audio-btn" aria-pressed="true" aria-label="Toggle music">🎵 Music</button>
-        <input type="range" id="musicVol" class="vol-slider" min="0" max="1" step="0.05" value="0.4" aria-label="Music volume">
+        <button type="button" id="musicBtn" class="audio-btn" aria-pressed="true" aria-label="Müziği Aç/Kapat">🎵 Müzik</button>
+        <input type="range" id="musicVol" class="vol-slider" min="0" max="1" step="0.05" value="0.4" aria-label="Müziğin Ses Düzeyi">
     </div>
     <div class="audio-group">
-        <button type="button" id="sfxBtn" class="audio-btn" aria-pressed="true" aria-label="Toggle sound effects">🔊 SFX</button>
-        <input type="range" id="sfxVol" class="vol-slider" min="0" max="1" step="0.05" value="0.7" aria-label="Sound effects volume">
+        <button type="button" id="sfxBtn" class="audio-btn" aria-pressed="true" aria-label="Sesi Aç/Kapat">🔊 Ses</button>
+        <input type="range" id="sfxVol" class="vol-slider" min="0" max="1" step="0.05" value="0.7" aria-label="Ses Düzeyi">
     </div>
-    <button type="button" id="moodBtn" class="audio-btn" aria-label="Switch music mood">⚡ Energy</button>
+    <button type="button" id="moodBtn" class="audio-btn" aria-label="Müzik türünü değiştir">⚡ Enerji</button>
     <canvas id="viz" width="88" height="44" aria-hidden="true"></canvas>
 </div>
 
 <header class="container">
     <h1>THE SIGMA GAMES</h1>
-    <div><span class="edition">ULTRA EDITION</span></div>
+    <div><span class="edition">EN İYİ WEB OYUN PORTALI</span></div>
     <p id="greetingText" class="greeting-text" aria-live="polite"></p>
 
-    <div class="hud glass" aria-label="Your player profile">
+    <div class="hud glass" aria-label="Oyuncu profilin">
         <div class="lvl">
             <span class="lv-badge" id="lvBadge">LV 1</span>
             <div class="xp">
-                <div class="xp-top"><b id="rank">Rookie</b><span id="xpTxt">0 / 50 XP</span></div>
-                <div class="xp-bar" role="progressbar" aria-label="Experience to next level" aria-valuemin="0" aria-valuemax="100" id="xpBar"><i id="xpFill"></i></div>
+                <div class="xp-top"><b id="rank">Çaylak</b><span id="xpTxt">0 / 50 XP</span></div>
+                <div class="xp-bar" role="progressbar" aria-label="Sonraki seviyeye deneyim" aria-valuemin="0" aria-valuemax="100" id="xpBar"><i id="xpFill"></i></div>
             </div>
         </div>
-        <span class="hud-stat" id="streak" title="Daily visit streak">🔥 1 day</span>
-        <button type="button" class="hud-btn" id="achBtn" aria-label="Show achievements">🏆 <span id="achN">0/12</span></button>
-        <button type="button" class="hud-btn hot" id="luckyBtn">🎲 Surprise Me</button>
-        <button type="button" class="hud-btn" id="themeBtn" aria-label="Change color theme">🎨 Theme</button>
-        <button type="button" class="hud-btn" id="helpBtn" aria-label="Keyboard shortcuts">⌨️</button>
+        <span class="hud-stat" id="streak" title="Günlük ziyaret serisi">🔥 1 gün</span>
+        <button type="button" class="hud-btn" id="achBtn" aria-label="Başarımları göster">🏆 <span id="achN">0/12</span></button>
+        <button type="button" class="hud-btn hot" id="luckyBtn">🎲 Beni Şaşırt</button>
+        <button type="button" class="hud-btn" id="themeBtn" aria-label="Renk temasını değiştir">🎨 Tema</button>
+        <button type="button" class="hud-btn" id="helpBtn" aria-label="Klavye kısayolları">⌨️</button>
     </div>
 
     <div class="controls-bar glass" role="search">
         <div class="row">
             <div class="search-wrap">
-                <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search games..." aria-label="Search games" autocomplete="off" spellcheck="false" enterkeyhint="go">
-                <button type="button" class="clear-btn" id="clearBtn" aria-label="Clear search">✕</button>
+                <input type="text" id="searchInput" class="search-input" placeholder="🔍 Oyun ara..." aria-label="Oyun ara" autocomplete="off" spellcheck="false" enterkeyhint="go">
+                <button type="button" class="clear-btn" id="clearBtn" aria-label="Aramayı temizle">✕</button>
                 <span class="kbd" id="kbd" aria-hidden="true">Ctrl K</span>
             </div>
-            <select id="sortSel" class="sort" aria-label="Sort games">
-                <option value="default">Sort: Default</option>
-                <option value="az">Alphabetical (A-Z)</option>
-                <option value="liked">Most Liked</option>
-                <option value="popular">Most Popular</option>
-                <option value="mine">Your Most Played</option>
+            <select id="sortSel" class="sort" aria-label="Oyunları sırala">
+                <option value="default">Sırala: Varsayılan</option>
+                <option value="az">Alfabetik (A-Z)</option>
+                <option value="liked">En Çok Beğenilen</option>
+                <option value="popular">En Popüler</option>
+                <option value="mine">En Çok Oynadıkların</option>
             </select>
-            <button type="button" class="about-btn" id="aboutBtn" aria-controls="aboutSection" aria-expanded="false">About</button>
+            <button type="button" class="about-btn" id="aboutBtn" aria-controls="aboutSection" aria-expanded="false">Hakkında</button>
         </div>
-        <div class="pills" id="pills" role="group" aria-label="Filter by category"></div>
-        <div class="info"><span id="info" aria-live="polite"></span><span id="cloud" class="cloud local">● Local mode</span></div>
+        <div class="pills" id="pills" role="group" aria-label="Kategoriye göre filtrele"></div>
+        <div class="info"><span id="info" aria-live="polite"></span><span id="cloud" class="cloud local">● Yerel mod</span></div>
     </div>
 
     <div class="about-section glass" id="aboutSection">
-        <h2>📌 About THE SIGMA GAMES</h2>
-        <p><strong>THE SIGMA GAMES</strong> is a web gaming portal offering the most popular and high-performance browser games that you can play instantly without downloading anything.</p>
-        <p>Our games are completely free and constantly updated. Don&apos;t forget to bookmark our site and share it with your friends!</p>
-        <p>Earn XP by playing and voting, keep your daily streak alive, unlock all achievements… and maybe find the secret code. 👀</p>
+        <h2>📌 THE SIGMA GAMES Hakkında</h2>
+        <p><strong>THE SIGMA GAMES</strong>, hiçbir şey indirmeden anında oynayabileceğin en popüler ve yüksek performanslı tarayıcı oyunlarını sunan bir web oyun portalıdır.</p>
+        <p>Oyunlarımız tamamen ücretsizdir ve sürekli güncellenir. Sitemizi yer imlerine eklemeyi ve arkadaşlarınla paylaşmayı unutma!</p>
+        <p>Oynayarak ve oy vererek XP kazan, günlük serini koru, tüm başarımları aç… ve belki gizli kodu bul. 👀</p>
     </div>
 </header>
 
-<nav class="az glass" id="az" aria-label="A to Z game directory"></nav>
+<nav class="az glass" id="az" aria-label="A'dan Z'ye oyun listesi"></nav>
 
 <main class="container">
     <section class="gotd glass" id="gotd" aria-labelledby="gotdT">
         <a class="gotd-art" id="gotdArt" href="#" tabindex="-1" aria-hidden="true"></a>
         <div class="gotd-body">
-            <p class="eyebrow">⭐ Game of the Day</p>
-            <h2 id="gotdT">Loading…</h2>
+            <p class="eyebrow">⭐ Günün Oyunu</p>
+            <h2 id="gotdT">Yükleniyor…</h2>
             <p class="gotd-meta" id="gotdMeta"></p>
             <div class="gotd-cta">
-                <a class="btn-primary" id="gotdPlay" href="#">▶ PLAY NOW</a>
-                <span class="countdown">New pick in <b id="gotdCd">--:--:--</b></span>
+                <a class="btn-primary" id="gotdPlay" href="#">▶ HEMEN OYNA</a>
+                <span class="countdown">Yeni seçim: <b id="gotdCd">--:--:--</b></span>
             </div>
         </div>
     </section>
 
     <section id="recentWrap" hidden aria-labelledby="recentH">
-        <h2 class="section-header" id="recentH">🕹️ Continue Playing</h2>
+        <h2 class="section-header" id="recentH">🕹️ Oynamaya Devam Et</h2>
         <div class="recent" id="recentRow"></div>
     </section>
 
-    <h2 class="section-header top-header" id="topH">🔥 Top 3 Most Played Games</h2>
+    <h2 class="section-header top-header" id="topH">🔥 En Çok Oynanan 3 Oyun</h2>
     <div class="game-grid" id="topGamesGrid"></div>
 
-    <h2 class="section-header" id="allH">🎮 All Our Games</h2>
+    <h2 class="section-header" id="allH">🎮 Tüm Oyunlarımız</h2>
     <div class="game-grid" id="allGamesGrid"></div>
 
-    <div class="empty" id="empty">😕 No games found. Try another search or filter.</div>
+    <div class="empty" id="empty">😕 Oyun bulunamadı. Başka bir arama veya filtre dene.</div>
 </main>
 
 <footer>
     <p class="foot-stats" id="footStats"></p>
-    <p>© 2026 The Sigma Games. All rights reserved. | <a href="privacy-policy.html">Privacy Policy</a></p>
+    <p>© 2026 The Sigma Games. Tüm hakları saklıdır. | <a href="privacy-policy.html">Gizlilik Politikası<small>bu tuşlara tıklama, kod: ▲,▲,▼,▼,◀,▶,◀,▶,s,i,g,m,a</small></a></p>
 </footer>
 
-<button type="button" id="toTop" aria-label="Back to top">↑</button>
+<button type="button" id="toTop" aria-label="Başa dön">↑</button>
 <div id="toasts" role="status" aria-live="polite"></div>
 
 <dialog id="luckyDlg" aria-labelledby="luckyT">
-    <button type="button" class="icon-btn dlg-close" data-close aria-label="Close">✕</button>
-    <h2 id="luckyT">🎲 Surprise Me</h2>
+    <button type="button" class="icon-btn dlg-close" data-close aria-label="Kapat">✕</button>
+    <h2 id="luckyT">🎲 Beni Şaşırt</h2>
     <div class="slot" id="slot" aria-live="polite">???</div>
     <div class="dlg-row">
-        <a class="btn-primary" id="luckyPlay" href="#" hidden>▶ PLAY IT</a>
-        <button type="button" class="about-btn" id="spinAgain">Spin Again</button>
+        <a class="btn-primary" id="luckyPlay" href="#" hidden>▶ OYNA</a>
+        <button type="button" class="about-btn" id="spinAgain">Tekrar Çevir</button>
     </div>
 </dialog>
 
 <dialog id="achDlg" aria-labelledby="achT">
-    <button type="button" class="icon-btn dlg-close" data-close aria-label="Close">✕</button>
-    <h2 id="achT">🏆 Achievements</h2>
+    <button type="button" class="icon-btn dlg-close" data-close aria-label="Kapat">✕</button>
+    <h2 id="achT">🏆 Başarımlar</h2>
     <div class="ach-grid" id="achGrid"></div>
 </dialog>
 
 <dialog id="helpDlg" aria-labelledby="helpT">
-    <button type="button" class="icon-btn dlg-close" data-close aria-label="Close">✕</button>
-    <h2 id="helpT">⌨️ Shortcuts</h2>
+    <button type="button" class="icon-btn dlg-close" data-close aria-label="Kapat">✕</button>
+    <h2 id="helpT">⌨️ Kısayollar</h2>
     <ul class="keys">
-        <li>Search <span><kbd>/</kbd> or <kbd>Ctrl</kbd>+<kbd>K</kbd></span></li>
-        <li>Open first result <kbd>Enter</kbd></li>
-        <li>Surprise Me <kbd>R</kbd></li>
-        <li>Toggle music <kbd>M</kbd></li>
-        <li>Change theme <kbd>T</kbd></li>
-        <li>This panel <kbd>?</kbd></li>
-        <li>A legendary 1986 code hides here… <kbd>👀</kbd></li>
+        <li>Ara <span><kbd>/</kbd> veya <kbd>Ctrl</kbd>+<kbd>K</kbd></span></li>
+        <li>İlk sonucu aç <kbd>Enter</kbd></li>
+        <li>Beni Şaşırt <kbd>R</kbd></li>
+        <li>Müziği aç/kapat <kbd>M</kbd></li>
+        <li>Temayı değiştir <kbd>T</kbd></li>
+        <li>Bu panel <kbd>?</kbd></li>
+        <li>Burada efsanevi bir 1986 kodu saklı… <kbd>👀</kbd></li>
     </ul>
 </dialog>
 
@@ -383,36 +383,36 @@ const N = k => +S.get(k) || 0;
 
 /* ---------- Game data: first 3 = Top 3 ---------- */
 const G = [
- ['minecraft','Minecraft','minecraft eagtek','Action','(eagtek)'],
- ['sigma-space-shooter','Sigma Space Shooter','sigma space shooter','Action'],
- ['sigma-clicker','Sigma Clicker','sigma clicker','Casual'],
+ ['minecraft','Minecraft','minecraft eagtek','Aksiyon','(eagtek)'],
+ ['sigma-space-shooter','Sigma Space Shooter','sigma space shooter','Aksiyon'],
+ ['sigma-clicker','Sigma Clicker','sigma clicker','Eğlence'],
  ['sigma-ballz','Sigma Ballz','sigma ballz','Arcade'],
- ['sigma-bear-adventure','Sigma Bear Adventure','sigma bear adventure','Casual'],
+ ['sigma-bear-adventure','Sigma Bear Adventure','sigma bear adventure','Eğlence'],
  ['sigma-bird','Sigma Bird','sigma bird flappy','Arcade'],
- ['sigma-brawl-arena','Sigma Brawl Arena','sigma brawl arena','Action'],
+ ['sigma-brawl-arena','Sigma Brawl Arena','sigma brawl arena','Aksiyon'],
  ['sigma-brick-breaker','Sigma Brick Breaker','sigma brick breaker','Arcade'],
  ['sigma-color-switch','Sigma Color Switch','sigma color switch','Arcade'],
  ['sigma-cyber-breakout','Sigma Cyber Breakout','sigma cyber breakout','Arcade'],
- ['sigma-helix-tower','Sigma Helix Tower','sigma helix tower','Casual'],
- ['sigma-knife-hit','Sigma Knife Hit','sigma knife hit','Casual'],
- ['sigma-math-arena','Sigma Math Arena','sigma math arena','Puzzle'],
- ['sigma-memory','Sigma Memory','sigma memory card','Puzzle'],
+ ['sigma-helix-tower','Sigma Helix Tower','sigma helix tower','Eğlence'],
+ ['sigma-knife-hit','Sigma Knife Hit','sigma knife hit','Eğlence'],
+ ['sigma-math-arena','Sigma Math Arena','sigma math arena','Bulmaca'],
+ ['sigma-memory','Sigma Memory','sigma memory card','Bulmaca'],
  ['sigma-neon-dash','Sigma Dash','sigma dash neon run','Arcade'],
  ['sigma-neon-jump','Sigma Jump','sigma jump','Arcade'],
  ['pong-game','Sigma Ping Pong','sigma ping pong table tennis','Arcade'],
- ['sigma-neon-runner','Sigma Runner','sigma runner run','Action'],
+ ['sigma-neon-runner','Sigma Runner','sigma runner run','Aksiyon'],
  ['sigma-snake','Sigma Snake','sigma snake','Arcade'],
- ['sigma-snake-vs-block','Sigma Snake VS Block','sigma snake vs block','Action'],
- ['sigma-stack','Sigma Stack','sigma stack tower','Casual'],
- ['sigma-strike','Sigma Strike','sigma strike','Action'],
- ['tetris','Sigma Tetris','sigma tetris','Puzzle'],
- ['sigma-twist','Sigma Twist','sigma twist','Casual'],
- ['sigma-whack-mole','Sigma Whack A Mole','sigma whack a mole','Casual'],
- ['2048','Sigma 2048','sigma 2048 puzzle','Puzzle']
+ ['sigma-snake-vs-block','Sigma Snake VS Block','sigma snake vs block','Aksiyon'],
+ ['sigma-stack','Sigma Stack','sigma stack tower','Eğlence'],
+ ['sigma-strike','Sigma Strike','sigma strike','Aksiyon'],
+ ['tetris','Sigma Tetris','sigma tetris','Bulmaca'],
+ ['sigma-twist','Sigma Twist','sigma twist','Eğlence'],
+ ['sigma-whack-mole','Sigma Whack A Mole','sigma whack a mole','Eğlence'],
+ ['2048','Sigma 2048','sigma 2048 puzzle','Bulmaca']
 ];
 const GM = Object.fromEntries(G.map(g => [g[0], g]));
 const BADGE = ['👑 #1 Popular','⚡ #2 Popular','⭐ #3 Popular'];
-const CATS = ['all','Arcade','Action','Puzzle','Casual','fav'];
+const CATS = ['all','Arcade','Aksiyon','Bulmaca','Eğlence','fav'];
 const SORTS = ['default','az','liked','popular','mine'];
 const key = t => t.replace(/^sigma\s+/i,'').toUpperCase();
 const letter = t => { const c = key(t)[0]; return /\d/.test(c) ? '#' : c; };
@@ -623,30 +623,30 @@ addEventListener('pointerdown', e => {
 });
 
 /* ---------- Themes ---------- */
-const THEMES = [['Emerald','0,255,157'],['Cyber Pink','255,46,166'],['Ocean','0,200,255'],['Ultra Violet','169,116,255'],['Sunset','255,138,61']];
+const THEMES = [['Zümrüt','0,255,157'],['Siber Pembe','255,46,166'],['Okyanus','0,200,255'],['Ultra Mor','169,116,255'],['Gün Batımı','255,138,61']];
 let themeIdx = Math.min(Math.max(+S.get('sigma_theme') || 0, 0), THEMES.length - 1);
 function applyTheme(i){ ACC = THEMES[i][1]; document.documentElement.style.setProperty('--acc-rgb', ACC); }
 function cycleTheme(){
     themeIdx = (themeIdx + 1) % THEMES.length; S.set('sigma_theme', themeIdx); applyTheme(themeIdx);
-    toast(`🎨 Theme: ${THEMES[themeIdx][0]}`); unlock('drip');
+    toast(`🎨 Tema: ${THEMES[themeIdx][0]}`); unlock('drip');
 }
 applyTheme(themeIdx);
 
 /* ---------- Profile: XP, levels, streak, achievements ---------- */
-const RANKS = ['Rookie','Grinder','Alpha','Sigma','Gigachad','Legend'];
+const RANKS = ['Çaylak','Emekçi','Alfa','Sigma','Gigachad','Efsane'];
 const ACH = [
-    ['welcome','👋','Welcome, Sigma','Visit THE SIGMA GAMES'],
-    ['first_play','🎮','Press Start','Play your first game'],
-    ['explorer','🧭','Explorer','Play 5 different games'],
-    ['completionist','💯','Completionist','Play every single game'],
-    ['critic','🗳️','Critic','Vote 10 times'],
-    ['collector','❤️','Collector','Favorite 5 games'],
-    ['streak3','🔥','On Fire','Visit 3 days in a row'],
-    ['owl','🦉','Night Owl','Visit between midnight and 5 AM'],
-    ['dj','🎧','DJ Sigma','Switch the music mood'],
-    ['lucky','🎲','Feeling Lucky','Use Surprise Me'],
-    ['drip','🎨','Drip Check','Change the site theme'],
-    ['konami','🕹️','Secret Sigma','Find the secret code']
+    ['welcome','👋','Hoş geldin, Sigma','THE SIGMA GAMES\'i ziyaret et'],
+    ['first_play','🎮','Başla Tuşu','İlk oyununu oyna'],
+    ['explorer','🧭','Kaşif','5 farklı oyun oyna'],
+    ['completionist','💯','Tamamlayıcı','Tüm oyunları oyna'],
+    ['critic','🗳️','Eleştirmen','10 kez oy ver'],
+    ['collector','❤️','Koleksiyoncu','5 oyunu favorile'],
+    ['streak3','🔥','Alev Aldı','3 gün üst üste ziyaret et'],
+    ['owl','🦉','Gece Kuşu','Gece yarısı ile 05:00 arası ziyaret et'],
+    ['dj','🎧','DJ Sigma','Müzik modunu değiştir'],
+    ['lucky','🎲','Şanslı Hissediyorum','Beni Şaşırt\'ı kullan'],
+    ['drip','🎨','Tarz Kontrolü','Site temasını değiştir'],
+    ['konami','🕹️','Gizli Sigma','Gizli kodu bul']
 ];
 const level = xp => Math.floor(Math.sqrt(xp / 50)) + 1;
 const saveP = () => S.set('sigma_profile', JSON.stringify(P));
@@ -657,19 +657,19 @@ function renderHUD(){
     $('rank').textContent = RANKS[Math.min(Math.floor((L - 1) / 2), RANKS.length - 1)];
     $('xpTxt').textContent = `${P.xp} / ${hi} XP`;
     $('xpFill').style.width = pct + '%'; $('xpBar').setAttribute('aria-valuenow', pct);
-    $('streak').textContent = `🔥 ${P.streak} day${P.streak === 1 ? '' : 's'}`;
+    $('streak').textContent = `🔥 ${P.streak} gün`;
     $('achN').textContent = `${P.ach.length}/${ACH.length}`;
 }
 function addXP(n){
     const before = level(P.xp); P.xp += n; saveP(); renderHUD();
     const after = level(P.xp);
-    if(after > before){ toast(`⬆️ Level up! You are now LV ${after}`, 'gold'); audio.fanfare(); FX.confetti(); }
+    if(after > before){ toast(`⬆️ Seviye atladın! Artık LV ${after}`, 'gold'); audio.fanfare(); FX.confetti(); }
 }
 function unlock(id){
     if(P.ach.includes(id)) return;
     const a = ACH.find(x => x[0] === id); if(!a) return;
     P.ach.push(id); saveP();
-    toast(`🏆 Achievement: ${a[1]} ${a[2]}`, 'gold'); audio.fanfare(); FX.confetti(innerWidth / 2, innerHeight / 2, 80);
+    toast(`🏆 Başarım: ${a[1]} ${a[2]}`, 'gold'); audio.fanfare(); FX.confetti(innerWidth / 2, innerHeight / 2, 80);
     addXP(25);
 }
 function dailyVisit(){
@@ -677,14 +677,14 @@ function dailyVisit(){
     if(P.last !== today){
         P.streak = P.last === dayStr(y) ? P.streak + 1 : 1; P.last = today; saveP();
         addXP(20);
-        if(P.streak > 1) setTimeout(() => toast(`🔥 ${P.streak}-day streak! +20 XP`), 1200);
+        if(P.streak > 1) setTimeout(() => toast(`🔥 ${P.streak}-günlük seri! +20 XP`), 1200);
     }
     unlock('welcome');
     if(P.streak >= 3) unlock('streak3');
     if(new Date().getHours() < 5) unlock('owl');
 }
 function renderAch(){
-    $('achGrid').innerHTML = ACH.map(([id,i,t,d]) => `<div class="ach${P.ach.includes(id) ? ' got' : ''}"><span aria-hidden="true">${P.ach.includes(id) ? i : '🔒'}</span><b>${t}</b><small>${d}</small><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">${P.ach.includes(id) ? 'Unlocked' : 'Locked'}</span></div>`).join('');
+    $('achGrid').innerHTML = ACH.map(([id,i,t,d]) => `<div class="ach${P.ach.includes(id) ? ' got' : ''}"><span aria-hidden="true">${P.ach.includes(id) ? i : '🔒'}</span><b>${t}</b><small>${d}</small><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">${P.ach.includes(id) ? 'Açıldı' : 'Kilitli'}</span></div>`).join('');
 }
 
 /* ---------- Play tracking ---------- */
@@ -728,8 +728,8 @@ function renderGotd(){
     img.onload = () => img.classList.add('ok');
     img.onerror = () => { if(!img.dataset.p){ img.dataset.p = 1; img.src = `img/covers/${id}.png`; } else img.remove(); };
     $('gotdT').textContent = title + (extra ? ' ' + extra : '');
-    $('gotdMeta').textContent = `${cat} · Play it today for a +30 XP bonus${P.gotd === dayStr() ? ' (claimed ✅)' : ''}`;
-    $('gotdPlay').href = url; $('gotdPlay').dataset.play = id; $('gotdPlay').setAttribute('aria-label', `Play ${title}, the game of the day`);
+    $('gotdMeta').textContent = `${cat} · Bugün oyna, +30 XP bonus kazan${P.gotd === dayStr() ? ' (alındı ✅)' : ''}`;
+    $('gotdPlay').href = url; $('gotdPlay').dataset.play = id; $('gotdPlay').setAttribute('aria-label', `Günün oyunu ${title} oyna`);
 }
 function tickCountdown(){
     const now = new Date(), mid = new Date(now); mid.setHours(24, 0, 0, 0);
@@ -742,8 +742,8 @@ function tickCountdown(){
 let gt;
 function updateGreeting(){
     const h = new Date().getHours();
-    const [i, w] = h >= 5 && h < 12 ? ['☀️','Good morning'] : h >= 12 && h < 18 ? ['🌤️','Good afternoon'] : h >= 18 && h < 23 ? ['🌆','Good evening'] : ['🌙','Good night'];
-    const chars = [...`${i} ${w}, Welcome to THE SIGMA GAMES!`], el = $('greetingText');
+    const [i, w] = h >= 5 && h < 12 ? ['☀️','Günaydın'] : h >= 12 && h < 18 ? ['🌤️','İyi günler'] : h >= 18 && h < 23 ? ['🌆','İyi akşamlar'] : ['🌙','İyi geceler'];
+    const chars = [...`${i} ${w}, THE SIGMA GAMES'e hoş geldin!`], el = $('greetingText');
     clearInterval(gt); el.classList.remove('done');
     if(REDUCED){ el.textContent = chars.join(''); el.classList.add('done'); return; }
     let n = 0; el.textContent = '';
@@ -755,7 +755,7 @@ function toggleAbout(){ const o = $('aboutSection').classList.toggle('open'); $(
 function setCloud(mode){
     const el = $('cloud');
     el.className = 'cloud ' + (mode === 'local' ? 'local' : 'live');
-    el.textContent = mode === 'live' ? '● Live votes' : mode === 'cloud' ? '● Cloud synced' : '● Local mode';
+    el.textContent = mode === 'live' ? '● Canlı oylar' : mode === 'cloud' ? '● Bulut senkronize' : '● Yerel mod';
 }
 function paint(rawId, l, d, v){
     const id = getCleanGameId(rawId), tot = l + d, pct = tot ? Math.round(l / tot * 100) : 0;
@@ -764,7 +764,7 @@ function paint(rawId, l, d, v){
         a.querySelector('.count').textContent = l; b.querySelector('.count').textContent = d;
         a.classList.toggle('liked', v === 'like'); b.classList.toggle('disliked', v === 'dislike');
         a.setAttribute('aria-pressed', v === 'like'); b.setAttribute('aria-pressed', v === 'dislike');
-        r.classList.toggle('none', !tot); r.title = tot ? `${pct}% liked (${tot} votes)` : 'No votes yet';
+        r.classList.toggle('none', !tot); r.title = tot ? `${pct}% beğeni (${tot} oy)` : 'Henüz oy yok';
         r.firstElementChild.style.width = pct + '%';
     });
 }
@@ -824,7 +824,7 @@ async function rateGame(rawId, type, btn){
     if(v === 'like'){ audio.like(); floatText(btn, '+1 👍'); }
     else if(v === 'dislike'){ audio.dislike(); floatText(btn, '+1 👎', true); }
     else floatText(btn, '−1', true);
-    toast(v === 'like' ? '👍 Voted Like!' : v === 'dislike' ? '👎 Voted Dislike!' : 'Vote removed', v === 'dislike' ? 'bad' : '');
+    toast(v === 'like' ? '👍 Beğendin!' : v === 'dislike' ? '👎 Beğenmedin!' : 'Oy geri alındı', v === 'dislike' ? 'bad' : '');
 
     if(v){ P.votes = (P.votes || 0) + 1; saveP(); addXP(5); if(P.votes >= 10) unlock('critic'); }
 
@@ -847,17 +847,17 @@ function toggleFav(rawId, btn){
     i < 0 ? favs.push(id) : favs.splice(i, 1);
     S.set(K.f, JSON.stringify(favs)); syncFav(); renderPlays();
     if(btn){ btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop'); }
-    toast(i < 0 ? '❤ Added to Favorites!' : 'Removed from Favorites', i < 0 ? '' : 'bad');
+    toast(i < 0 ? '❤ Favorilere eklendi!' : 'Favorilerden çıkarıldı', i < 0 ? '' : 'bad');
     if(i < 0){ audio.like(); addXP(5); if(favs.length >= 5) unlock('collector'); }
     if(st.cat === 'fav') schedule();
 }
 async function share(id){
     const url = new URL(id + '/', location.href).href, title = GM[id]?.[1] || 'THE SIGMA GAMES';
     if(navigator.share && !FINE){ try{ await navigator.share({ title, url }); return; }catch(e){ if(e.name === 'AbortError') return; } }
-    try{ await navigator.clipboard.writeText(url); toast('🔗 Link Copied!'); }
+    try{ await navigator.clipboard.writeText(url); toast('🔗 Bağlantı kopyalandı!'); }
     catch(e){
         const t = document.createElement('textarea'); t.value = url; document.body.appendChild(t); t.select();
-        try{ document.execCommand('copy'); toast('🔗 Link Copied!'); }catch(_){ toast('Copy failed', 'bad'); }
+        try{ document.execCommand('copy'); toast('🔗 Bağlantı kopyalandı!'); }catch(_){ toast('Kopyalanamadı', 'bad'); }
         t.remove();
     }
 }
@@ -871,12 +871,12 @@ function card(g, i){
     Object.assign(el.dataset, { id, name:kw, cat, idx:i, key:key(title), l:letter(title) });
     el.innerHTML =
         (top ? `<span class="top-badge">${BADGE[i]}</span>` : '') +
-        `<div class="act"><button type="button" class="icon-btn fav-btn" data-a="fav" aria-pressed="false" aria-label="Favorite ${title}">♡</button><button type="button" class="icon-btn" data-a="share" aria-label="Share ${title}">🔗</button></div>` +
-        `<a href="${url}" class="card-banner" data-play="${id}" tabindex="-1" aria-hidden="true"><div class="fb" style="--h:${hue(id)}">${title}</div><img src="img/covers/${id}.webp" alt="" loading="lazy" width="320" height="200"><div class="play"><span>▶ PLAY NOW / OYNA</span></div></a>` +
+        `<div class="act"><button type="button" class="icon-btn fav-btn" data-a="fav" aria-pressed="false" aria-label="${title} favorile">♡</button><button type="button" class="icon-btn" data-a="share" aria-label="${title} paylaş">🔗</button></div>` +
+        `<a href="${url}" class="card-banner" data-play="${id}" tabindex="-1" aria-hidden="true"><div class="fb" style="--h:${hue(id)}">${title}</div><img src="img/covers/${id}.webp" alt="" loading="lazy" width="320" height="200"><div class="play"><span>▶ OYNA</span></div></a>` +
         `<a href="${url}" class="game-link" data-play="${id}">${title}${extra ? `<small>${extra}</small>` : ''}</a>` +
         `<div class="cat-tag">${cat}<span class="mine"></span></div>` +
-        `<div class="rating-box"><button type="button" class="rate-btn like-btn" data-a="like" aria-pressed="false" aria-label="Like ${title}">👍 <span class="count">0</span></button><button type="button" class="rate-btn dislike-btn" data-a="dislike" aria-pressed="false" aria-label="Dislike ${title}">👎 <span class="count">0</span></button></div>` +
-        `<div class="ratio none" title="No votes yet"><i></i></div>`;
+        `<div class="rating-box"><button type="button" class="rate-btn like-btn" data-a="like" aria-pressed="false" aria-label="${title} beğen">👍 <span class="count">0</span></button><button type="button" class="rate-btn dislike-btn" data-a="dislike" aria-pressed="false" aria-label="${title} beğenme">👎 <span class="count">0</span></button></div>` +
+        `<div class="ratio none" title="Henüz oy yok"><i></i></div>`;
     const img = el.querySelector('img');
     img.onload = () => img.classList.add('ok');
     img.onerror = () => { if(!img.dataset.p){ img.dataset.p = 1; img.src = `img/covers/${id}.png`; } else img.remove(); };
@@ -917,7 +917,7 @@ function apply(){
     $('topH').style.display = topG.style.display = t ? '' : 'none';
     $('allH').style.display = allG.style.display = a ? '' : 'none';
     $('empty').style.display = n ? 'none' : 'block';
-    $('info').textContent = `Showing ${n} of ${cards.length} games`;
+    $('info').textContent = `${cards.length} oyundan ${n} tanesi gösteriliyor`;
     writeHash();
 }
 function sortGames(){
@@ -1048,30 +1048,30 @@ function lucky(){
 /* ---------- Audio UI ---------- */
 function paintAudioUI(){
     const s = audio.st, mb = $('musicBtn'), sb = $('sfxBtn');
-    mb.textContent = s.music ? '🎵 Music' : '🔕 Music'; mb.classList.toggle('off', !s.music); mb.setAttribute('aria-pressed', s.music);
+    mb.textContent = s.music ? '🎵 Müzik' : '🔕 Müzik'; mb.classList.toggle('off', !s.music); mb.setAttribute('aria-pressed', s.music);
     mb.classList.toggle('pending', s.music && !audio.started);
-    mb.title = s.music && !audio.started ? 'Click anywhere to start the music' : '';
-    sb.textContent = s.sfx ? '🔊 SFX' : '🔇 SFX'; sb.classList.toggle('off', !s.sfx); sb.setAttribute('aria-pressed', s.sfx);
-    $('moodBtn').textContent = s.mood === 'energy' ? '⚡ Energy' : '🌊 Chill';
+    mb.title = s.music && !audio.started ? 'Müziği başlatmak için herhangi bir yere tıkla' : '';
+    sb.textContent = s.sfx ? '🔊 SES' : '🔇 SES'; sb.classList.toggle('off', !s.sfx); sb.setAttribute('aria-pressed', s.sfx);
+    $('moodBtn').textContent = s.mood === 'energy' ? '⚡ Enerji' : '🌊 Sakin';
     $('musicVol').value = s.mv; $('sfxVol').value = s.sv;
 }
 function musicToggle(){
     // The first press only unlocks the AudioContext (browsers block autoplay), so it should start music, not mute it.
     if(!audio.started && audio.st.music){ audio.init(); }
-    else { const on = audio.toggleMusic(); toast(on ? '🎵 Music on' : '🔕 Music off', on ? '' : 'bad'); }
+    else { const on = audio.toggleMusic(); toast(on ? '🎵 Müzik açık' : '🔕 Müzik kapalı', on ? '' : 'bad'); }
     paintAudioUI();
 }
 document.addEventListener('audio:started', paintAudioUI);
 
 /* ---------- Konami code ---------- */
-const KONAMI = ['arrowup','arrowup','arrowdown','arrowdown','arrowleft','arrowright','arrowleft','arrowright','b','a'];
+const KONAMI = ['arrowup','arrowup','arrowdown','arrowdown','arrowleft','arrowright','arrowleft','arrowright','s','i','g','m','a'];
 let kPos = 0;
 function konamiKey(k){
     kPos = k === KONAMI[kPos] ? kPos + 1 : (k === KONAMI[0] ? 1 : 0);
     if(kPos < KONAMI.length) return;
     kPos = 0;
     const on = document.documentElement.classList.toggle('sigma');
-    toast(on ? '🌈 SIGMA MODE ACTIVATED' : 'Sigma mode off', 'gold');
+    toast(on ? '🌈 SIGMA MODU AKTİF' : 'Sigma modu kapalı', 'gold');
     if(on){ audio.init(); audio.fanfare(); FX.confetti(innerWidth / 2, innerHeight / 2, 200); unlock('konami'); }
 }
 
@@ -1084,11 +1084,11 @@ window.addEventListener('DOMContentLoaded', () => {
     G.forEach((g, i) => (i < 3 ? topG : allG).appendChild(card(g, i)));
     readHash();
 
-    const L = ['ALL','#',...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'], have = new Set(G.map(g => letter(g[1])));
-    $('az').innerHTML = L.map(l => `<button type="button" class="chip${l === st.letter ? ' on' : ''}" data-l="${l}" aria-pressed="${l === st.letter}" aria-label="${l === 'ALL' ? 'Show all games' : l === '#' ? 'Games starting with a number' : 'Games starting with ' + l}"${l === 'ALL' || have.has(l) ? '' : ' disabled'}>${l}</button>`).join('');
+    const L = ['TÜMÜ','#',...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'], have = new Set(G.map(g => letter(g[1])));
+    $('az').innerHTML = L.map(l => `<button type="button" class="chip${l === st.letter ? ' on' : ''}" data-l="${l}" aria-pressed="${l === st.letter}" aria-label="${l === 'TÜMÜ' ? 'Tüm oyunları göster' : l === '#' ? 'Rakamla başlayan oyunlar' : l + ' ile başlayan oyunlar'}"${l === 'ALL' || have.has(l) ? '' : ' disabled'}>${l}</button>`).join('');
     $('az').addEventListener('click', e => { const b = e.target.closest('.chip'); if(!b || b.disabled) return; st.letter = b.dataset.l; mark($('az'), b); schedule(); });
 
-    $('pills').innerHTML = CATS.map(c => `<button type="button" class="chip${c === st.cat ? ' on' : ''}" data-c="${c}" aria-pressed="${c === st.cat}" aria-label="${c === 'all' ? 'Show all categories' : c === 'fav' ? 'Show favorites' : 'Filter ' + c + ' games'}">${c === 'all' ? 'All' : c === 'fav' ? '❤ Favorites <span id="favN">0</span>' : c}</button>`).join('');
+    $('pills').innerHTML = CATS.map(c => `<button type="button" class="chip${c === st.cat ? ' on' : ''}" data-c="${c}" aria-pressed="${c === st.cat}" aria-label="${c === 'all' ? 'Tüm kategorileri göster' : c === 'fav' ? 'Favorileri göster' : c + ' oyunlarını filtrele'}">${c === 'all' ? 'Tümü' : c === 'fav' ? '❤ Favoriler <span id="favN">0</span>' : c}</button>`).join('');
     $('pills').addEventListener('click', e => { const b = e.target.closest('.chip'); if(!b) return; st.cat = b.dataset.c; mark($('pills'), b); schedule(); });
 
     $('searchInput').addEventListener('input', filterGames);
@@ -1104,7 +1104,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     $('musicBtn').addEventListener('click', musicToggle);
     $('sfxBtn').addEventListener('click', () => { audio.init(); const on = audio.toggleSfx(); paintAudioUI(); if(on) audio.click(); });
-    $('moodBtn').addEventListener('click', () => { audio.init(); const m = audio.toggleMood(); paintAudioUI(); toast(m === 'energy' ? '⚡ Energy mode' : '🌊 Chill mode'); unlock('dj'); });
+    $('moodBtn').addEventListener('click', () => { audio.init(); const m = audio.toggleMood(); paintAudioUI(); toast(m === 'energy' ? '⚡ Enerji modu' : '🌊 Sakin mod'); unlock('dj'); });
     $('musicVol').addEventListener('input', e => audio.setMusicVolume(+e.target.value));
     $('sfxVol').addEventListener('input', e => audio.setSfxVolume(+e.target.value));
     $('sfxVol').addEventListener('change', () => { audio.init(); audio.click(); });
