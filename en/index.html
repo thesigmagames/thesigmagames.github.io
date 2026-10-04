@@ -16,6 +16,9 @@
 <meta property="og:type" content="website">
 <link rel="icon" href="/img/favicon.png">
 
+<!-- Supabase SDK Kütüphanesi -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 :root{--bg-color:#05060a;--card-bg:#0e1117;--accent-color:#00FF9D;--accent-glow:rgba(0,255,157,.3);--gold-color:#FFD700;--gold-glow:rgba(255,215,0,.4);--text-color:#fff;--subtext-color:#9aa4b2;--danger-color:#ff3366;--glass:rgba(16,20,28,.6);--line:rgba(0,255,157,.25)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -24,6 +27,15 @@ body{background:var(--bg-color);color:var(--text-color);font-family:'Segoe UI',T
 a{color:var(--accent-color)}
 :focus-visible{outline:2px solid var(--gold-color);outline-offset:2px}
 #bg{position:fixed;inset:0;width:100%;height:100%;z-index:-1;background:radial-gradient(ellipse at 50% -10%,#0b2a22 0,transparent 60%),var(--bg-color)}
+
+/* Ses ve Müzik Kontrol Paneli */
+.audio-controls{position:fixed;top:15px;right:15px;z-index:1000;padding:8px 14px;border-radius:25px;display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.audio-group{display:flex;align-items:center;gap:6px}
+.audio-btn{background:rgba(5,6,10,.7);border:1px solid var(--accent-color);color:var(--accent-color);padding:6px 12px;border-radius:15px;font-size:.8rem;font-weight:bold;cursor:pointer;transition:.25s;white-space:nowrap}
+.audio-btn:hover{background:var(--accent-color);color:#000;box-shadow:0 0 10px var(--accent-glow)}
+.audio-btn.off{border-color:var(--danger-color);color:var(--danger-color);opacity:.7}
+.vol-slider{width:60px;accent-color:var(--accent-color);cursor:pointer}
+
 header{margin-bottom:16px}
 h1{font-size:clamp(2rem,7vw,3.4rem);text-transform:uppercase;letter-spacing:4px;margin-bottom:12px;background:linear-gradient(90deg,var(--accent-color),#00e5ff,var(--gold-color),var(--accent-color));background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:flow 8s linear infinite;filter:drop-shadow(0 0 14px var(--accent-glow))}
 @keyframes flow{to{background-position:300% 0}}
@@ -101,13 +113,25 @@ footer{margin-top:50px;border-top:1px solid #1d2531;padding-top:20px;color:var(-
 .toast.bad{border-color:var(--danger-color);box-shadow:0 0 20px rgba(255,51,102,.4)}
 @keyframes tin{from{opacity:0;transform:translateX(40px)}}
 @media(min-width:1100px){.az{justify-content:center}}
-@media(max-width:600px){body{padding:18px 12px}.game-grid{grid-template-columns:repeat(2,1fr);gap:12px}.kbd{display:none}.search-input{padding-right:50px}.clear-btn{right:14px}.game-link{font-size:.9rem;padding:10px 10px 2px}.cat-tag{padding:0 10px}.rating-box{margin:8px 8px 0}.rate-btn{padding:5px 10px}.fb{font-size:.85rem;letter-spacing:1px}.about-section{padding:18px}.sort,.about-btn{flex:1}#toasts{right:10px;bottom:10px}}
+@media(max-width:600px){body{padding:18px 12px}.audio-controls{position:relative;top:0;right:0;margin:0 auto 12px;width:fit-content}.game-grid{grid-template-columns:repeat(2,1fr);gap:12px}.kbd{display:none}.search-input{padding-right:50px}.clear-btn{right:14px}.game-link{font-size:.9rem;padding:10px 10px 2px}.cat-tag{padding:0 10px}.rating-box{margin:8px 8px 0}.rate-btn{padding:5px 10px}.fb{font-size:.85rem;letter-spacing:1px}.about-section{padding:18px}.sort,.about-btn{flex:1}#toasts{right:10px;bottom:10px}}
 @media(max-width:360px){.game-grid{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <canvas id="bg" aria-hidden="true"></canvas>
+
+<!-- Ses & Müzik Paneli -->
+<div class="audio-controls glass" role="region" aria-label="Audio Controls">
+    <div class="audio-group">
+        <button type="button" id="musicBtn" class="audio-btn" aria-label="Toggle Music">🎵 Music</button>
+        <input type="range" id="musicVol" class="vol-slider" min="0" max="1" step="0.05" value="0.4" aria-label="Music Volume">
+    </div>
+    <div class="audio-group">
+        <button type="button" id="sfxBtn" class="audio-btn" aria-label="Toggle SFX">🔊 SFX</button>
+        <input type="range" id="sfxVol" class="vol-slider" min="0" max="1" step="0.05" value="0.7" aria-label="SFX Volume">
+    </div>
+</div>
 
 <header class="container">
     <h1>THE SIGMA GAMES</h1>
@@ -160,7 +184,257 @@ footer{margin-top:50px;border-top:1px solid #1d2531;padding-top:20px;color:var(-
 <noscript><nav class="container"><a href="minecraft/">Minecraft</a> | <a href="sigma-space-shooter/">Sigma Space Shooter</a> | <a href="sigma-clicker/">Sigma Clicker</a> | <a href="sigma-ballz/">Sigma Ballz</a> | <a href="sigma-bear-adventure/">Sigma Bear Adventure</a> | <a href="sigma-bird/">Sigma Bird</a> | <a href="sigma-brawl-arena/">Sigma Brawl Arena</a> | <a href="sigma-brick-breaker/">Sigma Brick Breaker</a> | <a href="sigma-color-switch/">Sigma Color Switch</a> | <a href="sigma-cyber-breakout/">Sigma Cyber Breakout</a> | <a href="sigma-helix-tower/">Sigma Helix Tower</a> | <a href="sigma-knife-hit/">Sigma Knife Hit</a> | <a href="sigma-math-arena/">Sigma Math Arena</a> | <a href="sigma-memory/">Sigma Memory</a> | <a href="sigma-neon-dash/">Sigma Dash</a> | <a href="sigma-neon-jump/">Sigma Jump</a> | <a href="pong-game/">Sigma Ping Pong</a> | <a href="sigma-neon-runner/">Sigma Runner</a> | <a href="sigma-snake/">Sigma Snake</a> | <a href="sigma-snake-vs-block/">Sigma Snake VS Block</a> | <a href="sigma-stack/">Sigma Stack</a> | <a href="sigma-strike/">Sigma Strike</a> | <a href="tetris/">Sigma Tetris</a> | <a href="sigma-twist/">Sigma Twist</a> | <a href="sigma-whack-mole/">Sigma Whack A Mole</a> | <a href="2048/">Sigma 2048</a></nav></noscript>
 
 <script>
-/* ---------- Safe storage (never throws; falls back to memory) ---------- */
+/* ---------- Supabase Bulut Bağlantısı ---------- */
+const SUPABASE_URL = "https://mxfjbhqswsbogbnaynuk.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14ZmpiaHFzd3Nib2dibmF5bnVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExMDI4MDksImV4cCI6MjEwNjY3ODgwOX0.tpzIjyHrVKUcGFWQ9U_rdQ2Qgd4DhANzgk3GUPtBys8";
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function getCleanGameId(id) {
+    return id.replace(/^(tr|en)\//, '');
+}
+
+/* ---------- Web Audio API Ses Engine (Müzik & Bass Click) ---------- */
+class SoundEngine {
+    constructor() {
+        this.ctx = null;
+        this.musicGain = null;
+        this.sfxGain = null;
+        this.musicMuted = false;
+        this.sfxMuted = false;
+        this.musicVol = 0.4;
+        this.sfxVol = 0.7;
+        this.isPlaying = false;
+        this.tempo = 112;
+        this.step = 0;
+        this.timer = null;
+    }
+
+    init() {
+        if (this.ctx) return;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioCtx();
+
+        this.musicGain = this.ctx.createGain();
+        this.musicGain.gain.value = this.musicMuted ? 0 : this.musicVol;
+        this.musicGain.connect(this.ctx.destination);
+
+        this.sfxGain = this.ctx.createGain();
+        this.sfxGain.gain.value = this.sfxMuted ? 0 : this.sfxVol;
+        this.sfxGain.connect(this.ctx.destination);
+
+        this.startMusic();
+    }
+
+    playBassClick() {
+        if (!this.ctx || this.sfxMuted || this.sfxVol <= 0) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+
+        const now = this.ctx.currentTime;
+        
+        // Derin Sub-Bass Vuruşu
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(28, now + 0.14);
+
+        gain.gain.setValueAtTime(this.sfxVol * 0.95, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+
+        osc.start(now);
+        osc.stop(now + 0.14);
+
+        // Tıklama Çıt Sesi Transiyenti
+        const clickOsc = this.ctx.createOscillator();
+        const clickGain = this.ctx.createGain();
+        clickOsc.type = 'triangle';
+        clickOsc.frequency.setValueAtTime(850, now);
+        clickOsc.frequency.exponentialRampToValueAtTime(120, now + 0.03);
+
+        clickGain.gain.setValueAtTime(this.sfxVol * 0.35, now);
+        clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+
+        clickOsc.connect(clickGain);
+        clickGain.connect(this.sfxGain);
+
+        clickOsc.start(now);
+        clickOsc.stop(now + 0.03);
+    }
+
+    startMusic() {
+        if (this.isPlaying) return;
+        this.isPlaying = true;
+
+        const chords = [
+            [130.81, 164.81, 196.00, 246.94], // C maj7
+            [110.00, 130.81, 164.81, 196.00], // A m7
+            [146.83, 174.61, 220.00, 261.63], // D m7
+            [98.00, 123.47, 146.83, 196.00]   // G7
+        ];
+        const bassline = [65.41, 55.00, 73.42, 49.00];
+
+        const stepTime = (60 / this.tempo) / 2;
+
+        const tick = () => {
+            if (!this.isPlaying || !this.ctx) return;
+            const now = this.ctx.currentTime;
+            const measure = Math.floor(this.step / 8) % chords.length;
+            const beat = this.step % 8;
+
+            // Ritmik Derin Synth Bass
+            if (beat === 0 || beat === 3 || beat === 6) {
+                const bOsc = this.ctx.createOscillator();
+                const bGain = this.ctx.createGain();
+                bOsc.type = 'sawtooth';
+                bOsc.frequency.setValueAtTime(bassline[measure], now);
+                
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(260, now);
+                filter.frequency.exponentialRampToValueAtTime(80, now + 0.25);
+
+                bGain.gain.setValueAtTime(0.22, now);
+                bGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+                bOsc.connect(filter);
+                filter.connect(bGain);
+                bGain.connect(this.musicGain);
+
+                bOsc.start(now);
+                bOsc.stop(now + 0.3);
+            }
+
+            // Arpej Sententezleyici
+            const currentChord = chords[measure];
+            const noteHz = currentChord[beat % currentChord.length] * 2;
+            const aOsc = this.ctx.createOscillator();
+            const aGain = this.ctx.createGain();
+            aOsc.type = 'sine';
+            aOsc.frequency.setValueAtTime(noteHz, now);
+
+            aGain.gain.setValueAtTime(0.07, now);
+            aGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+            aOsc.connect(aGain);
+            aGain.connect(this.musicGain);
+
+            aOsc.start(now);
+            aOsc.stop(now + 0.2);
+
+            this.step++;
+            this.timer = setTimeout(tick, stepTime * 1000);
+        };
+
+        tick();
+    }
+
+    setMusicVolume(vol) {
+        this.musicVol = vol;
+        if (this.musicGain) this.musicGain.gain.value = this.musicMuted ? 0 : this.musicVol;
+    }
+
+    setSfxVolume(vol) {
+        this.sfxVol = vol;
+        if (this.sfxGain) this.sfxGain.gain.value = this.sfxMuted ? 0 : this.sfxVol;
+    }
+
+    toggleMusic() {
+        this.musicMuted = !this.musicMuted;
+        if (this.musicGain) this.musicGain.gain.value = this.musicMuted ? 0 : this.musicVol;
+        return !this.musicMuted;
+    }
+
+    toggleSfx() {
+        this.sfxMuted = !this.sfxMuted;
+        if (this.sfxGain) this.sfxGain.gain.value = this.sfxMuted ? 0 : this.sfxVol;
+        return !this.sfxMuted;
+    }
+}
+const audio = new SoundEngine();
+window.soundEngine = audio;
+
+/* ---------- Görsel Tıklama Efekti (Particle FX Canvas) ---------- */
+(function(){
+    const cv = document.createElement('canvas');
+    cv.id = 'fxCanvas';
+    cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+    document.body.appendChild(cv);
+
+    const ctx = cv.getContext('2d');
+    let w, h, fx = [];
+
+    function resize(){ w = cv.width = window.innerWidth; h = cv.height = window.innerHeight; }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function addClickFX(x, y){
+        fx.push({ type:'ring', x, y, r:4, maxR:36, a:1, c:'#00FF9D' });
+        fx.push({ type:'ring', x, y, r:2, maxR:52, a:0.7, c:'#FFD700' });
+
+        for(let i=0; i<10; i++){
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 4 + 2;
+            fx.push({
+                type: 'particle',
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                r: Math.random() * 3 + 2,
+                a: 1,
+                c: Math.random() < 0.6 ? '#00FF9D' : '#FFD700'
+            });
+        }
+    }
+
+    function render(){
+        ctx.clearRect(0,0,w,h);
+        for(let i = fx.length - 1; i >= 0; i--){
+            const p = fx[i];
+            if(p.type === 'ring'){
+                p.r += (p.maxR - p.r) * 0.16;
+                p.a -= 0.04;
+                if(p.a <= 0){ fx.splice(i,1); continue; }
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.strokeStyle = p.c;
+                ctx.globalAlpha = Math.max(0, p.a);
+                ctx.lineWidth = 2;
+                ctx.shadowColor = p.c;
+                ctx.shadowBlur = 10;
+                ctx.stroke();
+                ctx.restore();
+            } else {
+                p.x += p.vx; p.y += p.vy;
+                p.vx *= 0.94; p.vy *= 0.94;
+                p.a -= 0.03;
+                if(p.a <= 0){ fx.splice(i,1); continue; }
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = p.c;
+                ctx.globalAlpha = Math.max(0, p.a);
+                ctx.shadowColor = p.c;
+                ctx.shadowBlur = 8;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+        requestAnimationFrame(render);
+    }
+    render();
+
+    window.addEventListener('pointerdown', e => {
+        addClickFX(e.clientX, e.clientY);
+        audio.init();
+        audio.playBassClick();
+    });
+})();
+
+/* ---------- Yerel Depolama (Memory Fallback) ---------- */
 const $ = id => document.getElementById(id), mem = {};
 const S = {
     get(k){ try{ const v = localStorage.getItem(k); if(v !== null) return v; }catch(e){} return mem[k] ?? null; },
@@ -170,7 +444,7 @@ const S = {
 const K = { l:id=>'sigma_likes_'+id, d:id=>'sigma_dislikes_'+id, v:id=>'sigma_user_vote_'+id, f:'sigma_favorites' };
 const N = k => +S.get(k) || 0;
 
-/* ---------- Game data: first 3 = Top 3. [id, title, search keywords, category, extra] ---------- */
+/* ---------- Oyun Verileri ---------- */
 const G = [
  ['minecraft','Minecraft','minecraft eagtek','Action','(eagtek)'],
  ['sigma-space-shooter','Sigma Space Shooter','sigma space shooter','Action'],
@@ -200,7 +474,6 @@ const G = [
  ['2048','Sigma 2048','sigma 2048 puzzle','Puzzle']
 ];
 const BADGE = ['👑 #1 Popular','⚡ #2 Popular','⭐ #3 Popular'];
-/* A-Z index ignores the shared "Sigma" prefix so the directory is actually useful */
 const key = t => t.replace(/^sigma\s+/i,'').toUpperCase();
 const letter = t => { const c = key(t)[0]; return /\d/.test(c) ? '#' : c; };
 const hue = s => { let h = 0; for(const c of s) h = (h*31 + c.charCodeAt(0)) % 360; return h; };
@@ -209,7 +482,7 @@ const st = { q:'', cat:'all', letter:'ALL', sort:'default' };
 let favs = []; try{ favs = JSON.parse(S.get(K.f) || '[]'); }catch(e){} if(!Array.isArray(favs)) favs = [];
 const topG = $('topGamesGrid'), allG = $('allGamesGrid');
 
-/* ---------- Toasts ---------- */
+/* ---------- Toast Mesajları ---------- */
 function toast(msg, type){
     const box = $('toasts'), t = document.createElement('div');
     t.className = 'toast' + (type ? ' ' + type : ''); t.textContent = msg;
@@ -218,11 +491,11 @@ function toast(msg, type){
     setTimeout(() => t.remove(), 2600);
 }
 
-/* ---------- Greeting (typing effect) ---------- */
+/* ---------- Karşılama Yazısı ---------- */
 let gt;
 function updateGreeting(){
     const h = new Date().getHours();
-    const [i,w] = h>=5&&h<12 ? ['☀️','Good morning'] : h>=12&&h<18 ? ['🌤️','Good afternoon'] : h>=18&&h<23 ? ['🌆','Good evening'] : ['🌙','Good night'];
+    const [i,w] = h>=5&&h<12 ? ['☀️️','Good morning'] : h>=12&&h<18 ? ['🌤️','Good afternoon'] : h>=18&&h<23 ? ['🌆','Good evening'] : ['🌙','Good night'];
     const chars = [...`${i} ${w}, Welcome to THE SIGMA GAMES!`], el = $('greetingText');
     clearInterval(gt); el.classList.remove('done');
     if(matchMedia('(prefers-reduced-motion:reduce)').matches){ el.textContent = chars.join(''); el.classList.add('done'); return; }
@@ -231,42 +504,98 @@ function updateGreeting(){
 }
 
 function toggleAbout(){
-    const o = $('aboutSection').classList.toggle('open');
-    $('aboutBtn').setAttribute('aria-expanded', o);
+    const o = $('aboutSection').classList.toggle('open');$('aboutBtn').setAttribute('aria-expanded', o);
 }
 
-/* ---------- Ratings (original logic, same storage keys) ---------- */
-function paint(id,l,d,v){
+/* ---------- Bulut Senkronizeli Beğeni Mantığı ---------- */
+function paint(rawId, l, d, v){
+    const id = getCleanGameId(rawId);
     document.querySelectorAll(`.game-card[data-id="${id}"]`).forEach(c => {
         const a = c.querySelector('.like-btn'), b = c.querySelector('.dislike-btn');
         a.querySelector('.count').textContent = l; b.querySelector('.count').textContent = d;
         a.classList.toggle('liked', v === 'like'); b.classList.toggle('disliked', v === 'dislike');
     });
 }
-function loadRatings(){
-    document.querySelectorAll('.game-card').forEach(c => { const id = c.dataset.id; paint(id, N(K.l(id)), N(K.d(id)), S.get(K.v(id))); });
-}
-function rateGame(id, type){
-    let l = N(K.l(id)), d = N(K.d(id)), v = S.get(K.v(id));
-    if(type === 'like'){
-        if(v === 'like'){ l = Math.max(0,l-1); v = null; } else { l++; if(v === 'dislike') d = Math.max(0,d-1); v = 'like'; }
-    } else {
-        if(v === 'dislike'){ d = Math.max(0,d-1); v = null; } else { d++; if(v === 'like') l = Math.max(0,l-1); v = 'dislike'; }
+
+async function loadRatings(){
+    try {
+        const { data, error } = await supabase.from('game_stats').select('*');
+        if (error) {
+            console.error('Supabase yükleme hatası:', error);
+            document.querySelectorAll('.game-card').forEach(c => { 
+                const id = getCleanGameId(c.dataset.id); 
+                paint(id, N(K.l(id)), N(K.d(id)), S.get(K.v(id))); 
+            });
+            return;
+        }
+
+        if (data) {
+            data.forEach(item => {
+                const id = item.game_id;
+                S.set(K.l(id), item.likes);
+                S.set(K.d(id), item.dislikes);
+                paint(id, item.likes, item.dislikes, S.get(K.v(id)));
+            });
+        }
+    } catch(err) {
+        console.error('Bağlantı hatası:', err);
     }
-    S.set(K.l(id), l); S.set(K.d(id), d); v ? S.set(K.v(id), v) : S.del(K.v(id));
-    paint(id, l, d, v);
-    toast(v === 'like' ? '👍 Voted Like!' : v === 'dislike' ? '👎 Voted Dislike!' : 'Vote removed', v === 'dislike' ? 'bad' : '');
 }
 
-/* ---------- Favorites & share ---------- */
+async function rateGame(rawId, type){
+    const id = getCleanGameId(rawId);
+    let l = N(K.l(id)), d = N(K.d(id)), v = S.get(K.v(id));
+
+    if(type === 'like'){
+        if(v === 'like'){ 
+            l = Math.max(0, l - 1); 
+            v = null; 
+        } else { 
+            if(v === 'dislike') d = Math.max(0, d - 1); 
+            l++; 
+            v = 'like'; 
+        }
+    } else if(type === 'dislike'){
+        if(v === 'dislike'){ 
+            d = Math.max(0, d - 1); 
+            v = null; 
+        } else { 
+            if(v === 'like') l = Math.max(0, l - 1); 
+            d++; 
+            v = 'dislike'; 
+        }
+    }
+
+    // Ekranı anında güncelle
+    S.set(K.l(id), l); 
+    S.set(K.d(id), d); 
+    v ? S.set(K.v(id), v) : S.del(K.v(id));
+    paint(id, l, d, v);
+
+    toast(v === 'like' ? '👍 Voted Like!' : v === 'dislike' ? '👎 Voted Dislike!' : 'Vote removed', v === 'dislike' ? 'bad' : '');
+
+    // Buluta Gönder
+    try {
+        const { error } = await supabase
+            .from('game_stats')
+            .upsert({ game_id: id, likes: l, dislikes: d });
+        if (error) console.error('Bulut kaydetme hatası:', error);
+    } catch(err) {
+        console.error('Supabase kaydetme hatası:', err);
+    }
+}
+
+/* ---------- Favoriler & Paylaşım ---------- */
 function syncFav(){
     document.querySelectorAll('.game-card').forEach(c => {
-        const on = favs.includes(c.dataset.id), b = c.querySelector('.fav-btn');
+        const id = getCleanGameId(c.dataset.id);
+        const on = favs.includes(id), b = c.querySelector('.fav-btn');
         b.classList.toggle('on', on); b.textContent = on ? '❤' : '♡'; b.setAttribute('aria-pressed', on);
     });
     const n = $('favN'); if(n) n.textContent = favs.length;
 }
-function toggleFav(id){
+function toggleFav(rawId){
+    const id = getCleanGameId(rawId);
     const i = favs.indexOf(id);
     i < 0 ? favs.push(id) : favs.splice(i,1);
     S.set(K.f, JSON.stringify(favs)); syncFav();
@@ -283,7 +612,7 @@ async function share(id){
     }
 }
 
-/* ---------- Card factory (same DOM structure/classes as the original) ---------- */
+/* ---------- Oyun Kartı Oluşturucu ---------- */
 function card(g, i){
     const [id, title, kw, cat, extra] = g, top = i < 3, url = id + '/';
     const el = document.createElement('div');
@@ -314,12 +643,11 @@ function card(g, i){
     return el;
 }
 
-/* ---------- Filter / sort engine (batched with requestAnimationFrame) ---------- */
+/* ---------- Filtre & Sıralama Motoru ---------- */
 let pend = 0;
 function schedule(){ pend || (pend = requestAnimationFrame(() => { pend = 0; apply(); })); }
 function filterGames(){
-    st.q = $('searchInput').value.trim().toLowerCase();
-    $('clearBtn').style.display = st.q ? 'block' : 'none';
+    st.q = $('searchInput').value.trim().toLowerCase();$('clearBtn').style.display = st.q ? 'block' : 'none';
     schedule();
 }
 function apply(){
@@ -327,7 +655,7 @@ function apply(){
     cards.forEach(c => {
         const d = c.dataset;
         const ok = (!st.q || d.name.includes(st.q) || d.cat.toLowerCase().includes(st.q))
-            && (st.cat === 'all' || (st.cat === 'fav' ? favs.includes(d.id) : d.cat === st.cat))
+            && (st.cat === 'all' || (st.cat === 'fav' ? favs.includes(getCleanGameId(d.id)) : d.cat === st.cat))
             && (st.letter === 'ALL' || d.l === st.letter);
         c.classList.toggle('hide', !ok);
         if(ok){ n++; c.parentNode === topG ? t++ : a++; }
@@ -338,14 +666,14 @@ function apply(){
     $('info').textContent = `Showing ${n} of ${cards.length} games`;
 }
 function sortGames(){
-    const lk = c => N(K.l(c.dataset.id)), idx = (a,b) => a.dataset.idx - b.dataset.idx;
-    const pop = c => lk(c) + N(K.d(c.dataset.id)) + (c.classList.contains('top-game') ? 1e4 - c.dataset.idx : 0);
+    const lk = c => N(K.l(getCleanGameId(c.dataset.id))), idx = (a,b) => a.dataset.idx - b.dataset.idx;
+    const pop = c => lk(c) + N(K.d(getCleanGameId(c.dataset.id))) + (c.classList.contains('top-game') ? 1e4 - c.dataset.idx : 0);
     const fn = { default:idx, az:(a,b) => a.dataset.key.localeCompare(b.dataset.key,'en',{numeric:true}), liked:(a,b) => lk(b) - lk(a) || idx(a,b), popular:(a,b) => pop(b) - pop(a) || idx(a,b) }[st.sort];
     [topG, allG].forEach(g => [...g.children].sort(fn).forEach(c => g.appendChild(c)));
 }
 function mark(box, b){ box.querySelectorAll('.chip').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); }); }
 
-/* ---------- Particle background ---------- */
+/* ---------- Parçacık Arka Planı ---------- */
 (function(){
     const cv = $('bg'), x = cv.getContext('2d');
     if(!x || matchMedia('(prefers-reduced-motion:reduce)').matches) return;
@@ -375,25 +703,38 @@ function mark(box, b){ box.querySelectorAll('.chip').forEach(x => { const on = x
     size(); loop();
 })();
 
-/* ---------- Init ---------- */
+/* ---------- Sayfa Başlatıcı & Olay Dinleyiciler ---------- */
 window.addEventListener('DOMContentLoaded', () => {
     G.forEach((g,i) => (i < 3 ? topG : allG).appendChild(card(g,i)));
 
     const L = ['ALL','#',...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'], have = new Set(G.map(g => letter(g[1])));
     $('az').innerHTML = L.map(l => `<button type="button" class="chip${l==='ALL'?' on':''}" data-l="${l}" aria-pressed="${l==='ALL'}" aria-label="${l==='ALL'?'Show all games':l==='#'?'Games starting with a number':'Games starting with '+l}"${l==='ALL'||have.has(l)?'':' disabled'}>${l}</button>`).join('');
-    $('az').addEventListener('click', e => { const b = e.target.closest('.chip'); if(!b || b.disabled) return; st.letter = b.dataset.l; mark($('az'), b); schedule(); });
+    $('az').addEventListener('click', e => { const b = e.target.closest('.chip'); if(!b \vert{}\vert{} b.disabled) return; st.letter = b.dataset.l; mark($('az'), b); schedule(); });
 
     const C = ['all','Arcade','Action','Puzzle','Casual','fav'];
     $('pills').innerHTML = C.map(c => `<button type="button" class="chip${c==='all'?' on':''}" data-c="${c}" aria-pressed="${c==='all'}" aria-label="${c==='all'?'Show all categories':c==='fav'?'Show favorites':'Filter '+c+' games'}">${c==='all'?'All':c==='fav'?'❤ Favorites <span id="favN">0</span>':c}</button>`).join('');
     $('pills').addEventListener('click', e => { const b = e.target.closest('.chip'); if(!b) return; st.cat = b.dataset.c; mark($('pills'), b); schedule(); });
 
     $('sortSel').addEventListener('change', e => { st.sort = e.target.value; sortGames(); });
-    $('clearBtn').addEventListener('click', () => { $('searchInput').value = ''; filterGames(); $('searchInput').focus(); });
-    $('kbd').textContent = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K';
+    $('clearBtn').addEventListener('click', () => {$('searchInput').value = ''; filterGames(); $('searchInput').focus(); });$('kbd').textContent = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘ K' : 'Ctrl K';
     addEventListener('keydown', e => {
-        if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'){ e.preventDefault(); $('searchInput').focus(); $('searchInput').select(); }
-        else if(e.key === 'Escape' && document.activeElement === $('searchInput')) $('clearBtn').click();
+        if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'){ e.preventDefault(); $('searchInput').focus();$('searchInput').select(); }
+        else if(e.key === 'Escape' && document.activeElement === $('searchInput'))$('clearBtn').click();
     });
+
+    // Ses ve Müzik Buton Dinleyicileri
+    const mBtn = $('musicBtn'), sBtn =$('sfxBtn');
+    mBtn.addEventListener('click', () => {
+        const active = audio.toggleMusic();
+        mBtn.classList.toggle('off', !active);
+    });
+    sBtn.addEventListener('click', () => {
+        const active = audio.toggleSfx();
+        sBtn.classList.toggle('off', !active);
+    });
+    $('musicVol').addEventListener('input', e => audio.setMusicVolume(+e.target.value));$('sfxVol').addEventListener('input', e => audio.setSfxVolume(+e.target.value));
+
+    // Oyun Kartı Tıklama Olayları
     document.querySelector('main').addEventListener('click', e => {
         const b = e.target.closest('[data-a]'); if(!b) return;
         const id = b.closest('.game-card').dataset.id, a = b.dataset.a;
