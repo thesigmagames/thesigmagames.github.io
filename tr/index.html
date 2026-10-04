@@ -706,7 +706,7 @@ function renderPlays(){
         m.textContent = n ? ` · ▶ ${n} play${n === 1 ? '' : 's'}` : '';
     });
     const total = Object.values(plays).reduce((a, b) => a + (+b || 0), 0);
-    $('footStats').textContent = `${G.length} games · ${total} plays by you · ${favs.length} favorites · LV ${level(P.xp)}`;
+    $('footStats').textContent = `${G.length} oyun · ${total} tanesini oynadın · ${favs.length} tanesini favoriledin · LVL ${level(P.xp)}`;
 }
 function renderRecent(){
     $('recentWrap').hidden = !recent.length;
