@@ -242,7 +242,7 @@ body.gated{overflow:hidden}
 
 <header class="container">
     <h1>THE SIGMA GAMES</h1>
-    <div><span class="edition">ULTRA EDITION</span></div>
+    <div><span class="edition">THE BEST WEB GAMING PORTAL</span></div>
     <p id="greetingText" class="greeting-text" aria-live="polite"></p>
 
     <div class="hud glass" aria-label="Your player profile">
@@ -320,7 +320,10 @@ body.gated{overflow:hidden}
 
 <footer>
     <p class="foot-stats" id="footStats"></p>
-    <p>© 2026 The Sigma Games. All rights reserved. | <a href="privacy-policy.html">Privacy Policy</a></p>
+    <p>© 2026 The Sigma Games. All rights reserved. Site Owner: Kerem Parlak| <a href="privacy-policy.html">Privacy Policy</a></p>
+    <p>Dear visitors:</p>
+    <p><b>İbrahim Öztürk<br>Ahmet Melih Demir</b></p>
+    <p>And More...</p>
 </footer>
 
 <button type="button" id="toTop" aria-label="Back to top">↑</button>
@@ -1071,7 +1074,7 @@ function konamiKey(k){
     if(kPos < KONAMI.length) return;
     kPos = 0;
     const on = document.documentElement.classList.toggle('sigma');
-    toast(on ? '🌈 SIGMA MODE ACTIVATED' : 'Sigma mode off', 'gold');
+    toast(on ? '🌈 SIGMA MODE ACTIVATED, SECRET CODE FOUNDED' : 'Sigma mode off', 'gold');
     if(on){ audio.init(); audio.fanfare(); FX.confetti(innerWidth / 2, innerHeight / 2, 200); unlock('konami'); }
 }
 
