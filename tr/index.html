@@ -1084,8 +1084,8 @@ window.addEventListener('DOMContentLoaded', () => {
     G.forEach((g, i) => (i < 3 ? topG : allG).appendChild(card(g, i)));
     readHash();
 
-    const L = ['TÜMÜ','#',...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'], have = new Set(G.map(g => letter(g[1])));
-    $('az').innerHTML = L.map(l => `<button type="button" class="chip${l === st.letter ? ' on' : ''}" data-l="${l}" aria-pressed="${l === st.letter}" aria-label="${l === 'TÜMÜ' ? 'Tüm oyunları göster' : l === '#' ? 'Rakamla başlayan oyunlar' : l + ' ile başlayan oyunlar'}"${l === 'ALL' || have.has(l) ? '' : ' disabled'}>${l}</button>`).join('');
+    const L = ['TÜMÜ','#',...'ABCDEFGHIİJKLMNOÖPQRSŞTUÜVWXYZ'], have = new Set(G.map(g => letter(g[1])));
+    $('az').innerHTML = L.map(l => `<button type="button" class="chip${l === st.letter ? ' on' : ''}" data-l="${l}" aria-pressed="${l === st.letter}" aria-label="${l === 'all' ? 'Tüm oyunları göster' : l === '#' ? 'Rakamla başlayan oyunlar' : l + ' ile başlayan oyunlar'}"${l === 'ALL' || have.has(l) ? '' : ' disabled'}>${l}</button>`).join('');
     $('az').addEventListener('click', e => { const b = e.target.closest('.chip'); if(!b || b.disabled) return; st.letter = b.dataset.l; mark($('az'), b); schedule(); });
 
     $('pills').innerHTML = CATS.map(c => `<button type="button" class="chip${c === st.cat ? ' on' : ''}" data-c="${c}" aria-pressed="${c === st.cat}" aria-label="${c === 'all' ? 'Tüm kategorileri göster' : c === 'fav' ? 'Favorileri göster' : c + ' oyunlarını filtrele'}">${c === 'all' ? 'Tümü' : c === 'fav' ? '❤ Favoriler <span id="favN">0</span>' : c}</button>`).join('');
