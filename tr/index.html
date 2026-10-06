@@ -322,7 +322,7 @@ body.gated{overflow:hidden}
     <p class="foot-stats" id="footStats"></p>
     <p>© 2026 The Sigma Games. Tüm hakları saklıdır. Site Sahibi: Kerem Parlak | <a href="privacy-policy.html">Gizlilik Politikası </a><br><small>siteyi bilgisayarla ziyaret ettiysen sakın bu tuşlara tıklama, kod: ▲,▲,▼,▼,◀,▶,◀,▶,s,i,g,m,a</small></p>
     <p>Saygın Ziyaretçilerimiz:</p>
-    <p><b>İbrahim Öztürk<br>Ahmet Melih Demir<br></b><br><small>Ve Daha Nice Kullanıcı...</small></p>
+    <p><b>İbrahim Öztürk<br>Ahmet Melih Demir<br>Can Muhammed Kaya<br>Talha Orhan<br></b><br><small>Ve Daha Nice Kullanıcı...</small></p>
 </footer>
 
 <button type="button" id="toTop" aria-label="Başa dön">↑</button>
@@ -389,7 +389,7 @@ const G = [
  ['sigma-space-shooter','Sigma Space Shooter','sigma space shooter','Aksiyon'],
  ['sigma-clicker','Sigma Clicker','sigma clicker','Eğlence'],
  ['sigma-ballz','Sigma Ballz','sigma ballz','Arcade'],
- ['sigma-bear-adventure','Sigma Bear Adventure','sigma bear adventure','Eğlence'],
+ ['sigma-bear-adventure','Sigma Bear Adventure','sigma bear adventure','Eğlence','(yakında)'],
  ['sigma-bird','Sigma Bird','sigma bird flappy','Arcade'],
  ['sigma-brawl-arena','Sigma Brawl Arena','sigma brawl arena','Aksiyon'],
  ['sigma-brick-breaker','Sigma Brick Breaker','sigma brick breaker','Arcade'],
@@ -413,7 +413,7 @@ const G = [
  ['2048','Sigma 2048','sigma 2048 puzzle','Bulmaca']
 ];
 const GM = Object.fromEntries(G.map(g => [g[0], g]));
-const BADGE = ['👑 #1 Popular','⚡ #2 Popular','⭐ #3 Popular'];
+const BADGE = ['👑 #1 Popüler','⚡ #2 Popüler','⭐ #3 Popüler'];
 const CATS = ['all','Arcade','Aksiyon','Bulmaca','Eğlence','fav'];
 const SORTS = ['default','az','liked','popular','mine'];
 const key = t => t.replace(/^sigma\s+/i,'').toUpperCase();
@@ -1053,7 +1053,7 @@ function paintAudioUI(){
     mb.textContent = s.music ? '🎵 Müzik' : '🔕 Müzik'; mb.classList.toggle('off', !s.music); mb.setAttribute('aria-pressed', s.music);
     mb.classList.toggle('pending', s.music && !audio.started);
     mb.title = s.music && !audio.started ? 'Müziği başlatmak için herhangi bir yere tıkla' : '';
-    sb.textContent = s.sfx ? '🔊 SES' : '🔇 SES'; sb.classList.toggle('off', !s.sfx); sb.setAttribute('aria-pressed', s.sfx);
+    sb.textContent = s.sfx ? '🔊 Ses' : '🔇 Ses'; sb.classList.toggle('off', !s.sfx); sb.setAttribute('aria-pressed', s.sfx);
     $('moodBtn').textContent = s.mood === 'energy' ? '⚡ Enerji' : '🌊 Sakin';
     $('musicVol').value = s.mv; $('sfxVol').value = s.sv;
 }
@@ -1073,7 +1073,7 @@ function konamiKey(k){
     if(kPos < KONAMI.length) return;
     kPos = 0;
     const on = document.documentElement.classList.toggle('sigma');
-    toast(on ? '🌈 SIGMA MODU AKTİF' : 'Sigma modu kapalı', 'gold');
+    toast(on ? '🌈 SIGMA MODU AKTİF VE GİZLİ KOD BULUNDU' : 'Sigma modu kapalı', 'gold');
     if(on){ audio.init(); audio.fanfare(); FX.confetti(innerWidth / 2, innerHeight / 2, 200); unlock('konami'); }
 }
 
